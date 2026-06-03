@@ -179,10 +179,32 @@ async def _step_cleanup_run(ctx: dict[str, Any]) -> dict[str, Any]:
     skill = SystemCleanupSkill()
     confirm_all = bool(ctx.get("confirm_all"))
     categories = ctx.get("categories")
+    if not categories:
+        categories = ["apt", "journal", "log"]
+        ctx["categories"] = categories
     result = skill.execute(categories, confirm_all=confirm_all)
     ctx["cleanup_result"] = result
     if result.get("blocked"):
-        return {"ok": False, "step": "cleanup_run", "blocked": True, "message": result.get("message")}
+        ctx["blocked"] = True
+        return {
+            "ok": False,
+            "step": "cleanup_run",
+            "blocked": True,
+            "message": result.get("message", ""),
+            "blocked_categories": result.get("blocked_categories", []),
+            "hint": "高风险分类需在表单中开启「高风险项」开关",
+        }
+    failed = result.get("failed", 0)
+    if failed > 0:
+        return {
+            "ok": True,
+            "step": "cleanup_run",
+            "executed": result.get("executed", 0),
+            "succeeded": result.get("succeeded", 0),
+            "failed": failed,
+            "results": result.get("results", []),
+            "warning": f"{failed} 项执行失败，详情见 results",
+        }
     return {"ok": True, "step": "cleanup_run", "executed": result.get("executed", 0), "succeeded": result.get("succeeded", 0)}
 
 
@@ -239,10 +261,16 @@ _FLOWS: dict[str, FlowDef] = {
         description="解析 PID → 高危校验 → terminate/kill",
         steps=[_step_block_process],
     ),
-    "system_cleanup": FlowDef(
-        name="system_cleanup",
-        display_name="系统垃圾清理",
-        description="扫描可清理项 → 分类报告 → 安全执行（APT/Journal/tmp/pip/Docker/内核/回收站/日志）",
+    "system_cleanup_scan": FlowDef(
+        name="system_cleanup_scan",
+        display_name="清理扫描（仅扫描）",
+        description="扫描所有可清理项（APT/Journal/tmp/pip/Docker/内核/回收站/日志），生成报告，不执行清理",
+        steps=[_step_cleanup_scan],
+    ),
+    "system_cleanup_run": FlowDef(
+        name="system_cleanup_run",
+        display_name="清理执行（需选择分类）",
+        description="执行系统清理，高风险项需在表单中开启确认开关",
         steps=[_step_cleanup_scan, _step_cleanup_run],
     ),
     "cpu_stress": FlowDef(

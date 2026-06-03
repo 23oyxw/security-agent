@@ -58,7 +58,7 @@
         <el-form-item v-if="selected.name === 'block_process'" label="说明">
           <el-input v-model="form.user_message" placeholder="可选，如：拦截进程 4911" />
         </el-form-item>
-        <el-form-item v-if="selected.name === 'system_cleanup'" label="清理分类">
+        <el-form-item v-if="selected.name === 'system_cleanup_run'" label="清理分类">
           <el-checkbox-group v-model="form.cleanup_categories">
             <el-checkbox label="apt">APT 缓存</el-checkbox>
             <el-checkbox label="journal">Journal 日志</el-checkbox>
@@ -70,7 +70,7 @@
             <el-checkbox label="trash">回收站</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
-        <el-form-item v-if="selected.name === 'system_cleanup'" label="高风险项">
+        <el-form-item v-if="selected.name === 'system_cleanup_run'" label="高风险项">
           <el-switch v-model="form.cleanup_confirm_all" />
           <span style="margin-left:8px;font-size:12px;color:#909399">确认执行 tmp/docker/kernel/trash 清理</span>
         </el-form-item>
@@ -234,7 +234,7 @@ function buildContext() {
       user_message: form.user_message || `拦截进程 ${form.pid}`,
     }
   }
-  if (name === 'system_cleanup') {
+  if (name === 'system_cleanup_run' || name === 'system_cleanup_scan') {
     return {
       categories: form.cleanup_categories,
       confirm_all: form.cleanup_confirm_all,

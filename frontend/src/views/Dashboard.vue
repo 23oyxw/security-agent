@@ -139,6 +139,54 @@
       </el-col>
     </el-row>
 
+    <!-- 一键测试面板 -->
+    <el-card style="margin-bottom:16px">
+      <template #header>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span>⚡ 一键测试 — 所有 Skill Flow 快速验证</span>
+          <div>
+            <el-button type="primary" size="small" :loading="testAllLoading" @click="runAllTests">
+              全部运行
+            </el-button>
+            <el-button size="small" @click="$router.push('/skill-flows')">Skill 编排页 →</el-button>
+          </div>
+        </div>
+      </template>
+      <el-alert type="info" :closable="false" show-icon style="margin-bottom:12px"
+        title="点击单项测试或「全部运行」，所有结果实时显示，方便排查假运行问题" />
+      <el-table :data="testCases" size="small" stripe>
+        <el-table-column prop="label" label="测试项" width="180" />
+        <el-table-column prop="flow" label="Flow" width="150" />
+        <el-table-column prop="description" label="说明" min-width="200" />
+        <el-table-column label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.status === 'ok'" type="success" size="small">✓ 通过</el-tag>
+            <el-tag v-else-if="row.status === 'fail'" type="danger" size="small">✗ 失败</el-tag>
+            <el-tag v-else-if="row.status === 'blocked'" type="warning" size="small">⊘ 拦截</el-tag>
+            <el-tag v-else-if="row.status === 'running'" type="primary" size="small" effect="plain">运行中...</el-tag>
+            <span v-else style="color:#999;font-size:12px">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="耗时" width="80">
+          <template #default="{ row }">
+            <span v-if="row.elapsed_ms != null" style="font-size:12px">{{ row.elapsed_ms }}ms</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="详情" min-width="200">
+          <template #default="{ row }">
+            <span v-if="row.detail" style="font-size:12px;color:#606266">{{ row.detail }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="80" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" :loading="row.status === 'running'" @click="runSingleTest(row)">
+              测试
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
     <!-- 进程管理 + CPU 压测 -->
     <el-row :gutter="16" style="margin-bottom:16px">
       <el-col :span="12">
@@ -249,6 +297,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import api from '../api'
+import { ElMessage } from 'element-plus'
 import { useAlertsStore } from '../stores/alerts'
 import { useMetricsStore } from '../stores/metrics'
 import { useMcpStore } from '../stores/mcp'
@@ -282,6 +331,66 @@ const rcaReport = ref(null)
 const osPorts = ref([])
 const osZombies = ref(null)
 const osErrors = ref([])
+
+// 一键测试面板
+const testAllLoading = ref(false)
+const testCases = reactive([
+  { key: 'scan', label: '安全扫描', flow: 'scan_report', description: '进程/路径/端口扫描 + 生成报告', status: '', elapsed_ms: null, detail: '' },
+  { key: 'exec_safe', label: '安全命令(ls)', flow: 'secure_exec', description: '三层防御评估 + 安全执行 ls /tmp', status: '', elapsed_ms: null, detail: '', context: { command: 'ls -la /tmp', user_message: '查看临时目录', user_confirmed: true } },
+  { key: 'exec_block', label: '拦截命令(rm)', flow: 'secure_exec', description: '高危命令 rm -rf / 应被拦截', status: '', elapsed_ms: null, detail: '', context: { command: 'rm -rf /', user_message: '删除根目录', user_confirmed: false } },
+  { key: 'cleanup_scan', label: '清理扫描', flow: 'system_cleanup_scan', description: '扫描可清理项，不执行', status: '', elapsed_ms: null, detail: '' },
+  { key: 'cleanup_run', label: '清理执行(安全)', flow: 'system_cleanup_run', description: '仅清理 apt/journal/log', status: '', elapsed_ms: null, detail: '', context: { categories: ['apt', 'journal', 'log'], confirm_all: false } },
+  { key: 'alert', label: '告警响应', flow: 'alert_response', description: '模拟告警事件路由', status: '', elapsed_ms: null, detail: '', context: { alert_event: { message: 'CPU 持续高于 90%', level: '高', source: 'test' } } },
+])
+
+async function runSingleTest(tc) {
+  tc.status = 'running'
+  tc.detail = ''
+  tc.elapsed_ms = null
+  const t0 = Date.now()
+  try {
+    const ctx = tc.context || {}
+    const res = await api.post(`/skills/flows/${tc.flow}/run`, { context: ctx })
+    tc.elapsed_ms = Date.now() - t0
+    if (res.ok) {
+      tc.status = 'ok'
+      // 拼接关键详情
+      const stepNames = (res.steps || []).map(s => {
+        const label = s.step || `step_${s.index}`
+        return s.ok === false ? `✗${label}` : `✓${label}`
+      })
+      tc.detail = stepNames.join(' → ')
+      if (res.report_html_path) tc.detail += ` | ${res.report_html_path.split('/').pop()}`
+    } else {
+      // 检查是否被拦截（这是预期行为）
+      const blocked = (res.steps || []).some(s => s.blocked)
+      if (blocked) {
+        tc.status = 'blocked'
+        const blockStep = res.steps.find(s => s.blocked)
+        tc.detail = '预期拦截: ' + (blockStep?.message || blockStep?.error || '安全策略拦截')
+      } else {
+        tc.status = 'fail'
+        const errStep = res.steps?.find(s => s.ok === false)
+        tc.detail = errStep?.error || errStep?.message || '流程失败'
+      }
+    }
+  } catch (e) {
+    tc.elapsed_ms = Date.now() - t0
+    tc.status = 'fail'
+    tc.detail = e.response?.data?.detail || e.message || '请求失败'
+  }
+}
+
+async function runAllTests() {
+  testAllLoading.value = true
+  for (const tc of testCases) {
+    await runSingleTest(tc)
+  }
+  testAllLoading.value = false
+  const ok = testCases.filter(t => t.status === 'ok' || t.status === 'blocked').length
+  const fail = testCases.filter(t => t.status === 'fail').length
+  ElMessage[fail > 0 ? 'warning' : 'success'](`测试完成: ${ok} 通过/拦截, ${fail} 失败`)
+}
 
 // 进程管理 + CPU 压测
 const procLoading = ref(false)
