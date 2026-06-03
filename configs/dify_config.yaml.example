@@ -1,0 +1,96 @@
+DIFY_BASE_URL: http://localhost
+DIFY_API_URL: http://localhost/v1
+DIFY_CONSOLE_URL: http://localhost/console/api
+AGENT_API_URL: http://host.docker.internal:8000
+AGENT_AUTH_TOKEN: ''
+AGENT_SIGNING_KEY: ''
+workflows:
+  threat_detection:
+    app_id: e43c151f-abf8-4af6-9318-a9e61f5f66e4
+    api_key: app-8b6a7a710ec55218b8cee927
+    description: AI驱动的安全威胁检测与响应，自动分析安全事件、评估风险等级并触发相应处置措施
+  security_inspection:
+    app_id: a4529c59-b122-4319-9da9-0dc39dede009
+    api_key: app-956f15c4c3925165912bed0e
+    description: 定时触发系统安全巡检，自动检查资产状态、端口开放、登录审计等
+  alert_processing:
+    app_id: e7b22cc7-3235-4c6d-b29c-7692b187e309
+    api_key: app-24fcffd360237b908095a1be
+    description: 接收安全告警后进行智能分析，结合知识库检索历史案例，AI判断告警真伪并给出处置建议
+  security_chat:
+    app_id: ada9da7e-1a2d-4e9c-9775-9350ec90c532
+    api_key: app-dpBplzdD5pCvHQPz7F2hMisV
+    description: 交互式安全运维助手，支持自然语言驱动的安全巡检、威胁分析、日志解读和运维操作建议
+  security_knowledge_rag:
+    app_id: 5afd6a02-4aa7-4dde-aed2-8a914a7686d9
+    api_key: app-bd886b57fe75fae75129837d
+    description: 基于RAG的安全知识库智能检索与问答，支持安全策略、运维手册、历史案例的语义搜索
+  log_analysis:
+    app_id: ''
+    api_key: ''
+    description: 多源日志智能分析，支持syslog/authlog/nginx等多种格式的日志解析、统计异常检测、时序关联分析和自动告警
+  compliance_audit:
+    app_id: ''
+    api_key: ''
+    description: 多标准安全合规审计，支持等保2.0(二级/三级)和CIS基准的自动化合规检查与审计报告
+  incident_response:
+    app_id: ''
+    api_key: ''
+    description: 安全事件应急响应，高危事件自动触发隔离+取证+通知，中低危事件走标准处置流程
+  vulnerability_scan:
+    app_id: ''
+    api_key: ''
+    description: 漏洞扫描与评估，基于CVE库的漏洞匹配、CVSS评分聚合、风险评级和修复建议
+  forensic_analysis:
+    app_id: ''
+    api_key: ''
+    description: 数字取证分析，从原始证据提取IOC、重建攻击时间线、识别TTPs(MITRE ATT&CK)
+models:
+  deepseek:
+    provider: langgenius/openai_api_compatible/openai_api_compatible
+    api_base: https://api.deepseek.com/v1
+    models:
+    - deepseek-v4-pro
+    - deepseek-v4-flash
+  mimo:
+    provider: langgenius/openai_api_compatible/openai_api_compatible
+    api_base: https://token-plan-cn.xiaomimimo.com/v1
+    models:
+    - mimo-v2.5-pro
+knowledge_bases:
+- name: 安全策略库
+  description: 等保2.0、麒麟安全基线、安全配置标准
+  dataset_id: 163d797f-8282-40c3-b7f4-1843b6eab3a6
+  documents:
+  - kylin_baseline.md
+  - dengbao_requirements.md
+- name: 运维手册库
+  description: 日常巡检SOP、应急处置预案、变更操作手册
+  dataset_id: ba027660-47ee-4f1e-a147-dcaa943a553b
+  documents:
+  - patrol_sop.md
+- name: 历史案例库
+  description: 安全事件处置记录、根因分析报告、经验教训
+  dataset_id: 1db9fc71-813c-4b85-98e6-8280ee0d9939
+  documents:
+  - security_incidents.md
+- name: 威胁情报库
+  description: 最新漏洞情报、IOC指标、攻击手法TTPs
+  dataset_id: 876332a4-bd10-4f4e-84bf-721429f37a2a
+  documents:
+  - attack_techniques.md
+workflow_defaults:
+  timeout: 120
+  retry_count: 3
+  response_mode: blocking
+notifications:
+  alert_channel: security_alerts
+  report_channel: security_reports
+  webhook_url: ''
+advanced:
+  enable_knowledge_rerank: true
+  enable_streaming: false
+  enable_cache: true
+  cache_ttl_minutes: 30
+  log_level: INFO
+  audit_enabled: true

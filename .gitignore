@@ -1,0 +1,58 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Secrets & runtime data
+.env
+litellm_config.yaml
+configs/litellm_config.yaml
+data/conversations.db
+
+# Runtime generated data
+data/*.db
+data/audit.log
+data/logs/
+data/reports/
+data/alerts/
+data/patrol_reports/
+data/config_snapshots/
+data/.streamlit.pid
+data/*.json
+data/*.count
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / Vue
+frontend/node_modules/
+frontend/.vite/
+
+# Cursor IDE
+.cursor/
+
+# 参考库（体积大，不纳入主干提交；本地保留即可）
+qt01/
+aiflowy-main/
+
+# PID / 进程标记
+data/.api.pid
+data/.litellm.pid
+# LiteLLM 自带 Postgres 数据目录（Docker 以 nobody 创建，0700，勿提交/勿打包）
+data/litellm/pgdata/
+data/litellm/pgdata2/
+data/litellm/

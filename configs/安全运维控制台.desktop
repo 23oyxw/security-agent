@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=安全运维控制台
+Comment=启动 Streamlit 安全运维 Agent
+Exec=bash "/home/oy0/security-agent/open-app.sh"
+Path=/home/oy0/security-agent
+Icon=utilities-terminal
+Terminal=false
+Categories=System;Security;
+StartupNotify=true

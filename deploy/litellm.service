@@ -1,0 +1,46 @@
+[Unit]
+Description=LiteLLM Proxy - 统一多模型路由代理
+Documentation=https://docs.litellm.ai/docs/proxy/quick_start
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=oy0
+Group=oy0
+WorkingDirectory=/home/oy0/security-agent
+
+# 启动命令
+ExecStart=/home/oy0/security-agent/.venv/bin/python3.14 -m litellm.proxy.proxy_cli \
+    --config /home/oy0/security-agent/configs/litellm_config.yaml \
+    --port 4000
+
+# 停止信号
+ExecStop=/bin/kill -TERM $MAINPID
+ExecReload=/bin/kill -HUP $MAINPID
+
+# 日志
+StandardOutput=append:/home/oy0/security-agent/data/logs/litellm.log
+StandardError=append:/home/oy0/security-agent/data/logs/litellm.log
+
+# PID 文件
+PIDFile=/home/oy0/security-agent/data/.litellm.pid
+
+# 重启策略
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+# 安全加固
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/oy0/security-agent/data /home/oy0/security-agent/data/logs
+
+# 资源限制
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

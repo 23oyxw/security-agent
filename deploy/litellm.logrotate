@@ -1,0 +1,13 @@
+/home/oy0/security-agent/data/logs/litellm.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    dateext
+    dateformat -%Y%m%d
+    create 0644 oy0 oy0
+    su oy0 oy0
+}

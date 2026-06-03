@@ -1,0 +1,58 @@
+# ============================================================
+# LiteLLM Proxy 统一路由配置（模板）
+# ============================================================
+# 用法：
+#   1. 复制本文件为 litellm_config.yaml
+#   2. 填入真实的 API Key
+#   3. pip install 'litellm[proxy]'
+#   4. litellm --config litellm_config.yaml --port 4000
+#
+# 然后 .env 里把所有 BASE_URL 改为 http://localhost:4000/v1
+# ============================================================
+
+model_list:
+  # ---- 对话 Agent — MiMo v2.5 Pro（旗舰 agent + 工具调用）----
+  - model_name: mimo-chat
+    litellm_params:
+      model: openai/mimo-v2.5
+      api_key: your_mimo_api_key_here
+      api_base: https://token-plan-cn.xiaomimimo.com/v1
+
+  # ---- 对话 Agent — MiMo v2.5（标准快速，日常轻量任务）----
+  - model_name: mimo-fast
+    litellm_params:
+      model: openai/mimo-v2.5
+      api_key: your_mimo_api_key_here
+      api_base: https://token-plan-cn.xiaomimimo.com/v1
+
+  # ---- 自主任务 Agent（深度规划/分析）----
+  - model_name: deepseek-reasoner
+    litellm_params:
+      model: deepseek-v4-pro
+      api_key: your_deepseek_api_key_here
+      api_base: https://api.deepseek.com/v1
+
+  # ---- 批量/高频任务（性价比之王）----
+  - model_name: deepseek-chat
+    litellm_params:
+      model: deepseek-v4-flash
+      api_key: your_deepseek_api_key_here
+      api_base: https://api.deepseek.com/v1
+
+  # ---- 向量嵌入（OpenAI）----
+  # 注意：需要 OpenAI API Key，不是 DeepSeek Key！
+  # 如无 OpenAI Key，可在 .env 中设 RAG_USE_EMBEDDINGS=false 使用纯关键词检索
+  - model_name: text-embedding-3-small
+    litellm_params:
+      model: openai/text-embedding-3-small
+      api_key: your_openai_api_key_here   # ← 必须填 OpenAI Key
+      api_base: https://api.openai.com/v1
+
+litellm_settings:
+  set_verbose: false
+  track_cost: true
+  num_retries: 2
+  timeout: 120
+  fallbacks:
+    - mimo-chat:
+        - deepseek-chat

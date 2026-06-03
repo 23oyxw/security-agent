@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=查看API文档
+Comment=打开安全运维 Agent API 文档（Swagger UI）
+Exec=bash "/home/oy0/security-agent/查看API文档.sh"
+Path=/home/oy0/security-agent
+Icon=text-html
+Terminal=true
+Categories=Development;Documentation;
+StartupNotify=true

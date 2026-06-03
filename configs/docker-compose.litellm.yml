@@ -1,0 +1,75 @@
+
+#===============================================================================
+# LiteLLM 企业级代理 - Docker Compose 配置
+# 适用场景：企业级部署，支持多模型统一路由和 fallback
+# 兼容 docker-compose v1.25+
+#===============================================================================
+
+services:
+  litellm-db:
+    image: postgres:16-alpine
+    container_name: security-agent-litellm-db
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm_pass_2024
+      POSTGRES_DB: litellm
+      POSTGRES_HOST_AUTH_METHOD: trust
+    command: >
+      postgres
+      -c listen_addresses=*
+      -c hba_file=/etc/postgresql/pg_hba.conf
+    volumes:
+      - ../data/litellm/pgdata2:/var/lib/postgresql/data
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    networks:
+      - security-agent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  litellm-proxy:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: security-agent-litellm
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+      - ../data/logs:/app/logs
+      - ../data/litellm:/app/data
+    env_file:
+      - ../.env
+    environment:
+      - LITELLM_CONFIG_PATH=/app/config.yaml
+      - LITELLM_LOG_LEVEL=INFO
+      - PORT=4000
+      - LITELLM_MASTER_KEY=sk-1234
+      - DATABASE_URL=postgresql://litellm:litellm_pass_2024@litellm-db:5432/litellm
+    command: >
+      --config /app/config.yaml
+      --port 4000
+      --num_workers 1
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health/liveliness"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - security-agent-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+networks:
+  security-agent-network:
+    driver: bridge

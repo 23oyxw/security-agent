@@ -1,0 +1,41 @@
+[Unit]
+Description=Security Agent — LiteLLM Proxy (Docker, 统一模型路由网关)
+Documentation=https://docs.litellm.ai/docs/proxy/quick_start
+After=docker.service network-online.target
+Wants=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=root
+Group=root
+
+# 工作目录
+WorkingDirectory=/home/oy0/security-agent
+
+# 启动 Docker 容器
+ExecStart=/usr/bin/docker run -d \
+    --name security-agent-litellm \
+    --restart unless-stopped \
+    -p 4000:4000 \
+    -v /home/oy0/security-agent/configs/litellm_config.yaml:/app/config.yaml:ro \
+    -v /home/oy0/security-agent/data/logs:/app/logs \
+    --env-file /home/oy0/security-agent/.env \
+    ghcr.io/berriai/litellm:main-latest \
+    --config /app/config.yaml --port 4000
+
+# 停止并删除容器
+ExecStop=/usr/bin/docker rm -f security-agent-litellm
+
+# 如果容器已存在，先清理再启动
+ExecStartPre=/usr/bin/docker rm -f security-agent-litellm 2>/dev/null || true
+ExecStartPre=/usr/bin/docker pull ghcr.io/berriai/litellm:main-latest 2>/dev/null || true
+
+# 重启策略
+Restart=no
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Install]
+WantedBy=multi-user.target

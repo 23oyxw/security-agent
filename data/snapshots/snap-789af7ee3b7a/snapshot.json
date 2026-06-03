@@ -1,0 +1,9 @@
+{
+  "id": "snap-789af7ee3b7a",
+  "created_at": "2026-05-30T05:50:00.301348",
+  "operation": "rm -rf",
+  "risk_level": "IRREVERSIBLE",
+  "user": "admin",
+  "paths": [],
+  "files_backed_up": []
+}

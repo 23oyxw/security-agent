@@ -1,0 +1,225 @@
+#!/usr/bin/env bash
+#==============================================================================
+# 启动安全运维 Agent — FastAPI 后端 + Vue 前端 (+ 可选 Streamlit 旧版)
+#
+# 默认端口: API 8900（答辩推荐，与 vite proxy / e2e 一致）
+#           文档中若写 8000，请 export SEC_API_PORT=8000 或改本脚本默认值
+# 访问:     http://<主机>:8900/  （生产：已构建的 frontend/dist）
+#           bash boot_start.sh --dev → http://<主机>:5173/ （proxy → 8900）
+#
+# 用法: bash boot_start.sh [--streamlit] [--dev]
+#   --streamlit  同时启动旧版 Streamlit UI（默认不启动）
+#   --dev        开发模式，启动 Vue dev server 代替构建静态文件
+#==============================================================================
+
+set -euo pipefail
+
+SEC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${SEC_ROOT}/.env"
+ENV_EXAMPLE="${SEC_ROOT}/.env.example"
+LOG_DIR="${SEC_ROOT}/data/logs"
+API_PID_FILE="${SEC_ROOT}/data/.api.pid"
+API_PORT="${SEC_API_PORT:-8900}"
+API_HOST="${SEC_API_HOST:-0.0.0.0}"
+STREAMLIT_PID_FILE="${SEC_ROOT}/data/.streamlit.pid"
+STREAMLIT_PORT="${SEC_UI_PORT:-8501}"
+STREAMLIT_HOST="${SEC_UI_HOST:-127.0.0.1}"
+LITELLM_PID_FILE="${SEC_ROOT}/data/.litellm.pid"
+LITELLM_LOG="${LOG_DIR}/litellm.log"
+
+# 解析参数
+START_STREAMLIT=false
+DEV_MODE=false
+for arg in "$@"; do
+  case "$arg" in
+    --streamlit) START_STREAMLIT=true ;;
+    --dev)       DEV_MODE=true ;;
+  esac
+done
+
+if [[ -x "${HOME}/.local/bin/uv" ]]; then
+  UV_BIN="${HOME}/.local/bin/uv"
+else
+  UV_BIN="$(command -v uv 2>/dev/null || true)"
+fi
+
+export PATH="${HOME}/.local/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+
+log() { echo "[boot_start] $*"; }
+
+if [[ -z "${UV_BIN}" || ! -x "${UV_BIN}" ]]; then
+  echo "[boot_start] 未找到 uv，请先安装: https://docs.astral.sh/uv/" >&2
+  exit 1
+fi
+
+mkdir -p "${LOG_DIR}" "${SEC_ROOT}/data/reports"
+touch "${SEC_ROOT}/data/audit.log" 2>/dev/null || true
+
+if [[ ! -f "${ENV_FILE}" ]]; then
+  if [[ -f "${ENV_EXAMPLE}" ]]; then
+    cp "${ENV_EXAMPLE}" "${ENV_FILE}"
+    log "已从 .env.example 生成 .env，请编辑 LLM_API_KEY 后重启"
+  else
+    touch "${ENV_FILE}"
+  fi
+fi
+
+cd "${SEC_ROOT}"
+
+# 维护虚拟环境
+_venv_broken() {
+  [[ ! -d .venv ]] && return 0
+  local py
+  py="$(readlink -f .venv/bin/python3 2>/dev/null || true)"
+  [[ -z "${py}" || ! -x "${py}" ]] && return 0
+  if ! "${UV_BIN}" run python -c "import fastapi" &>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
+if _venv_broken; then
+  log "虚拟环境需重建..."
+  rm -rf .venv
+  "${UV_BIN}" sync
+else
+  "${UV_BIN}" sync -q 2>/dev/null || "${UV_BIN}" sync
+fi
+
+#------------------------------------------------------------------------------
+# 步骤 1: 启动 LiteLLM 代理（Docker 容器，可选）
+#------------------------------------------------------------------------------
+_start_litellm() {
+  if [[ ! -f "${ENV_FILE}" ]]; then return 0; fi
+  if ! grep -q "^USE_LITELLM_PROXY=true" "${ENV_FILE}" 2>/dev/null; then return 0; fi
+  if docker ps --filter name=security-agent-litellm --format "{{.Status}}" 2>/dev/null | grep -q Up; then
+    log "LiteLLM (Docker) 已在运行"
+    return 0
+  fi
+  local COMPOSE_FILE="${SEC_ROOT}/configs/docker-compose.litellm.yml"
+  if [[ -f "${COMPOSE_FILE}" ]]; then
+    log "正在通过 docker compose 启动 LiteLLM..."
+    docker compose -f "${COMPOSE_FILE}" up -d 2>>"${LITELLM_LOG}" || log "LiteLLM 启动失败（非致命）"
+  fi
+  for i in $(seq 1 5); do
+    if curl -sf http://localhost:4000/health/liveliness >/dev/null 2>&1; then
+      log "LiteLLM 健康检查通过"
+      return 0
+    fi
+    sleep 2
+  done
+  log "⚠️ LiteLLM 未就绪 — AI 功能可能不可用（非致命）"
+}
+
+_start_litellm
+
+#------------------------------------------------------------------------------
+# 步骤 2: 创建受限用户（权限隔离）
+#------------------------------------------------------------------------------
+if [[ -f "${SEC_ROOT}/scripts/setup_restricted_user.sh" ]]; then
+  log "检查受限用户..."
+  bash "${SEC_ROOT}/scripts/setup_restricted_user.sh" 2>/dev/null || log "受限用户创建跳过"
+fi
+
+#------------------------------------------------------------------------------
+# 步骤 3: 启动 FastAPI 后端
+#------------------------------------------------------------------------------
+if [[ -f "${API_PID_FILE}" ]]; then
+  old_pid="$(cat "${API_PID_FILE}" 2>/dev/null || true)"
+  if [[ -n "${old_pid}" ]] && kill -0 "${old_pid}" 2>/dev/null; then
+    log "FastAPI 已在运行 (PID ${old_pid}) → http://${API_HOST}:${API_PORT}"
+  fi
+fi
+
+if ! command -v ss &>/dev/null || ! ss -ltn 2>/dev/null | grep -q ":${API_PORT} "; then
+  log "启动 FastAPI 后端 (端口 ${API_PORT})..."
+  if [[ -x "${SEC_ROOT}/.venv/bin/python" ]]; then
+    UVICORN_CMD=("${SEC_ROOT}/.venv/bin/python" -m uvicorn security_agent.api.app:app)
+  else
+    UVICORN_CMD=("${UV_BIN}" run uvicorn security_agent.api.app:app)
+  fi
+  nohup env PYTHONPATH="${SEC_ROOT}" "${UVICORN_CMD[@]}" \
+    --host "${API_HOST}" \
+    --port "${API_PORT}" \
+    --log-level info \
+    >>"${LOG_DIR}/api.log" 2>&1 &
+  echo $! >"${API_PID_FILE}"
+  sleep 2
+  if kill -0 "$(cat "${API_PID_FILE}")" 2>/dev/null; then
+    log "✅ FastAPI 已启动 PID $(cat "${API_PID_FILE}") → http://${API_HOST}:${API_PORT}"
+    log "   API 文档: http://${API_HOST}:${API_PORT}/docs"
+    log "   日志: ${LOG_DIR}/api.log"
+  else
+    log "❌ FastAPI 启动失败，请查看: ${LOG_DIR}/api.log"
+  fi
+else
+  log "端口 ${API_PORT} 已被占用，跳过 FastAPI 启动"
+fi
+
+#------------------------------------------------------------------------------
+# 步骤 4: 构建/启动前端
+#------------------------------------------------------------------------------
+if [[ "${DEV_MODE}" == true ]]; then
+  # 开发模式：启动 Vue dev server
+  if [[ -f "${SEC_ROOT}/frontend/package.json" ]]; then
+    log "启动 Vue 开发服务器..."
+    cd "${SEC_ROOT}/frontend"
+    if [[ ! -d node_modules ]]; then
+      npm install --prefer-offline >>"${LOG_DIR}/frontend-install.log" 2>&1
+    fi
+    nohup npx vite --host 0.0.0.0 --port 5173 >>"${LOG_DIR}/frontend-dev.log" 2>&1 &
+    echo $! >"${SEC_ROOT}/data/.frontend-dev.pid"
+    cd "${SEC_ROOT}"
+    log "✅ Vue dev server → http://localhost:5173"
+  fi
+else
+  # 生产模式：构建前端
+  if [[ -f "${SEC_ROOT}/frontend/package.json" && ! -d "${SEC_ROOT}/frontend/dist" ]]; then
+    log "构建 Vue 前端..."
+    cd "${SEC_ROOT}/frontend"
+    npm install --prefer-offline >>"${LOG_DIR}/frontend-install.log" 2>&1
+    npm run build >>"${LOG_DIR}/frontend-build.log" 2>&1
+    cd "${SEC_ROOT}"
+    if [[ -d "${SEC_ROOT}/frontend/dist" ]]; then
+      log "✅ 前端构建完成"
+    else
+      log "⚠️ 前端构建失败，请查看: ${LOG_DIR}/frontend-build.log"
+    fi
+  elif [[ -d "${SEC_ROOT}/frontend/dist" ]]; then
+    log "前端已构建，跳过"
+  fi
+fi
+
+#------------------------------------------------------------------------------
+# 步骤 5 (可选): 启动 Streamlit 旧版 UI
+#------------------------------------------------------------------------------
+if [[ "${START_STREAMLIT}" == true ]] && [[ -f "${SEC_ROOT}/streamlit_app.py" ]]; then
+  if command -v ss &>/dev/null && ss -ltn 2>/dev/null | grep -q ":${STREAMLIT_PORT} "; then
+    log "Streamlit 端口 ${STREAMLIT_PORT} 已占用，跳过"
+  else
+    log "启动 Streamlit 控制台 (端口 ${STREAMLIT_PORT})..."
+    nohup "${UV_BIN}" run python -m streamlit run "${SEC_ROOT}/streamlit_app.py" \
+      --server.address="${STREAMLIT_HOST}" \
+      --server.port="${STREAMLIT_PORT}" \
+      --server.headless=true \
+      >>"${LOG_DIR}/streamlit.log" 2>&1 &
+    echo $! >"${STREAMLIT_PID_FILE}"
+    sleep 1
+    log "✅ Streamlit → http://${STREAMLIT_HOST}:${STREAMLIT_PORT}"
+  fi
+fi
+
+#------------------------------------------------------------------------------
+# 完成
+#------------------------------------------------------------------------------
+echo ""
+log "========================================="
+log "  银河麒麟智能安全运维 Agent 已启动"
+log "========================================="
+log "  Web 控制台: http://${API_HOST}:${API_PORT}"
+log "  API 文档:   http://${API_HOST}:${API_PORT}/docs"
+if [[ "${START_STREAMLIT}" == true ]]; then
+  log "  Streamlit:  http://${STREAMLIT_HOST}:${STREAMLIT_PORT}"
+fi
+log "  停止服务:   bash boot_stop.sh"
+log "========================================="
