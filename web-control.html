@@ -42,13 +42,6 @@
                 <div class="card-desc">Vue 前端主界面：智能对话 · 仪表盘 · 安全扫描 · 报告查看</div>
             </a>
 
-            <a class="card" href="http://127.0.0.1:8501" target="_blank">
-                <span class="card-badge success">备用</span>
-                <div class="card-icon">💬</div>
-                <div class="card-title">Streamlit 聊天</div>
-                <div class="card-desc">轻量 AI 对话控制台，支持自然语言运维指令</div>
-            </a>
-
             <a class="card" href="http://127.0.0.1:8900/docs" target="_blank">
                 <div class="card-icon">📄</div>
                 <div class="card-title">API 文档</div>
@@ -65,7 +58,6 @@
         <div class="status-bar">
             <span id="api-status"><span class="status-dot yellow"></span>API: 检测中...</span>
             <span id="frontend-status"><span class="status-dot yellow"></span>前端: 检测中...</span>
-            <span id="streamlit-status"><span class="status-dot yellow"></span>Chat: 检测中...</span>
         </div>
 
         <p class="footer">启动: <code>bash boot_start.sh</code> · 停止: <code>bash boot_stop.sh</code></p>
@@ -75,8 +67,6 @@
         async function checkStatus() {
             const apiEl = document.getElementById('api-status');
             const frontendEl = document.getElementById('frontend-status');
-            const streamlitEl = document.getElementById('streamlit-status');
-
             try {
                 await fetch('http://127.0.0.1:8900/api/health', { mode: 'no-cors', signal: AbortSignal.timeout(3000) });
                 apiEl.innerHTML = '<span class="status-dot green"></span>API: 运行中';
@@ -91,12 +81,6 @@
                 frontendEl.innerHTML = '<span class="status-dot red"></span>前端: 未连接';
             }
 
-            try {
-                await fetch('http://127.0.0.1:8501/_stcore/health', { mode: 'no-cors', signal: AbortSignal.timeout(3000) });
-                streamlitEl.innerHTML = '<span class="status-dot green"></span>Chat: 运行中';
-            } catch {
-                streamlitEl.innerHTML = '<span class="status-dot red"></span>Chat: 未连接';
-            }
         }
         checkStatus();
     </script>
