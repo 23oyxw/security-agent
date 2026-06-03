@@ -124,14 +124,24 @@ fi
 #------------------------------------------------------------------------------
 # 步骤 3: 启动 FastAPI 后端
 #------------------------------------------------------------------------------
-if [[ -f "${API_PID_FILE}" ]]; then
-  old_pid="$(cat "${API_PID_FILE}" 2>/dev/null || true)"
-  if [[ -n "${old_pid}" ]] && kill -0 "${old_pid}" 2>/dev/null; then
-    log "FastAPI 已在运行 (PID ${old_pid}) → http://${API_HOST}:${API_PORT}"
-  fi
-fi
+_api_alive() {
+  curl -sf -o /dev/null "http://127.0.0.1:${API_PORT}/api/health" 2>/dev/null
+}
 
-if ! command -v ss &>/dev/null || ! ss -ltn 2>/dev/null | grep -q ":${API_PORT} "; then
+if _api_alive; then
+  log "FastAPI 已在运行 → http://${API_HOST}:${API_PORT}"
+else
+  # 清理僵尸 PID 文件
+  if [[ -f "${API_PID_FILE}" ]]; then
+    old_pid="$(cat "${API_PID_FILE}" 2>/dev/null || true)"
+    if [[ -n "${old_pid}" ]] && kill -0 "${old_pid}" 2>/dev/null; then
+      log "PID ${old_pid} 存在但无响应，强制终止..."
+      kill "${old_pid}" 2>/dev/null || true
+      sleep 1
+    fi
+    rm -f "${API_PID_FILE}"
+  fi
+
   log "启动 FastAPI 后端 (端口 ${API_PORT})..."
   if [[ -x "${SEC_ROOT}/.venv/bin/python" ]]; then
     UVICORN_CMD=("${SEC_ROOT}/.venv/bin/python" -m uvicorn security_agent.api.app:app)
@@ -144,16 +154,25 @@ if ! command -v ss &>/dev/null || ! ss -ltn 2>/dev/null | grep -q ":${API_PORT} 
     --log-level info \
     >>"${LOG_DIR}/api.log" 2>&1 &
   echo $! >"${API_PID_FILE}"
-  sleep 2
-  if kill -0 "$(cat "${API_PID_FILE}")" 2>/dev/null; then
-    log "✅ FastAPI 已启动 PID $(cat "${API_PID_FILE}") → http://${API_HOST}:${API_PORT}"
-    log "   API 文档: http://${API_HOST}:${API_PORT}/docs"
-    log "   日志: ${LOG_DIR}/api.log"
-  else
-    log "❌ FastAPI 启动失败，请查看: ${LOG_DIR}/api.log"
+
+  # 健康检查（最多等 10 秒）
+  for i in $(seq 1 10); do
+    sleep 1
+    if _api_alive; then
+      log "✅ FastAPI 已启动 PID $(cat "${API_PID_FILE}") → http://${API_HOST}:${API_PORT}"
+      log "   API 文档: http://${API_HOST}:${API_PORT}/docs"
+      log "   日志: ${LOG_DIR}/api.log"
+      break
+    fi
+    if ! kill -0 "$(cat "${API_PID_FILE}")" 2>/dev/null; then
+      log "❌ FastAPI 进程已退出，请查看: ${LOG_DIR}/api.log"
+      tail -30 "${LOG_DIR}/api.log" >&2
+      break
+    fi
+  done
+  if ! _api_alive; then
+    log "❌ FastAPI 启动超时，请查看: ${LOG_DIR}/api.log"
   fi
-else
-  log "端口 ${API_PORT} 已被占用，跳过 FastAPI 启动"
 fi
 
 #------------------------------------------------------------------------------

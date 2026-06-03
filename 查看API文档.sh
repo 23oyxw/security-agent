@@ -1,25 +1,38 @@
 #!/usr/bin/env bash
-# 快捷打开 API 文档（Swagger UI）
-cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")"
+#==============================================================================
+# 快捷打开 API 文档（Swagger UI + ReDoc）
+# 自动检测 API 是否运行，未运行则启动
+#==============================================================================
+set -euo pipefail
 
+ROOT="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
 PORT="${SEC_API_PORT:-8900}"
-DOCS_URL="http://127.0.0.1:${PORT}/docs"
+export PATH="${HOME}/.local/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-# 检查 API 是否正在运行
-if curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${PORT}/api/health" 2>/dev/null | grep -q "200"; then
-    echo "✅ API 服务运行中，正在打开文档..."
+echo ""
+echo "  📄 安全运维 Agent — API 文档"
+echo "  ================================="
+
+if curl -sf -o /dev/null "http://127.0.0.1:${PORT}/api/health" 2>/dev/null; then
+    echo "  ✅ API 服务运行中"
 else
-    echo "⚠️  API 服务未运行，正在启动..."
-    bash ./start.sh &
-    sleep 3
+    echo "  🚀 API 未运行，正在启动..."
+    cd "${ROOT}" && bash boot_start.sh 2>&1 | grep -E '✅|❌|启动|FastAPI' || true
+    sleep 2
 fi
 
-echo "📄 API 文档地址: ${DOCS_URL}"
-echo "   Swagger UI  : ${DOCS_URL}"
-echo "   ReDoc       : http://127.0.0.1:${PORT}/redoc"
+echo ""
+echo "  📋 文档入口:"
+echo "     Swagger UI: http://127.0.0.1:${PORT}/docs"
+echo "     ReDoc:      http://127.0.0.1:${PORT}/redoc"
+echo "     健康检查:   http://127.0.0.1:${PORT}/api/health"
+echo ""
+echo "  🛑 停止: bash ${ROOT}/stop.sh"
+echo "  ================================="
 echo ""
 
-# 尝试打开浏览器
+# 打开 Swagger UI
+DOCS_URL="http://127.0.0.1:${PORT}/docs"
 if command -v xdg-open >/dev/null 2>&1; then
     xdg-open "${DOCS_URL}" 2>/dev/null &
 elif command -v qaxbrowser >/dev/null 2>&1; then
@@ -28,5 +41,4 @@ elif command -v firefox >/dev/null 2>&1; then
     firefox "${DOCS_URL}" 2>/dev/null &
 fi
 
-echo "按 Enter 键关闭本窗口…"
-read -r _
+read -r -p "按 Enter 键关闭本窗口…" _
