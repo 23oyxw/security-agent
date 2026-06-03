@@ -86,6 +86,59 @@
       </el-col>
     </el-row>
 
+    <!-- 智能根因分析 + OS 深度感知 -->
+    <el-row :gutter="16" style="margin-bottom:16px">
+      <el-col :span="12">
+        <el-card class="rca-card">
+          <template #header>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span>🔍 智能根因分析</span>
+              <el-button type="primary" size="small" :loading="rcaLoading" @click="runRootCause">
+                一键分析
+              </el-button>
+            </div>
+          </template>
+          <div v-if="rcaReport">
+            <el-alert
+              :title="rcaReport.summary"
+              :type="rcaReport.has_issues ? (rcaReport.critical_count > 0 ? 'error' : 'warning') : 'success'"
+              :closable="false"
+              show-icon
+              style="margin-bottom:12px"
+            />
+            <div v-for="f in rcaReport.findings" :key="f.title" class="rca-finding">
+              <el-tag :type="f.severity === 'critical' ? 'danger' : 'warning'" size="small" effect="dark">
+                {{ f.severity === 'critical' ? '严重' : '警告' }}
+              </el-tag>
+              <el-tag size="small" type="info" style="margin-left:4px">{{ f.category }}</el-tag>
+              <div class="rca-title">{{ f.title }}</div>
+              <div class="rca-cause">根因: {{ f.root_cause }}</div>
+              <div class="rca-actions">
+                <span v-for="a in f.suggested_actions" :key="a" class="rca-action-tag">• {{ a }}</span>
+              </div>
+            </div>
+          </div>
+          <el-empty v-else-if="!rcaLoading" description="点击「一键分析」检测系统异常" :image-size="60" />
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card header="🌐 网络端口监控" class="os-card">
+          <el-table :data="osPorts" size="small" stripe empty-text="加载中..." max-height="200">
+            <el-table-column prop="address" label="监听地址" show-overflow-tooltip />
+            <el-table-column prop="port" label="端口" width="80" />
+            <el-table-column prop="process" label="进程" show-overflow-tooltip />
+          </el-table>
+          <div v-if="osZombies && osZombies.zombie_count > 0" style="margin-top:12px">
+            <el-alert :title="`⚠️ 检测到 ${osZombies.zombie_count} 个僵尸进程`" type="warning" :closable="false" show-icon />
+          </div>
+          <div v-if="osErrors && osErrors.length > 0" style="margin-top:12px">
+            <el-tag type="danger" size="small">最近错误日志 {{ osErrors.length }} 条</el-tag>
+            <div v-for="(e, i) in osErrors.slice(0, 3)" :key="i" class="os-error-line">{{ e.slice(0, 120) }}</div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <!-- 最近告警 -->
     <el-card header="最近告警">
       <div style="display:flex;justify-content:space-between;margin-bottom:12px">
@@ -146,6 +199,38 @@ const moduleLabels = {
 }
 
 const mcpStats = reactive({ running: 0, total: 0, tools: 0, errors: 0 })
+
+// OS 深度感知 + 根因分析
+const rcaLoading = ref(false)
+const rcaReport = ref(null)
+const osPorts = ref([])
+const osZombies = ref(null)
+const osErrors = ref([])
+
+async function runRootCause() {
+  rcaLoading.value = true
+  try {
+    const res = await api.get('/perception/root-cause')
+    rcaReport.value = res
+  } catch (e) {
+    rcaReport.value = { has_issues: false, findings: [], summary: '分析失败: ' + (e.message || '未知错误') }
+  } finally {
+    rcaLoading.value = false
+  }
+}
+
+async function loadOsData() {
+  try {
+    const [ports, zombies, journal] = await Promise.all([
+      api.get('/perception/os/ports').catch(() => ({ ports: [] })),
+      api.get('/perception/os/zombies').catch(() => ({ zombie_count: 0 })),
+      api.get('/perception/os/journal', { params: { priority: 'err', lines: 10, since: '30min ago' } }).catch(() => ({ entries: [] })),
+    ])
+    osPorts.value = ports.ports || []
+    osZombies.value = zombies
+    osErrors.value = journal.entries || []
+  } catch {}
+}
 
 function sevColor(s) {
   const lvl = String(s || '').toLowerCase()
@@ -227,6 +312,9 @@ onMounted(async () => {
     statCards[3].value = String(mcpStats.tools)
 
     initCharts()
+
+    // 加载 OS 深度感知数据
+    loadOsData()
   } catch {}
 })
 </script>
@@ -246,4 +334,30 @@ onMounted(async () => {
 .module-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
 .module-row:last-child { border-bottom: none; }
 .module-name { font-size: 13px; }
+
+/* 根因分析卡片样式 */
+.rca-card { min-height: 300px; }
+.rca-finding {
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  background: #fafafa;
+  border-left: 3px solid #E6A23C;
+}
+.rca-finding:last-child { margin-bottom: 0; }
+.rca-title { font-weight: 600; margin: 6px 0 4px; font-size: 14px; }
+.rca-cause { color: #666; font-size: 13px; margin-bottom: 6px; }
+.rca-actions { display: flex; flex-direction: column; gap: 2px; }
+.rca-action-tag { font-size: 12px; color: #409EFF; }
+
+/* OS 感知面板样式 */
+.os-card { min-height: 300px; }
+.os-error-line {
+  font-size: 12px;
+  color: #999;
+  padding: 2px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>
