@@ -56,10 +56,28 @@
                 <div class="card-desc">查看系统运行状态<br>各模块健康度</div>
             </a>
 
+            <a class="card" href="http://127.0.0.1:8501" target="_blank">
+                <div class="card-icon">💬</div>
+                <div class="card-title">Streamlit 聊天</div>
+                <div class="card-desc">AI 对话控制台<br>自然语言运维指令</div>
+            </a>
+
+            <a class="card" href="http://127.0.0.1:8900/api/skills/list" target="_blank">
+                <div class="card-icon">🧩</div>
+                <div class="card-title">技能总览</div>
+                <div class="card-desc">查看所有已注册 Skill<br>工具数 / 版本 / 标签</div>
+            </a>
+
             <a class="card" href="http://127.0.0.1:8900/api/ops/processes/summary" target="_blank">
                 <div class="card-icon">🧹</div>
                 <div class="card-title">进程管理</div>
                 <div class="card-desc">进程总览 / 僵尸清理<br>一键系统优化</div>
+            </a>
+
+            <a class="card" href="http://127.0.0.1:8900/api/knowledge/blue-team/repos" target="_blank">
+                <div class="card-icon">📚</div>
+                <div class="card-title">知识库</div>
+                <div class="card-desc">蓝队开源项目清单<br>威胁情报 / Playbook</div>
             </a>
 
             <a class="card" onclick="window.location.reload()">
@@ -72,17 +90,19 @@
         <div class="status-bar">
             <span id="api-status"><span class="status-dot yellow"></span>API: 检测中...</span>
             <span id="frontend-status"><span class="status-dot yellow"></span>前端: 检测中...</span>
+            <span id="streamlit-status"><span class="status-dot yellow"></span>Chat: 检测中...</span>
             <span>端口: 8900</span>
             <span>IP: 127.0.0.1</span>
         </div>
 
-        <p class="footer">启动服务: <code>cd /home/oy0/security-agent && bash start.sh</code> · 停止: <code>bash stop.sh</code></p>
+        <p class="footer">启动服务: <code>cd /home/oy0/security-agent && bash start.sh</code> · 停止: <code>bash stop.sh</code> · Streamlit: <code>bash boot_start.sh</code></p>
     </div>
 
     <script>
         async function checkStatus() {
             const apiEl = document.getElementById('api-status');
             const frontendEl = document.getElementById('frontend-status');
+            const streamlitEl = document.getElementById('streamlit-status');
 
             try {
                 await fetch('http://127.0.0.1:8900/api/health', { mode: 'no-cors', signal: AbortSignal.timeout(3000) });
@@ -96,6 +116,13 @@
                 frontendEl.innerHTML = '<span class="status-dot green"></span>前端: 运行中';
             } catch {
                 frontendEl.innerHTML = '<span class="status-dot red"></span>前端: 未连接';
+            }
+
+            try {
+                await fetch('http://127.0.0.1:8501/_stcore/health', { mode: 'no-cors', signal: AbortSignal.timeout(3000) });
+                streamlitEl.innerHTML = '<span class="status-dot green"></span>Chat: 运行中';
+            } catch {
+                streamlitEl.innerHTML = '<span class="status-dot red"></span>Chat: 未连接';
             }
         }
         checkStatus();
