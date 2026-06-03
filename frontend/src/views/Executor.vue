@@ -166,12 +166,13 @@
                 <el-tag :type="sevType(item.severity)" size="small">{{ item.severity }}</el-tag>
                 <span style="font-weight:500;font-size:13px">{{ item.title }}</span>
                 <el-tag v-if="item._score" size="small" type="success" effect="plain" style="margin-left:auto">{{ '★'.repeat(Math.min(item._score, 5)) }}</el-tag>
+                <el-tag v-if="item.requires_root_confirm" size="small" type="danger" effect="dark" style="margin-left:2px">需Root确认</el-tag>
               </div>
               <div style="font-size:11px;color:#999;margin-top:2px;line-clamp:2;-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden">{{ item.body }}</div>
               <div style="margin-top:4px;display:flex;gap:3px;flex-wrap:wrap">
                 <el-tag v-for="tag in item.threat_tags" :key="tag" size="small" type="info" effect="plain">{{ tag }}</el-tag>
               </div>
-              <div v-if="item._expanded" style="margin-top:8px;padding:8px;background:#f9f9f9;border-radius:4px;font-size:12px;line-height:1.6">
+              <div v-if="kbDetailItem?.id === item.id" style="margin-top:8px;padding:8px;background:#f9f9f9;border-radius:4px;font-size:12px;line-height:1.6">
                 <div v-if="item.suggested_actions?.length"><strong>建议操作：</strong>{{ item.suggested_actions.join('；') }}</div>
                 <div v-if="item.do_not?.length" style="margin-top:4px;color:#e6a23c"><strong>⚠️ 禁止：</strong>{{ item.do_not.join('；') }}</div>
               </div>
@@ -332,53 +333,16 @@ function riskDisplay(resOrLevel) {
   return `${lv}（${RISK_CN[lv] || lv}）`
 }
 
-// ---- 知识库检索 ----
-const kbQuery = ref('')
-const kbActiveTag = ref('')
-const kbResults = ref([])
-const kbTags = ref([])
-const kbTotal = ref(0)
-const kbLoading = ref(false)
-const kbSearched = ref(false)
-
-function sevType(s) {
-  const m = { '严重': 'danger', '高': 'warning', '中': '', '低': 'success', '信息': 'info' }
-  return m[s] || ''
-}
-
-async function loadKbTags() {
-  try {
-    const data = await api.get('/safety/knowledge/tags')
-    kbTags.value = data.tags || []
-  } catch { kbTags.value = [] }
-}
-
-async function searchKb() {
-  kbLoading.value = true
-  kbSearched.value = true
-  try {
-    const params = { q: kbQuery.value, tag: kbActiveTag.value, limit: 20 }
-    const data = await api.get('/safety/knowledge/search', { params })
-    kbResults.value = data.items || []
-    kbTotal.value = data.total || 0
-  } catch {
-    kbResults.value = []
-    ElMessage.error('知识库检索失败')
-  } finally {
-    kbLoading.value = false
-  }
-}
-
-function toggleKbTag(name) {
-  kbActiveTag.value = kbActiveTag.value === name ? '' : name
-  searchKb()
-}
-
-function toggleKbDetail(item) {
-  item._expanded = !item._expanded
-}
-
-onMounted(loadKbTags)
+// ---- 知识库检索 (shared composable) ----
+import { useKnowledgeSearch } from '../composables/useKnowledgeSearch'
+import { sevTypeCN } from '../utils/severity'
+const {
+  query: kbQuery, activeTag: kbActiveTag, results: kbResults,
+  tags: kbTags, total: kbTotal, loading: kbLoading,
+  searched: kbSearched,
+  search: searchKb, toggleTag: toggleKbTag, toggleDetail: toggleKbDetail,
+} = useKnowledgeSearch({ limit: 20 })
+function sevType(s) { return sevTypeCN(s) }
 
 let previewTimer = null
 watch(() => form.command, (cmd) => {

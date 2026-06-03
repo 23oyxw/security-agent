@@ -123,6 +123,7 @@
       <el-table-column prop="severity" label="严重度" width="80">
         <template #default="{ row }">
           <el-tag :type="sevType(row.severity)" size="small">{{ row.severity }}</el-tag>
+          <el-tag v-if="row.requires_root_confirm" type="danger" size="small" effect="dark" style="margin-left:2px">Root</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="标签" width="200">
@@ -180,54 +181,14 @@ const pendingLoading = ref(false)
 const activeCategory = ref('')
 const selectedCase = ref(null)
 
-// ---- 知识库检索 ----
-const kbQuery = ref('')
-const kbActiveTag = ref('')
-const kbResults = ref([])
-const kbTags = ref([])
-const kbTotal = ref(0)
-const kbLoading = ref(false)
-const kbSearched = ref(false)
-const kbDetailItem = ref(null)
-
-function sevType(s) {
-  const m = { '严重': 'danger', '高': 'warning', '中': '', '低': 'success', '信息': 'info' }
-  return m[s] || ''
-}
-
-async function loadKbTags() {
-  try {
-    const data = await api.get('/safety/knowledge/tags')
-    kbTags.value = data.tags || []
-  } catch { kbTags.value = [] }
-}
-
-async function searchKnowledge() {
-  kbLoading.value = true
-  kbSearched.value = true
-  try {
-    const params = { q: kbQuery.value, tag: kbActiveTag.value, limit: 30 }
-    const data = await api.get('/safety/knowledge/search', { params })
-    kbResults.value = data.items || []
-    kbTotal.value = data.total || 0
-  } catch {
-    kbResults.value = []
-    ElMessage.error('知识库检索失败')
-  } finally {
-    kbLoading.value = false
-  }
-}
-
-function toggleTag(name) {
-  kbActiveTag.value = kbActiveTag.value === name ? '' : name
-  searchKnowledge()
-}
-
-function toggleKbDetail(row) {
-  kbDetailItem.value = kbDetailItem.value?.id === row.id ? null : row
-}
-
-onMounted(loadKbTags)
+// ---- 知识库检索 (shared composable) ----
+import { useKnowledgeSearch } from '../composables/useKnowledgeSearch'
+const {
+  query: kbQuery, activeTag: kbActiveTag, results: kbResults,
+  tags: kbTags, total: kbTotal, loading: kbLoading,
+  searched: kbSearched, detailItem: kbDetailItem,
+  sevType, search: searchKnowledge, toggleTag, toggleDetail: toggleKbDetail,
+} = useKnowledgeSearch({ limit: 30 })
 
 const DENY_VERDICTS = new Set(['deny', 'escalate', 'quarantine'])
 

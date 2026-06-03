@@ -11,10 +11,22 @@ api.interceptors.request.use(config => {
 
 api.interceptors.response.use(
   res => res.data,
-  err => {
-    if (err.response?.status === 401) {
+  async err => {
+    const { config, response } = err
+    // 401 → 立即跳转登录
+    if (response?.status === 401) {
       localStorage.removeItem('token')
       window.location.href = '/login'
+      return Promise.reject(err)
+    }
+    // 5xx / 网络错误 → 最多重试 2 次（指数退避）
+    const shouldRetry = !response || response.status >= 500
+    const retryCount = config._retryCount || 0
+    if (shouldRetry && retryCount < 2 && config.method !== 'post') {
+      config._retryCount = retryCount + 1
+      const delay = Math.pow(2, retryCount) * 500
+      await new Promise(r => setTimeout(r, delay))
+      return api(config)
     }
     return Promise.reject(err)
   }

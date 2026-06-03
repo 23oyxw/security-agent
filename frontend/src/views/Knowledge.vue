@@ -115,6 +115,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '../api'
+import { CATEGORY_META, categoryLabel, categoryColor, sevTypeCN as sevColor } from '../utils/severity'
 
 const query = ref('')
 const results = ref([])
@@ -140,50 +141,7 @@ const paginatedPlaybooks = computed(() => {
   return playbooks.value.slice(start, start + pageSize.value)
 })
 
-// 标签英文 → 中文 + 颜色
-const CATEGORY_META = {
-  privilege:          { label: '权限管理', color: 'danger' },
-  misdelete:          { label: '误删防护', color: 'danger' },
-  exfiltration:       { label: '数据外泄', color: 'danger' },
-  port_exposure:      { label: '端口暴露', color: 'warning' },
-  impersonation:      { label: '进程伪装', color: 'warning' },
-  monitoring_gap:     { label: '监控覆盖', color: '' },
-  network:            { label: '网络安全', color: '' },
-  daily_dev:          { label: '日常运维', color: 'success' },
-  advisor:            { label: '处置建议', color: 'info' },
-  blue_team:          { label: '入侵排查', color: '' },
-  detection:          { label: '威胁检测', color: 'warning' },
-  log_analysis:       { label: '日志分析', color: '' },
-  audit:              { label: '审计合规', color: 'success' },
-  webshell:           { label: 'WebShell', color: 'danger' },
-  waf:                { label: 'WAF 防护', color: 'warning' },
-  system:             { label: '系统加固', color: '' },
-  ids:                { label: 'IDS 检测', color: 'info' },
-  intrusion:          { label: '入侵响应', color: 'danger' },
-  asset_scan:         { label: '资产扫描', color: '' },
-  api_security:       { label: 'API 安全', color: 'info' },
-  incident_response:  { label: '应急响应', color: 'danger' },
-  knowledge_base:     { label: '知识沉淀', color: 'success' },
-  resilience:         { label: '弹性防御', color: 'warning' },
-  data:               { label: '数据安全', color: 'warning' },
-  server:             { label: '服务安全', color: '' },
-  false_positive:     { label: '误报校准', color: 'info' },
-  process:            { label: '进程管理', color: '' },
-  root:               { label: 'Root 操作', color: 'danger' },
-  kylin:              { label: '麒麟适配', color: 'info' },
-  sigma:              { label: 'Sigma规则', color: '' },
-  ioc:                { label: 'IOC匹配', color: 'warning' },
-  docker:             { label: '容器安全', color: 'warning' },
-  backup:             { label: '备份恢复', color: 'success' },
-}
-
-function categoryLabel(cat) {
-  return CATEGORY_META[cat]?.label || cat || '通用'
-}
-function categoryColor(cat) {
-  return CATEGORY_META[cat]?.color || 'info'
-}
-function sevColor(s) { return { '严重':'danger','高':'warning','中':'','低':'success','信息':'info' }[s] || '' }
+// CATEGORY_META, categoryLabel, categoryColor, sevColor 均从 utils/severity.js 导入
 
 async function search() {
   if (!query.value.trim()) return
