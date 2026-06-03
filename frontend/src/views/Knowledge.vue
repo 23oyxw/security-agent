@@ -41,12 +41,12 @@
 
           <!-- 剧本列表 -->
           <h4 style="margin-bottom:8px">📋 安全处置剧本</h4>
-          <el-table :data="paginatedPlaybooks" stripe size="small" empty-text="暂无剧本" max-height="400">
+          <el-table v-if="!loading" :data="paginatedPlaybooks" stripe size="small" empty-text="暂无剧本" max-height="400">
             <el-table-column prop="id" label="编号" width="140" show-overflow-tooltip />
             <el-table-column prop="title" label="标题" width="220" show-overflow-tooltip />
             <el-table-column prop="category" label="分类" width="100">
               <template #default="{ row }">
-                <el-tag size="small" :type="categoryColor(row.category)">{{ row.category || '通用' }}</el-tag>
+                <el-tag size="small" :type="categoryColor(row.category)">{{ categoryLabel(row.category) }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="severity" label="严重度" width="90">
@@ -62,6 +62,7 @@
               </template>
             </el-table-column>
           </el-table>
+          <div v-else v-loading="loading" style="min-height:200px"></div>
           <div style="margin-top:12px;text-align:right">
             <el-pagination v-model:current-page="page" :page-size="pageSize" :total="playbooks.length" layout="prev, pager, next" small />
           </div>
@@ -82,7 +83,7 @@
           </el-descriptions>
           <div style="margin-top:12px">
             <div v-for="cat in categories" :key="cat" class="cat-row" @click="filterByCategory(cat)">
-              <el-tag size="small" :type="categoryColor(cat)">{{ cat }}</el-tag>
+              <el-tag size="small" :type="categoryColor(cat)">{{ categoryLabel(cat) }}</el-tag>
               <span class="cat-count">{{ playbooks.filter(p => (p.category || '通用') === cat).length }} 条</span>
             </div>
           </div>
@@ -93,7 +94,7 @@
             <h4 style="margin:0 0 8px">{{ selected.title }}</h4>
             <el-descriptions :column="1" size="small" border>
               <el-descriptions-item label="编号">{{ selected.id }}</el-descriptions-item>
-              <el-descriptions-item label="分类">{{ selected.category || '通用' }}</el-descriptions-item>
+              <el-descriptions-item label="分类">{{ categoryLabel(selected.category) }}</el-descriptions-item>
               <el-descriptions-item v-if="selected.severity" label="严重度">{{ selected.severity }}</el-descriptions-item>
             </el-descriptions>
             <div style="margin-top:12px;font-size:13px;line-height:1.6;white-space:pre-wrap">{{ selected.content || selected.description || '暂无详细内容' }}</div>
@@ -119,6 +120,7 @@ const query = ref('')
 const results = ref([])
 const playbooks = ref([])
 const searching = ref(false)
+const loading = ref(true)
 const activeResults = ref([])
 const selected = ref(null)
 const page = ref(1)
@@ -138,9 +140,48 @@ const paginatedPlaybooks = computed(() => {
   return playbooks.value.slice(start, start + pageSize.value)
 })
 
+// 标签英文 → 中文 + 颜色
+const CATEGORY_META = {
+  privilege:          { label: '权限管理', color: 'danger' },
+  misdelete:          { label: '误删防护', color: 'danger' },
+  exfiltration:       { label: '数据外泄', color: 'danger' },
+  port_exposure:      { label: '端口暴露', color: 'warning' },
+  impersonation:      { label: '进程伪装', color: 'warning' },
+  monitoring_gap:     { label: '监控覆盖', color: '' },
+  network:            { label: '网络安全', color: '' },
+  daily_dev:          { label: '日常运维', color: 'success' },
+  advisor:            { label: '处置建议', color: 'info' },
+  blue_team:          { label: '入侵排查', color: '' },
+  detection:          { label: '威胁检测', color: 'warning' },
+  log_analysis:       { label: '日志分析', color: '' },
+  audit:              { label: '审计合规', color: 'success' },
+  webshell:           { label: 'WebShell', color: 'danger' },
+  waf:                { label: 'WAF 防护', color: 'warning' },
+  system:             { label: '系统加固', color: '' },
+  ids:                { label: 'IDS 检测', color: 'info' },
+  intrusion:          { label: '入侵响应', color: 'danger' },
+  asset_scan:         { label: '资产扫描', color: '' },
+  api_security:       { label: 'API 安全', color: 'info' },
+  incident_response:  { label: '应急响应', color: 'danger' },
+  knowledge_base:     { label: '知识沉淀', color: 'success' },
+  resilience:         { label: '弹性防御', color: 'warning' },
+  data:               { label: '数据安全', color: 'warning' },
+  server:             { label: '服务安全', color: '' },
+  false_positive:     { label: '误报校准', color: 'info' },
+  process:            { label: '进程管理', color: '' },
+  root:               { label: 'Root 操作', color: 'danger' },
+  kylin:              { label: '麒麟适配', color: 'info' },
+  sigma:              { label: 'Sigma规则', color: '' },
+  ioc:                { label: 'IOC匹配', color: 'warning' },
+  docker:             { label: '容器安全', color: 'warning' },
+  backup:             { label: '备份恢复', color: 'success' },
+}
+
+function categoryLabel(cat) {
+  return CATEGORY_META[cat]?.label || cat || '通用'
+}
 function categoryColor(cat) {
-  const map = { 'privilege':'danger','misdelete':'danger','exfiltration':'danger','port_exposure':'warning','impersonation':'warning','monitoring_gap':'','network':'','daily_dev':'success','advisor':'info','blue_team':'','detection':'','log_analysis':'','audit':'success','webshell':'danger','waf':'warning','system':'','ids':'info','intrusion':'danger','asset_scan':'','api_security':'info','incident_response':'danger','knowledge_base':'success','resilience':'warning','data':'warning','server':'' }
-  return map[cat] || 'info'
+  return CATEGORY_META[cat]?.color || 'info'
 }
 function sevColor(s) { return { '严重':'danger','高':'warning','中':'','低':'success','信息':'info' }[s] || '' }
 
@@ -158,11 +199,13 @@ function viewPlaybook(row) { selected.value = row }
 function filterByCategory(cat) { query.value = cat; search() }
 
 onMounted(async () => {
+  loading.value = true
   try {
     const res = await api.get('/knowledge/playbooks').catch(() => ({ playbooks: [] }))
     playbooks.value = res.playbooks || res.items || res || []
     if (!Array.isArray(playbooks.value)) playbooks.value = []
   } catch { playbooks.value = [] }
+  finally { loading.value = false }
 })
 </script>
 
