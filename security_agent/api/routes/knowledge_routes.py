@@ -1,4 +1,4 @@
-"""知识库路由"""
+"""知识库路由 — 安全处置剧本检索与 RAG."""
 
 from __future__ import annotations
 
@@ -17,50 +17,6 @@ class KnowledgeRagRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=20)
     threat_tag: str | None = None
     include_grounding: bool = True
-
-
-@router.get("/blue-team/repos")
-async def blue_team_repos(user: User = Depends(get_current_user)):
-    """获取蓝队开源项目清单"""
-    from security_agent.knowledge.blue_team_crawler import BlueTeamCrawler
-
-    crawler = BlueTeamCrawler()
-    return {"repos": crawler.list_repos()}
-
-
-@router.post("/blue-team/scan")
-async def blue_team_scan(user: User = Depends(get_current_user)):
-    """扫描蓝队开源项目（LLM 分析 + 预设知识，不 clone）"""
-    import asyncio
-    from security_agent.knowledge.blue_team_crawler import BlueTeamCrawler
-
-    crawler = BlueTeamCrawler()
-    report = await asyncio.to_thread(crawler.run)
-    return {
-        "total_projects": len(report.projects),
-        "total_skills": report.total_skills,
-        "total_patches": report.total_patches,
-        "total_scenarios": report.total_scenarios,
-        "projects": [
-            {
-                "name": p.name,
-                "category": p.category,
-                "skills": p.blue_team_skills,
-                "patches": p.optimization_patches,
-                "scenarios": p.training_scenarios,
-            }
-            for p in report.projects
-        ],
-    }
-
-
-@router.get("/blue-team/training")
-async def blue_team_training(user: User = Depends(get_current_user)):
-    """获取今日蓝队训练场景"""
-    from security_agent.knowledge.blue_team_crawler import BlueTeamCrawler
-
-    crawler = BlueTeamCrawler()
-    return crawler.get_daily_training()
 
 
 @router.post("/search")
@@ -109,7 +65,7 @@ async def rag(req: KnowledgeRagRequest, user: User = Depends(get_current_user)):
 
 @router.get("/playbooks")
 async def list_playbooks(user: User = Depends(get_current_user)):
-    """列出安全剧本"""
+    """列出安全处置剧本"""
     try:
         from security_agent.knowledge.playbooks import PLAYBOOKS
 
@@ -129,3 +85,89 @@ async def list_playbooks(user: User = Depends(get_current_user)):
         return {"playbooks": items, "total": len(items)}
     except Exception:
         return {"playbooks": [], "total": 0}
+
+
+@router.get("/unified-search")
+async def unified_knowledge_search(
+    q: str = "",
+    limit: int = 10,
+    user: User = Depends(get_current_user),
+):
+    """统一知识库检索 — 同时搜索 Playbooks + 安全参考文档."""
+    results = []
+    q_lower = q.lower().strip()
+    if not q_lower:
+        return {"query": q, "total": 0, "results": []}
+
+    q_tokens = [t for t in q_lower.split() if len(t) >= 2]
+
+    # 1. 搜索 Playbooks
+    try:
+        from security_agent.knowledge.playbooks import PLAYBOOKS
+
+        for pb in PLAYBOOKS:
+            searchable = (
+                pb.title + " " + pb.body + " "
+                + " ".join(pb.keywords) + " "
+                + " ".join(pb.suggested_actions) + " "
+                + " ".join(pb.threat_tags)
+            ).lower()
+            score = sum(1 for t in q_tokens if t in searchable)
+            if score > 0:
+                results.append({
+                    "id": pb.id,
+                    "title": pb.title,
+                    "body": pb.body,
+                    "severity": pb.severity,
+                    "threat_tags": list(pb.threat_tags),
+                    "suggested_actions": list(pb.suggested_actions),
+                    "do_not": list(pb.do_not),
+                    "source": "playbook",
+                    "_score": score * 2,
+                })
+    except Exception:
+        pass
+
+    # 2. 搜索安全参考文档
+    import os
+
+    doc_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "docs", "security", "BLUE_TEAM_DEFENSE_KNOWLEDGE.md"
+    )
+    doc_path = os.path.abspath(doc_path)
+    if os.path.exists(doc_path):
+        try:
+            content = open(doc_path, encoding="utf-8").read()
+            sections = []
+            current_section = {"title": "前言", "content": ""}
+            for line in content.split("\n"):
+                if line.startswith("## "):
+                    if current_section["content"].strip():
+                        sections.append(current_section)
+                    current_section = {"title": line[3:].strip(), "content": ""}
+                else:
+                    current_section["content"] += line + "\n"
+            if current_section["content"].strip():
+                sections.append(current_section)
+
+            for sec in sections:
+                sec_text = (sec["title"] + " " + sec["content"]).lower()
+                score = sum(1 for t in q_tokens if t in sec_text)
+                if score > 0:
+                    excerpt = sec["content"][:300].strip()
+                    results.append({
+                        "id": "DOC-" + sec["title"][:20],
+                        "title": "📄 " + sec["title"],
+                        "body": excerpt,
+                        "severity": "信息",
+                        "threat_tags": ["文档"],
+                        "suggested_actions": [],
+                        "do_not": [],
+                        "source": "document",
+                        "_score": score,
+                    })
+        except Exception:
+            pass
+
+    results.sort(key=lambda x: x["_score"], reverse=True)
+    return {"query": q, "total": len(results), "results": results[:limit]}

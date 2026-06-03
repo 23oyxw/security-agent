@@ -411,6 +411,291 @@ PLAYBOOKS: tuple[Playbook, ...] = (
         ("口头确认代替勾选",),
         ("勾选后再执行", "审计记录 confirmed=true",),
     ),
+    # ===== 蓝队开源项目知识 =====
+    Playbook(
+        "PB-BT-HUNT-01",
+        "ThreatHunter 异常进程排查",
+        "检测隐藏进程、无对应二进制的可疑进程；通过 rkhunter/chkrootkit 扫描内核级后门；"
+        "解析 /var/log/auth.log 发现暴力破解；扫描 /tmp /dev/shm 下可执行文件；"
+        "关联进程与网络连接发现反向 Shell 与 C2；检查 crontab/systemd timer 持久化后门。",
+        ("blue_team", "intrusion", "process"),
+        "高",
+        False,
+        ("入侵排查", "Rootkit", "后门", "隐藏进程", "ThreatHunter", "rkhunter"),
+        ("仅依赖 ps/top 排查",),
+        ("rkhunter --check", "chkrootkit", "find /tmp -executable", "审计 crontab",),
+    ),
+    Playbook(
+        "PB-BT-HUNT-02",
+        "SSH 后门与用户审计",
+        "对比 sshd 二进制哈希检测 SSH wrapper 后门；"
+        "扫描 /etc/passwd /etc/shadow 异常 UID/GID 用户；审计 authorized_keys。",
+        ("blue_team", "intrusion", "privilege"),
+        "严重",
+        True,
+        ("SSH后门", "ssh", "passwd", "shadow", "authorized_keys", "用户审计"),
+        ("信任默认 sshd",),
+        ("sha256sum /usr/sbin/sshd", "检查 authorized_keys", "审计 UID=0 用户",),
+    ),
+    Playbook(
+        "PB-BT-SIGMA-01",
+        "Sigma 检测规则编写",
+        "使用 Sigma 语法编写跨平台 SIEM 检测规则：Web 攻击(SQL注入/XSS)、"
+        "横向移动(Pass-the-Hash/PsExec/WMI)、提权(UAC绕过/Token窃取)；"
+        "PowerShell 混淆执行与 CobaltStrike Beacon 通信特征检测。",
+        ("blue_team", "detection", "sigma"),
+        "中",
+        False,
+        ("Sigma", "检测规则", "SIEM", "横向移动", "提权", "Web攻击"),
+        ("仅用默认规则不更新",),
+        ("按场景定制规则", "建立规则测试框架", "降低误报",),
+    ),
+    Playbook(
+        "PB-BT-SIGMA-02",
+        "攻击链检测与日志关联",
+        "完整攻击链覆盖：侦察→漏洞利用→提权→横向移动→数据窃取；"
+        "跨源日志(Windows/Linux/Network)关联分析攻击链；"
+        "将 Sigma 规则转为 Splunk/ES/KQL 等目标平台格式。",
+        ("blue_team", "detection", "log_analysis"),
+        "高",
+        False,
+        ("攻击链", "日志关联", "Sigma", "检测覆盖率"),
+        ("仅关注单点告警",),
+        ("按攻击阶段串联规则", "分析告警时间线", "找出检测盲区",),
+    ),
+    Playbook(
+        "PB-BT-SCAN-01",
+        "巡风资产安全扫描",
+        "自动化扫描内网存活主机与开放端口；识别常见 CVE 漏洞；"
+        "对 SSH/FTP/MySQL/Redis 进行弱口令审计；Web 指纹识别(CMS/框架/组件版本)；"
+        "定期扫描对比发现新增/消失的资产与端口。",
+        ("blue_team", "asset_scan", "network"),
+        "中",
+        False,
+        ("巡风", "xunfeng", "资产扫描", "弱口令", "漏洞扫描", "端口扫描"),
+        ("一次性扫描不做持续监控",),
+        ("建立资产清单", "设置周期性扫描", "更新漏洞库",),
+    ),
+    Playbook(
+        "PB-BT-KB-01",
+        "蓝队应急响应知识库",
+        "Windows/Linux 入侵排查标准操作流程(SOP)；日志分析方法论(关键字段与技巧)；"
+        "溯源工具链(IP定位/域名反查/样本分析)；常见攻击手法识别(APT/勒索/挖矿/蠕虫)；"
+        "取证流程规范(证据保全链/内存取证/磁盘取证)。",
+        ("blue_team", "knowledge_base", "incident_response"),
+        "高",
+        False,
+        ("应急响应", "SOP", "日志分析", "溯源", "取证", "蓝队知识库"),
+        ("缺少标准化应急流程",),
+        ("建立自动化应急流程", "集成溯源工具链", "标准化安全报告",),
+    ),
+    Playbook(
+        "PB-BT-API-01",
+        "API 限流与 CC 防御",
+        "基于 IP/用户/端点的请求频率控制；识别并阻止高频恶意请求(CC攻击)；"
+        "当请求异常率过高时自动降级保护(熔断)；突发流量缓冲与排队；"
+        "按业务场景配置不同限流规则。",
+        ("blue_team", "api_security", "network"),
+        "中",
+        False,
+        ("API限流", "CC攻击", "速率限制", "slowapi", "熔断"),
+        ("不做任何限流保护",),
+        ("关键接口添加限流", "IP维度限流", "添加请求日志审计",),
+    ),
+    Playbook(
+        "PB-BT-API-02",
+        "熔断器与故障隔离",
+        "当下游服务故障率超阈值时自动断开调用(熔断器模式)；"
+        "防止单个服务故障引发级联雪崩；熔断后定期尝试半开状态恢复；"
+        "熔断时返回默认值或缓存数据(降级策略)。",
+        ("blue_team", "api_security", "resilience"),
+        "中",
+        False,
+        ("熔断", "pybreaker", "故障隔离", "级联故障", "降级"),
+        ("无保护地调用外部依赖",),
+        ("LLM API 调用添加熔断器", "MCP 工具添加熔断保护", "监控熔断事件",),
+    ),
+    Playbook(
+        "PB-BT-LOG-01",
+        "日志异常检测与行为分析",
+        "基于统计模型识别日志中的异常模式；检测可疑登录(非工作时间/异常地域/多次失败)；"
+        "越权操作检测(非预期的权限提升或资源访问)；按时间线还原攻击路径；"
+        "建立正常行为基线，偏离即告警。",
+        ("blue_team", "log_analysis", "detection"),
+        "中",
+        False,
+        ("日志异常", "logdetective", "行为分析", "基线", "可疑登录"),
+        ("仅查看日志不做分析",),
+        ("建立行为基线", "集成到审计日志管道", "建立攻击特征库",),
+    ),
+    Playbook(
+        "PB-BT-IR-01",
+        "完整应急响应流程",
+        "服务器被入侵的标准处置流程：接收报警→隔离主机→证据保全(内存/日志/进程/连接)→"
+        "入侵分析→清除后门→恢复业务→事后报告。"
+        "勒索病毒处置：断网隔离→检查感染范围→识别病毒家族→寻找解密工具→备份恢复→加固。",
+        ("blue_team", "incident_response"),
+        "严重",
+        True,
+        ("应急响应", "入侵处置", "勒索病毒", "隔离", "取证", "恢复"),
+        ("未取证就重装系统",),
+        ("保全证据链", "隔离网络", "生成事件报告",),
+    ),
+    Playbook(
+        "PB-BT-LOG-02",
+        "日志关联分析方法",
+        "给定 Web 访问日志、系统认证日志、防火墙日志，提取关键字段按时间线排序，"
+        "关联分析攻击路径确定入侵入口评估影响范围。"
+        "Web日志关注: 请求路径/状态码/User-Agent/IP/参数；"
+        "认证日志关注: 成功/失败/来源IP/时间/用户。",
+        ("blue_team", "log_analysis"),
+        "中",
+        False,
+        ("日志关联", "Web日志", "认证日志", "防火墙日志", "攻击路径"),
+        ("仅看单类日志",),
+        ("提取关键字段", "按时间线排序", "关联分析",),
+    ),
+    # ===== WAF / Web安全 =====
+    Playbook(
+        "PB-BT-WAF-01",
+        "WebShell 检测与处置",
+        "特征：文件内容含 eval/base64_decode/assert/system+外部变量；"
+        "创建时间异常（凌晨/周末）；文件名伪装为 .jpg/.css；"
+        "通过 Web 日志分析发现异常 POST 请求，定位上传漏洞入口。",
+        ("blue_team", "webshell", "waf"),
+        "严重",
+        True,
+        ("webshell", "eval", "base64", "system", "assert", "上传"),
+        ("仅删文件不查入口",),
+        ("查找近期修改 PHP/JSP 文件", "检查文件内容可疑函数", "追溯 Web 日志上传请求", "修复上传漏洞",),
+    ),
+    Playbook(
+        "PB-BT-WAF-02",
+        "ModSecurity WAF 规则部署",
+        "开源 WAF 部署：OWASP CRS 核心规则集防御 SQL 注入/XSS/命令注入/路径遍历；"
+        "规则配置：检测模式→阻断模式逐步切换；白名单排除正常业务路径；"
+        "日志监控：查看 ModSecurity 审计日志了解攻击来源和 payload。",
+        ("blue_team", "waf", "network"),
+        "中",
+        False,
+        ("ModSecurity", "WAF", "CRS", "规则集", "SQL注入", "XSS"),
+        ("直接启用阻断模式",),
+        ("先以检测模式运行收集数据", "配置白名单减少误报", "逐步切换为阻断", "监控审计日志",),
+    ),
+    # ===== 审计与合规 =====
+    Playbook(
+        "PB-BT-AUDIT-01",
+        "auditd 关键路径审计",
+        "监控 /etc/passwd,/etc/shadow,/etc/sudoers 的写操作；"
+        "监控 useradd/userdel/passwd 命令执行；"
+        "监控网络配置、cron 变更、内核模块加载；"
+        "使用 aureport 生成认证摘要、文件访问报告、异常报告。",
+        ("blue_team", "audit", "privilege"),
+        "高",
+        False,
+        ("auditd", "审计规则", "aureport", "ausearch", "文件监控"),
+        ("只启用默认审计规则",),
+        ("配置关键路径审计规则", "周期性生成审计报告", "设置审计日志告警",),
+    ),
+    Playbook(
+        "PB-BT-AUDIT-02",
+        "文件完整性监控 (AIDE/Tripwire)",
+        "AIDE 初始化基线数据库 → 定期检查文件变更(哈希/权限/大小)；"
+        "核心监控目录: /boot,/bin,/sbin,/etc,/usr/bin,/usr/sbin；"
+        "排除频繁变化目录: /var/log,/proc；变更后更新基线确认合法修改。",
+        ("blue_team", "audit", "monitoring_gap"),
+        "中",
+        False,
+        ("AIDE", "文件完整性", "哈希", "基线", "Tripwire", "篡改"),
+        ("从不更新基线导致告警堆积",),
+        ("aide --init 建立基线", "定期 aide --check", "合法变更后 --update", "集成到告警系统",),
+    ),
+    # ===== 内核与系统加固 =====
+    Playbook(
+        "PB-BT-SYS-01",
+        "内核安全参数加固",
+        "关键 sysctl 参数: net.ipv4.tcp_syncookies=1 防SYN Flood；"
+        "net.ipv4.conf.all.rp_filter=1 防IP欺骗；"
+        "kernel.randomize_va_space=2 启用KASLR；"
+        "kernel.dmesg_restrict=1 + kernel.kptr_restrict=2 防止内核信息泄露；"
+        "禁止源路由/ICMP重定向，限制 ptrace 作用域。",
+        ("blue_team", "privilege", "system"),
+        "高",
+        True,
+        ("sysctl", "内核参数", "KASLR", "iptables", "加固", "安全基线"),
+        ("不经测试直接应用到生产",),
+        ("逐条验证参数效果", "在测试环境先行验证", "记录变更前后对比", "注册为 CIS 检查项",),
+    ),
+    Playbook(
+        "PB-BT-SYS-02",
+        "SELinux/AppArmor 强制访问控制",
+        "SELinux 三种模式: Enforcing(强制)/Permissive(仅记录)/Disabled(关闭)；"
+        "使用 audit2allow 生成自定义策略允许正常业务；"
+        "AppArmor 配置文件在 /etc/apparmor.d/ 管理进程权限；"
+        "生产环境必须保持 Enforcing，开发环境可用 Permissive 定位问题。",
+        ("blue_team", "privilege", "system"),
+        "高",
+        True,
+        ("SELinux", "AppArmor", "强制访问控制", "MAC", "getenforce", "aa-status"),
+        ("遇到拒绝就 setenforce 0",),
+        ("查看 AVC 日志定位原因", "用 audit2allow 生成精准策略", "保持 Enforcing",),
+    ),
+    # ===== 网络 =====
+    Playbook(
+        "PB-BT-NET-03",
+        "iptables/nftables 安全策略",
+        "默认策略: INPUT/FORWARD DROP, OUTPUT ACCEPT；"
+        "允许 ESTABLISHED/RELATED 回包；限制 SSH 来源 IP 段；"
+        "SYN Flood 限速: iptables --limit 1/s --limit-burst 3；"
+        "日志记录并定期分析 DROP 条目发现攻击模式。",
+        ("blue_team", "network"),
+        "高",
+        True,
+        ("iptables", "nftables", "防火墙", "策略", "限速", "DROP"),
+        ("iptables -F 清空所有规则",),
+        ("先导出当前规则备份", "逐条添加白名单规则", "测试后再保存", "定期审计规则列表",),
+    ),
+    Playbook(
+        "PB-BT-IDS-01",
+        "Suricata/Snort IDS 部署",
+        "网络入侵检测部署: 配置 HOME_NET 变量 → 加载规则集(Emerging Threats/ET Pro) →"
+        "输出 eve.json 到 Elasticsearch → Kibana 可视化告警；"
+        "规则更新: suricata-update 保持特征库最新；"
+        "IPS 模式: 在检测稳定后启用 inline 阻断。",
+        ("blue_team", "ids", "network"),
+        "中",
+        False,
+        ("Suricata", "Snort", "IDS", "IPS", "特征库", "eve.json"),
+        ("不更新规则集", "未经测试启用阻断模式",),
+        ("定期 suricata-update", "监控误报率", "逐步切换检测→阻断",),
+    ),
+    # ===== 威胁情报与溯源 =====
+    Playbook(
+        "PB-BT-TI-01",
+        "IOC 威胁情报自动化匹配",
+        "IOC 来源: 开源情报(MISP/OTX)、商业威胁情报、自研捕获；"
+        "检测目标: 进程网络连接 IP、DNS 解析域名、文件哈希、HTTP User-Agent；"
+        "自动化流程: 每4小时拉取最新IOC → 对比系统日志 → 命中则生成告警。",
+        ("blue_team", "intrusion", "detection"),
+        "中",
+        False,
+        ("IOC", "威胁情报", "MISP", "OTX", "自动化", "域名"),
+        ("仅手工比对IOC",),
+        ("定时拉取威胁情报", "自动化匹配系统日志", "命中后联动应急响应",),
+    ),
+    Playbook(
+        "PB-BT-TI-02",
+        "YARA 规则恶意样本检测",
+        "YARA 规则结构: meta(描述/作者/日期) + strings(匹配字符串) + condition(逻辑)；"
+        "扫描目标: 可疑进程内存、磁盘文件、Web 上传目录；"
+        "覆盖类型: Rootkit、Webshell、挖矿程序、勒索软件。",
+        ("blue_team", "detection", "intrusion"),
+        "中",
+        False,
+        ("YARA", "样本分析", "签名", "规则", "yara", "匹配"),
+        ("仅依赖文件名/路径判断",),
+        ("编写专业 YARA 规则", "定时扫描 /tmp /dev/shm", "对 Web 项目部署定期扫描",),
+    ),
 )
 
 PLAYBOOK_BY_ID = {p.id: p for p in PLAYBOOKS}

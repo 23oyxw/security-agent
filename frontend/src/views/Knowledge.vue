@@ -1,122 +1,19 @@
 <template>
   <div>
     <el-row :gutter="16">
-      <!-- 左侧：搜索与结果 + 蓝队方案 -->
+      <!-- 左侧：安全知识库搜索 -->
       <el-col :span="16">
-        <!-- 蓝队方案面板 -->
-        <el-card style="margin-bottom:16px">
-          <template #header>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span>🛡️ 蓝队方案学习</span>
-              <div style="display:flex;gap:8px;align-items:center">
-                <el-tag v-if="blueTeamReport" type="success">已分析 {{ blueTeamReport.total_projects }} 个项目</el-tag>
-                <el-button type="primary" size="small" :loading="blueScanning" @click="scanBlueTeam">
-                  {{ blueTeamReport ? '重新扫描' : '开始扫描' }}
-                </el-button>
-              </div>
-            </div>
-          </template>
-
-          <!-- 蓝队项目清单 -->
-          <el-collapse v-model="activeBlueRepos">
-            <el-collapse-item name="repos">
-              <template #title>
-                <span style="font-weight:500">📋 蓝队开源项目清单 ({{ blueRepos.length }})</span>
-              </template>
-              <el-table :data="blueRepos" size="small" stripe empty-text="加载中...">
-                <el-table-column prop="name" label="项目" width="130" />
-                <el-table-column prop="category" label="分类" width="110">
-                  <template #default="{ row }">
-                    <el-tag size="small" :type="blueCategoryColor(row.category)">{{ row.category }}</el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="description" label="说明" show-overflow-tooltip />
-                <el-table-column label="链接" width="80">
-                  <template #default="{ row }">
-                    <el-button text type="primary" size="small" @click="openUrl(row.github || row.url)">查看</el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-collapse-item>
-          </el-collapse>
-
-          <!-- 扫描结果 -->
-          <div v-if="blueTeamReport" style="margin-top:12px">
-            <el-row :gutter="12">
-              <el-col :span="8">
-                <el-statistic title="蓝队技能" :value="blueTeamReport.total_skills">
-                  <template #prefix><el-icon color="#409eff"><Key /></el-icon></template>
-                </el-statistic>
-              </el-col>
-              <el-col :span="8">
-                <el-statistic title="优化建议" :value="blueTeamReport.total_patches">
-                  <template #prefix><el-icon color="#e6a23c"><MagicStick /></el-icon></template>
-                </el-statistic>
-              </el-col>
-              <el-col :span="8">
-                <el-statistic title="训练场景" :value="blueTeamReport.total_scenarios">
-                  <template #prefix><el-icon color="#67c23a"><Reading /></el-icon></template>
-                </el-statistic>
-              </el-col>
-            </el-row>
-
-            <!-- 项目技能详情 -->
-            <el-collapse v-model="activeBlueSkills" style="margin-top:12px">
-              <el-collapse-item v-for="p in blueTeamReport.projects" :key="p.name" :name="p.name">
-                <template #title>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <el-tag size="small" :type="blueCategoryColor(p.category)">{{ p.category }}</el-tag>
-                    <span style="font-weight:500">{{ p.name }}</span>
-                    <el-tag size="small" type="info">{{ p.skills?.length || 0 }} 技能</el-tag>
-                  </div>
-                </template>
-                <div style="padding:4px 0">
-                  <h5 style="margin:8px 0 4px;color:#409eff">🔍 蓝队技能</h5>
-                  <div v-for="(skill, si) in p.skills" :key="si" class="blue-skill-item">{{ skill }}</div>
-                  <div v-if="!p.skills?.length" style="color:#999;font-size:12px">暂无技能数据</div>
-
-                  <h5 style="margin:12px 0 4px;color:#e6a23c">💡 优化建议</h5>
-                  <div v-for="(patch, pi) in p.patches" :key="pi" class="blue-patch-item">{{ patch }}</div>
-                  <div v-if="!p.patches?.length" style="color:#999;font-size:12px">暂无优化建议</div>
-                </div>
-              </el-collapse-item>
-            </el-collapse>
-          </div>
-
-          <el-empty v-else-if="!blueScanning" description="点击「开始扫描」让 LLM 分析蓝队开源项目" :image-size="40" />
-        </el-card>
-
-        <!-- 今日训练场景 -->
-        <el-card v-if="todayTraining?.today" style="margin-bottom:16px">
-          <template #header>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span>🎯 今日蓝队训练</span>
-              <el-tag type="info">第 {{ todayTraining.day_index + 1 }}/{{ todayTraining.total_scenarios }} 场景</el-tag>
-            </div>
-          </template>
-          <el-descriptions :column="2" size="small" border>
-            <el-descriptions-item label="场景名">{{ todayTraining.today.title }}</el-descriptions-item>
-            <el-descriptions-item label="难度">
-              <el-tag size="small" :type="difficultyColor(todayTraining.today.difficulty)">{{ todayTraining.today.difficulty }}</el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="来源项目">{{ todayTraining.today.source_project }}</el-descriptions-item>
-            <el-descriptions-item label="分类">{{ todayTraining.today.category }}</el-descriptions-item>
-          </el-descriptions>
-          <div style="margin-top:12px;font-size:13px;line-height:1.6;white-space:pre-wrap;background:#f9f9f9;padding:12px;border-radius:4px">{{ todayTraining.today.description }}</div>
-        </el-card>
-
-        <!-- 安全知识库搜索 -->
         <el-card>
           <template #header>
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span>📚 安全知识库</span>
-              <el-tag type="info">共 {{ playbooks.length }} 条剧本</el-tag>
+              <el-tag type="info">共 {{ playbooks.length }} 条处置剧本</el-tag>
             </div>
           </template>
 
           <!-- 搜索 -->
           <div style="margin-bottom:16px">
-            <el-input v-model="query" placeholder="搜索安全知识，例如：SSH暴力破解、端口暴露、提权攻击..." clearable @keydown.enter="search" size="large">
+            <el-input v-model="query" placeholder="搜索安全处置知识，例如：SSH暴力破解、端口暴露、提权攻击、审计配置..." clearable @keydown.enter="search" size="large">
               <template #append>
                 <el-button :loading="searching" @click="search" type="primary">
                   <el-icon><Search /></el-icon> 搜索
@@ -143,22 +40,22 @@
           </div>
 
           <!-- 剧本列表 -->
-          <h4 style="margin-bottom:8px">📋 安全剧本</h4>
-          <el-table :data="paginatedPlaybooks" stripe size="small" empty-text="暂无剧本">
-            <el-table-column prop="id" label="编号" width="120" show-overflow-tooltip />
-            <el-table-column prop="title" label="标题" width="200" show-overflow-tooltip />
+          <h4 style="margin-bottom:8px">📋 安全处置剧本</h4>
+          <el-table :data="paginatedPlaybooks" stripe size="small" empty-text="暂无剧本" max-height="400">
+            <el-table-column prop="id" label="编号" width="140" show-overflow-tooltip />
+            <el-table-column prop="title" label="标题" width="220" show-overflow-tooltip />
             <el-table-column prop="category" label="分类" width="100">
               <template #default="{ row }">
                 <el-tag size="small" :type="categoryColor(row.category)">{{ row.category || '通用' }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="severity" label="严重级别" width="100">
+            <el-table-column prop="severity" label="严重度" width="90">
               <template #default="{ row }">
                 <el-tag v-if="row.severity" :type="sevColor(row.severity)" size="small">{{ row.severity }}</el-tag>
                 <span v-else>--</span>
               </template>
             </el-table-column>
-            <el-table-column prop="description" label="描述" show-overflow-tooltip />
+            <el-table-column prop="description" label="说明" show-overflow-tooltip />
             <el-table-column label="操作" width="80">
               <template #default="{ row }">
                 <el-button text type="primary" size="small" @click="viewPlaybook(row)">详情</el-button>
@@ -176,12 +73,12 @@
         <el-card header="知识库统计" style="margin-bottom:16px">
           <el-descriptions :column="1" size="small" border>
             <el-descriptions-item label="剧本总数">{{ playbooks.length }}</el-descriptions-item>
-            <el-descriptions-item label="搜索结果">{{ results.length }}</el-descriptions-item>
-            <el-descriptions-item label="分类数">{{ categories.length }}</el-descriptions-item>
-            <el-divider style="margin:8px 0" />
-            <el-descriptions-item label="蓝队项目">{{ blueRepos.length }}</el-descriptions-item>
-            <el-descriptions-item label="蓝队技能">{{ blueTeamReport?.total_skills || 0 }}</el-descriptions-item>
-            <el-descriptions-item label="训练场景">{{ blueTeamReport?.total_scenarios || 0 }}</el-descriptions-item>
+            <el-descriptions-item label="严重度分布">
+              <span v-for="s in sevStats" :key="s.label" style="margin-right:8px">
+                <el-tag :type="s.color" size="small">{{ s.label }}: {{ s.count }}</el-tag>
+              </span>
+              <span v-if="!sevStats.length" style="color:#999">加载中…</span>
+            </el-descriptions-item>
           </el-descriptions>
           <div style="margin-top:12px">
             <div v-for="cat in categories" :key="cat" class="cat-row" @click="filterByCategory(cat)">
@@ -191,26 +88,23 @@
           </div>
         </el-card>
 
-        <!-- 蓝队分类统计 -->
-        <el-card header="蓝队项目分类" style="margin-bottom:16px">
-          <div v-for="cat in blueCategories" :key="cat" class="cat-row">
-            <el-tag size="small" :type="blueCategoryColor(cat)">{{ cat }}</el-tag>
-            <span class="cat-count">{{ blueRepos.filter(r => r.category === cat).length }} 个</span>
-          </div>
-          <el-empty v-if="!blueRepos.length" description="暂无蓝队项目" :image-size="30" />
-        </el-card>
-
         <el-card header="选中剧本详情">
           <template v-if="selected">
             <h4 style="margin:0 0 8px">{{ selected.title }}</h4>
             <el-descriptions :column="1" size="small" border>
               <el-descriptions-item label="编号">{{ selected.id }}</el-descriptions-item>
               <el-descriptions-item label="分类">{{ selected.category || '通用' }}</el-descriptions-item>
-              <el-descriptions-item v-if="selected.severity" label="严重级别">{{ selected.severity }}</el-descriptions-item>
+              <el-descriptions-item v-if="selected.severity" label="严重度">{{ selected.severity }}</el-descriptions-item>
             </el-descriptions>
             <div style="margin-top:12px;font-size:13px;line-height:1.6;white-space:pre-wrap">{{ selected.content || selected.description || '暂无详细内容' }}</div>
+            <div v-if="selected.steps" style="margin-top:10px;font-size:12px;color:#409eff;line-height:1.6">
+              <strong>✓ 处置步骤：</strong>{{ selected.steps }}
+            </div>
+            <div v-if="selected.do_not?.length" style="margin-top:6px;font-size:12px;color:#e6a23c;line-height:1.6">
+              <strong>⚠ 禁止操作：</strong>{{ selected.do_not.join('、') }}
+            </div>
           </template>
-          <el-empty v-else description="点击剧本查看详情" :image-size="40" />
+          <el-empty v-else description="点击左侧剧本查看详情" :image-size="40" />
         </el-card>
       </el-col>
     </el-row>
@@ -230,48 +124,25 @@ const selected = ref(null)
 const page = ref(1)
 const pageSize = ref(10)
 
-// 蓝队方案状态
-const blueRepos = ref([])
-const blueTeamReport = ref(null)
-const blueScanning = ref(false)
-const activeBlueRepos = ref([])
-const activeBlueSkills = ref([])
-const todayTraining = ref(null)
-
 const categories = computed(() => [...new Set(playbooks.value.map(p => p.category || '通用'))])
-const blueCategories = computed(() => [...new Set(blueRepos.value.map(r => r.category))])
+const sevStats = computed(() => {
+  const m = { '严重': { color: 'danger' }, '高': { color: 'warning' }, '中': { color: '' }, '低': { color: 'success' }, '信息': { color: 'info' } }
+  const counts = {}
+  playbooks.value.forEach(p => {
+    if (p.severity) counts[p.severity] = (counts[p.severity] || 0) + 1
+  })
+  return Object.entries(counts).map(([label, count]) => ({ label, count, ...(m[label] || {color: 'info'}) })).sort((a, b) => b.count - a.count)
+})
 const paginatedPlaybooks = computed(() => {
   const start = (page.value - 1) * pageSize.value
   return playbooks.value.slice(start, start + pageSize.value)
 })
 
 function categoryColor(cat) {
-  const map = { '网络': '', '系统': 'success', '认证': 'warning', '加固': 'danger', '通用': 'info' }
+  const map = { 'privilege':'danger','misdelete':'danger','exfiltration':'danger','port_exposure':'warning','impersonation':'warning','monitoring_gap':'','network':'','daily_dev':'success','advisor':'info','blue_team':'','detection':'','log_analysis':'','audit':'success','webshell':'danger','waf':'warning','system':'','ids':'info','intrusion':'danger','asset_scan':'','api_security':'info','incident_response':'danger','knowledge_base':'success','resilience':'warning','data':'warning','server':'' }
   return map[cat] || 'info'
 }
-function sevColor(s) { return { critical: 'danger', high: 'warning', medium: '', low: 'info' }[s] || '' }
-function difficultyColor(d) {
-  if (!d) return 'info'
-  if (d.includes('高')) return 'danger'
-  if (d.includes('中')) return 'warning'
-  return 'success'
-}
-function blueCategoryColor(cat) {
-  const map = {
-    '入侵排查': 'danger',
-    '威胁检测规则': 'warning',
-    '资产扫描': '',
-    '蓝队知识库': 'success',
-    'API限流': 'info',
-    '熔断机制': 'warning',
-    '日志分析': '',
-  }
-  return map[cat] || 'info'
-}
-
-function openUrl(url) {
-  if (url) window.open(url, '_blank')
-}
+function sevColor(s) { return { '严重':'danger','高':'warning','中':'','低':'success','信息':'info' }[s] || '' }
 
 async function search() {
   if (!query.value.trim()) return
@@ -286,51 +157,12 @@ async function search() {
 function viewPlaybook(row) { selected.value = row }
 function filterByCategory(cat) { query.value = cat; search() }
 
-// 蓝队：加载项目清单
-async function loadBlueRepos() {
-  try {
-    const res = await api.get('/knowledge/blue-team/repos').catch(() => ({ repos: [] }))
-    blueRepos.value = res.repos || []
-  } catch { blueRepos.value = [] }
-}
-
-// 蓝队：扫描分析
-async function scanBlueTeam() {
-  blueScanning.value = true
-  try {
-    const res = await api.post('/knowledge/blue-team/scan').catch(() => null)
-    if (res) {
-      blueTeamReport.value = res
-      // 重新加载训练场景
-      await loadTraining()
-    }
-  } catch { /* ignore */ }
-  finally { blueScanning.value = false }
-}
-
-// 蓝队：加载训练场景
-async function loadTraining() {
-  try {
-    const res = await api.get('/knowledge/blue-team/training').catch(() => null)
-    if (res && !res.error) {
-      todayTraining.value = res
-    }
-  } catch { /* ignore */ }
-}
-
 onMounted(async () => {
-  // 并行加载
-  await Promise.all([
-    (async () => {
-      try {
-        const res = await api.get('/knowledge/playbooks').catch(() => ({ playbooks: [] }))
-        playbooks.value = res.playbooks || res.items || res || []
-        if (!Array.isArray(playbooks.value)) playbooks.value = []
-      } catch { playbooks.value = [] }
-    })(),
-    loadBlueRepos(),
-    loadTraining(),
-  ])
+  try {
+    const res = await api.get('/knowledge/playbooks').catch(() => ({ playbooks: [] }))
+    playbooks.value = res.playbooks || res.items || res || []
+    if (!Array.isArray(playbooks.value)) playbooks.value = []
+  } catch { playbooks.value = [] }
 })
 </script>
 
@@ -339,6 +171,4 @@ onMounted(async () => {
 .cat-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
 .cat-row:hover { background: #f5f7fa; }
 .cat-count { font-size: 12px; color: #999; }
-.blue-skill-item { font-size: 13px; padding: 4px 0 4px 12px; border-left: 3px solid #409eff; margin-bottom: 4px; line-height: 1.5; }
-.blue-patch-item { font-size: 13px; padding: 4px 0 4px 12px; border-left: 3px solid #e6a23c; margin-bottom: 4px; line-height: 1.5; }
 </style>

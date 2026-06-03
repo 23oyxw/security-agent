@@ -91,6 +91,61 @@
     </el-table>
   </el-card>
 
+  <!-- 安全知识库检索 -->
+  <el-card header="🧠 安全知识库检索" style="margin-top:16px">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <el-input
+        v-model="kbQuery"
+        placeholder="搜索关键词：如后门、入侵排查、SSH、日志、Sigma"
+        style="width:300px"
+        clearable
+        @keyup.enter="searchKnowledge"
+      >
+        <template #prefix><el-icon><Search /></el-icon></template>
+      </el-input>
+      <el-button type="primary" @click="searchKnowledge" :loading="kbLoading">检索</el-button>
+      <el-divider direction="vertical" />
+      <el-tag
+        v-for="t in kbTags.slice(0, 12)"
+        :key="t.name"
+        :type="kbActiveTag === t.name ? '' : 'info'"
+        :effect="kbActiveTag === t.name ? 'dark' : 'plain'"
+        size="small"
+        style="cursor:pointer"
+        @click="toggleTag(t.name)"
+      >
+        {{ t.name }} ({{ t.count }})
+      </el-tag>
+    </div>
+    <el-table v-if="kbResults.length" :data="kbResults" size="small" stripe max-height="350" @row-click="toggleKbDetail">
+      <el-table-column prop="id" label="编号" width="130" />
+      <el-table-column prop="title" label="标题" width="200" />
+      <el-table-column prop="severity" label="严重度" width="80">
+        <template #default="{ row }">
+          <el-tag :type="sevType(row.severity)" size="small">{{ row.severity }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="标签" width="200">
+        <template #default="{ row }">
+          <el-tag v-for="tag in row.threat_tags" :key="tag" size="small" type="info" effect="plain" style="margin:1px">{{ tag }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="body" label="说明" show-overflow-tooltip />
+    </el-table>
+    <el-empty v-else-if="kbSearched" description="未找到匹配的知识条目" />
+    <div v-if="kbDetailItem" style="margin-top:8px;padding:10px;background:#f9f9f9;border-radius:6px;font-size:12px;line-height:1.6">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <el-tag size="small" type="warning">{{ kbDetailItem.id }}</el-tag>
+        <span style="font-weight:500">{{ kbDetailItem.title }}</span>
+        <el-button text type="primary" size="small" style="margin-left:auto" @click="kbDetailItem = null">关闭</el-button>
+      </div>
+      <div>{{ kbDetailItem.body }}</div>
+      <div v-if="kbDetailItem.suggested_actions?.length" style="margin-top:6px"><strong>建议：</strong>{{ kbDetailItem.suggested_actions.join('；') }}</div>
+      <div v-if="kbDetailItem.do_not?.length" style="margin-top:4px;color:#e6a23c"><strong>⚠️ 禁止：</strong>{{ kbDetailItem.do_not.join('；') }}</div>
+    </div>
+    <el-text v-else type="info" size="small">输入关键词或点击标签检索安全知识库（共 {{ kbTotal }} 条）</el-text>
+  </el-card>
+
   <el-card header="人工审批队列（S4 · 持久化）" style="margin-top:16px">
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <el-button size="small" @click="loadPending" :loading="pendingLoading">刷新待审批</el-button>
@@ -112,7 +167,8 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
+import { Search } from '@element-plus/icons-vue'
 import api from '../api'
 import { ElMessage } from 'element-plus'
 
@@ -123,6 +179,55 @@ const pending = ref([])
 const pendingLoading = ref(false)
 const activeCategory = ref('')
 const selectedCase = ref(null)
+
+// ---- 知识库检索 ----
+const kbQuery = ref('')
+const kbActiveTag = ref('')
+const kbResults = ref([])
+const kbTags = ref([])
+const kbTotal = ref(0)
+const kbLoading = ref(false)
+const kbSearched = ref(false)
+const kbDetailItem = ref(null)
+
+function sevType(s) {
+  const m = { '严重': 'danger', '高': 'warning', '中': '', '低': 'success', '信息': 'info' }
+  return m[s] || ''
+}
+
+async function loadKbTags() {
+  try {
+    const data = await api.get('/safety/knowledge/tags')
+    kbTags.value = data.tags || []
+  } catch { kbTags.value = [] }
+}
+
+async function searchKnowledge() {
+  kbLoading.value = true
+  kbSearched.value = true
+  try {
+    const params = { q: kbQuery.value, tag: kbActiveTag.value, limit: 30 }
+    const data = await api.get('/safety/knowledge/search', { params })
+    kbResults.value = data.items || []
+    kbTotal.value = data.total || 0
+  } catch {
+    kbResults.value = []
+    ElMessage.error('知识库检索失败')
+  } finally {
+    kbLoading.value = false
+  }
+}
+
+function toggleTag(name) {
+  kbActiveTag.value = kbActiveTag.value === name ? '' : name
+  searchKnowledge()
+}
+
+function toggleKbDetail(row) {
+  kbDetailItem.value = kbDetailItem.value?.id === row.id ? null : row
+}
+
+onMounted(loadKbTags)
 
 const DENY_VERDICTS = new Set(['deny', 'escalate', 'quarantine'])
 
@@ -196,7 +301,7 @@ const commandCases = [
 
   // 安全加固
   { cat: 'security', cmd: 'cat /etc/passwd | grep -v nologin', scene: '可登录用户', risk: 'readonly', desc: '查看可登录系统的用户列表', alt: '' },
-  { cat: 'security', cmd: 'cat /etc/shadow', scene: '密码哈希', risk: 'critical', desc: '查看密码哈希（敏感信息！）', alt: 'awk -F: \'$2=="!" || $2=="*" {print $1}\' /etc/shadow' },
+  { cat: 'security', cmd: 'cat /etc/shadow', scene: '密码哈希', risk: 'critical', desc: '查看密码哈希（敏感信息！）', alt: 'sudo -l（查看当前用户sudo权限）' },
   { cat: 'security', cmd: 'find / -perm -4000 -type f 2>/dev/null', scene: 'SUID文件', risk: 'readonly', desc: '查找所有SUID权限文件', alt: '' },
   { cat: 'security', cmd: 'find / -perm -2000 -type f 2>/dev/null', scene: 'SGID文件', risk: 'readonly', desc: '查找所有SGID权限文件', alt: '' },
   { cat: 'security', cmd: 'cat /etc/sudoers', scene: 'sudo配置', risk: 'critical', desc: '查看sudo权限配置（敏感）', alt: 'sudo -l（查看当前用户sudo权限）' },

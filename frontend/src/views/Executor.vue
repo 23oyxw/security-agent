@@ -115,8 +115,9 @@
             size="small"
             clearable
             style="margin-bottom:8px"
-            prefix-icon="Search"
-          />
+          >
+            <template #prefix><el-icon><Search /></el-icon></template>
+          </el-input>
           <div class="cmd-lib-list">
             <div
               v-for="cmd in filteredExecCmds"
@@ -133,13 +134,60 @@
           </div>
           <el-empty v-if="!filteredExecCmds.length" description="无匹配命令" :image-size="40" />
         </el-card>
+
+        <el-card header="🧠 安全知识库检索">
+          <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+            <el-input
+              v-model="kbQuery"
+              placeholder="关键词：后门、SSH、Sigma"
+              size="small"
+              style="width:200px"
+              clearable
+              @keyup.enter="searchKb"
+            >
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
+            <el-button size="small" type="primary" @click="searchKb" :loading="kbLoading">检索</el-button>
+          </div>
+          <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">
+            <el-tag
+              v-for="t in kbTags.slice(0, 8)"
+              :key="t.name"
+              :type="kbActiveTag === t.name ? '' : 'info'"
+              :effect="kbActiveTag === t.name ? 'dark' : 'plain'"
+              size="small"
+              style="cursor:pointer"
+              @click="toggleKbTag(t.name)"
+            >{{ t.name }} ({{ t.count }})</el-tag>
+          </div>
+          <div v-if="kbResults.length" class="kb-list">
+            <div v-for="item in kbResults" :key="item.id" class="kb-item" @click="toggleKbDetail(item)">
+              <div style="display:flex;align-items:center;gap:6px">
+                <el-tag :type="sevType(item.severity)" size="small">{{ item.severity }}</el-tag>
+                <span style="font-weight:500;font-size:13px">{{ item.title }}</span>
+                <el-tag v-if="item._score" size="small" type="success" effect="plain" style="margin-left:auto">{{ '★'.repeat(Math.min(item._score, 5)) }}</el-tag>
+              </div>
+              <div style="font-size:11px;color:#999;margin-top:2px;line-clamp:2;-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden">{{ item.body }}</div>
+              <div style="margin-top:4px;display:flex;gap:3px;flex-wrap:wrap">
+                <el-tag v-for="tag in item.threat_tags" :key="tag" size="small" type="info" effect="plain">{{ tag }}</el-tag>
+              </div>
+              <div v-if="item._expanded" style="margin-top:8px;padding:8px;background:#f9f9f9;border-radius:4px;font-size:12px;line-height:1.6">
+                <div v-if="item.suggested_actions?.length"><strong>建议操作：</strong>{{ item.suggested_actions.join('；') }}</div>
+                <div v-if="item.do_not?.length" style="margin-top:4px;color:#e6a23c"><strong>⚠️ 禁止：</strong>{{ item.do_not.join('；') }}</div>
+              </div>
+            </div>
+          </div>
+          <el-empty v-else-if="kbSearched" description="未找到匹配项" :image-size="40" />
+          <el-text v-else type="info" size="small">输入关键词或点击标签检索（共 {{ kbTotal }} 条）</el-text>
+        </el-card>
       </el-col>
     </el-row>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, watch, computed } from 'vue'
+import { ref, reactive, watch, computed, onMounted } from 'vue'
+import { Search } from '@element-plus/icons-vue'
 import api from '../api'
 import { ElMessage } from 'element-plus'
 
@@ -284,6 +332,54 @@ function riskDisplay(resOrLevel) {
   return `${lv}（${RISK_CN[lv] || lv}）`
 }
 
+// ---- 知识库检索 ----
+const kbQuery = ref('')
+const kbActiveTag = ref('')
+const kbResults = ref([])
+const kbTags = ref([])
+const kbTotal = ref(0)
+const kbLoading = ref(false)
+const kbSearched = ref(false)
+
+function sevType(s) {
+  const m = { '严重': 'danger', '高': 'warning', '中': '', '低': 'success', '信息': 'info' }
+  return m[s] || ''
+}
+
+async function loadKbTags() {
+  try {
+    const data = await api.get('/safety/knowledge/tags')
+    kbTags.value = data.tags || []
+  } catch { kbTags.value = [] }
+}
+
+async function searchKb() {
+  kbLoading.value = true
+  kbSearched.value = true
+  try {
+    const params = { q: kbQuery.value, tag: kbActiveTag.value, limit: 20 }
+    const data = await api.get('/safety/knowledge/search', { params })
+    kbResults.value = data.items || []
+    kbTotal.value = data.total || 0
+  } catch {
+    kbResults.value = []
+    ElMessage.error('知识库检索失败')
+  } finally {
+    kbLoading.value = false
+  }
+}
+
+function toggleKbTag(name) {
+  kbActiveTag.value = kbActiveTag.value === name ? '' : name
+  searchKb()
+}
+
+function toggleKbDetail(item) {
+  item._expanded = !item._expanded
+}
+
+onMounted(loadKbTags)
+
 let previewTimer = null
 watch(() => form.command, (cmd) => {
   clearTimeout(previewTimer)
@@ -352,4 +448,15 @@ async function execute() {
   border-color: #d0e3ff;
 }
 .risk-bar { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.kb-list { max-height: 300px; overflow-y: auto; }
+.kb-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  border: 1px solid #ebeef5;
+  transition: border-color 0.2s;
+}
+.kb-item:hover {
+  border-color: #409eff;
+}
 </style>

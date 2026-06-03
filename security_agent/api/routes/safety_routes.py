@@ -173,6 +173,88 @@ async def submit_approval(item: dict, user: User = Depends(get_current_user)):
     return _confirmation_to_api(req)
 
 
+@router.get("/knowledge/search")
+async def safety_knowledge_search(
+    q: str = "",
+    tag: str = "",
+    limit: int = 20,
+    user: User = Depends(get_current_user),
+):
+    """安全门禁知识库检索 — 支持关键词搜索 + 标签过滤 + 严重度排序."""
+    from security_agent.knowledge.playbooks import PLAYBOOKS
+
+    results = []
+    q_lower = q.lower().strip()
+    tag_lower = tag.lower().strip()
+    # 支持空格分割多关键词
+    q_tokens = [t for t in q_lower.split() if len(t) >= 2] if q_lower else []
+
+    for pb in PLAYBOOKS:
+        # 标签过滤
+        if tag_lower and not any(tag_lower in t.lower() for t in pb.threat_tags):
+            continue
+
+        if not q_lower:
+            results.append(pb.to_dict())
+            continue
+
+        # 构建搜索域：标题、正文、关键词、建议动作
+        searchable = (
+            pb.title + " " + pb.body + " "
+            + " ".join(pb.keywords) + " "
+            + " ".join(pb.suggested_actions) + " "
+            + " ".join(pb.do_not) + " "
+            + " ".join(pb.threat_tags)
+        ).lower()
+
+        # 多关键词匹配打分
+        score = 0
+        for token in q_tokens:
+            # 标题匹配加权 (x3)
+            if token in pb.title.lower():
+                score += 3
+            # 正文匹配 (x1)
+            if token in pb.body.lower():
+                score += 1
+            # 关键词匹配加权 (x2)
+            if any(token in kw.lower() for kw in pb.keywords):
+                score += 2
+            # 标签匹配 (x1)
+            if any(token in t.lower() for t in pb.threat_tags):
+                score += 1
+
+        # 严重度加权：严重=+2, 高=+1
+        sev_bonus = {"严重": 2, "高": 1}.get(pb.severity, 0)
+        score += sev_bonus
+
+        if score > 0:
+            item = pb.to_dict()
+            item["_score"] = score
+            results.append(item)
+
+    # 按得分排序
+    results.sort(key=lambda x: x.get("_score", 0), reverse=True)
+
+    return {
+        "total": len(results),
+        "query": q,
+        "tag": tag,
+        "items": results[:limit],
+    }
+
+
+@router.get("/knowledge/tags")
+async def safety_knowledge_tags(user: User = Depends(get_current_user)):
+    """返回安全门禁知识库所有标签及每个标签的条目数."""
+    from security_agent.knowledge.playbooks import PLAYBOOKS
+
+    tag_count: dict[str, int] = {}
+    for pb in PLAYBOOKS:
+        for t in pb.threat_tags:
+            tag_count[t] = tag_count.get(t, 0) + 1
+    return {"tags": [{"name": k, "count": v} for k, v in sorted(tag_count.items())]}
+
+
 @router.get("/status")
 async def safety_status(user: User = Depends(get_current_user)):
     from security_agent.confirm import get_confirmation_manager
