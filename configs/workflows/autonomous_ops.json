@@ -45,6 +45,27 @@
       "pillar": "全链路 Trace",
       "api": "GET /api/trace/",
       "detail": "trace_id 贯穿 audit + reasoning_trace JSONL"
+    },
+    {
+      "id": "blue_team_learn",
+      "title": "⑦ 蓝队方案学习",
+      "pillar": "知识库 × 蓝队开源",
+      "api": "POST /api/knowledge/blue-team/scan",
+      "detail": "爬取蓝队开源项目 → LLM 提取技能/优化建议/训练场景"
+    },
+    {
+      "id": "blue_team_train",
+      "title": "⑧ 蓝队每日训练",
+      "pillar": "蓝队实操演练",
+      "api": "GET /api/knowledge/blue-team/training",
+      "detail": "按日轮转训练场景：入侵排查、日志分析、API防御等"
+    },
+    {
+      "id": "knowledge_search",
+      "title": "⑨ 安全知识检索",
+      "pillar": "混合检索 + RAG",
+      "api": "POST /api/knowledge/search",
+      "detail": "关键词 + 向量混合检索安全剧本，返回威胁标签和处置建议"
     }
   ]
 }
