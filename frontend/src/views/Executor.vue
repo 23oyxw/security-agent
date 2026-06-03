@@ -9,7 +9,25 @@
 
           <el-form :model="form" label-width="80px" @submit.prevent="execute">
             <el-form-item label="命令">
-              <el-input v-model="form.command" placeholder="输入要执行的命令，例如: ls -la /tmp" clearable size="large" />
+              <el-autocomplete
+                v-model="form.command"
+                :fetch-suggestions="queryCommands"
+                placeholder="输入命令或关键词搜索命令库"
+                clearable
+                size="large"
+                style="width:100%"
+                @select="onSelectCommand"
+              >
+                <template #default="{ item }">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span><code>{{ item.value }}</code></span>
+                    <div style="display:flex;gap:4px;align-items:center">
+                      <el-tag v-if="item.cat" size="small" type="info" effect="plain">{{ catLabelMap[item.cat] || item.cat }}</el-tag>
+                      <el-tag :type="item.riskColor" size="small" effect="plain">{{ item.riskLabel }}</el-tag>
+                    </div>
+                  </div>
+                </template>
+              </el-autocomplete>
             </el-form-item>
             <el-form-item label="模式">
               <el-radio-group v-model="form.sandbox">
@@ -86,14 +104,34 @@
               <el-radio-button value="process">⚙️ 进程</el-radio-button>
               <el-radio-button value="network">🌐 网络</el-radio-button>
               <el-radio-button value="disk">💾 磁盘</el-radio-button>
+              <el-radio-button value="log">📋 日志</el-radio-button>
               <el-radio-button value="security">🔒 安全</el-radio-button>
+              <el-radio-button value="service">🔧 服务</el-radio-button>
             </el-radio-group>
           </div>
-          <div class="quick-cmds">
-            <el-button v-for="cmd in filteredExecCmds" :key="cmd.cmd" size="small" @click="form.command = cmd.cmd" :type="cmd.type || ''">
-              {{ cmd.label }}
-            </el-button>
+          <el-input
+            v-model="cmdSearch"
+            placeholder="搜索命令或说明…"
+            size="small"
+            clearable
+            style="margin-bottom:8px"
+            prefix-icon="Search"
+          />
+          <div class="cmd-lib-list">
+            <div
+              v-for="cmd in filteredExecCmds"
+              :key="cmd.cmd"
+              class="cmd-lib-item"
+              @click="form.command = cmd.cmd"
+            >
+              <div style="display:flex;align-items:center;justify-content:space-between;flex:1;min-width:0">
+                <code style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ cmd.cmd }}</code>
+                <el-tag :type="cmd.riskColor" size="small" effect="plain" style="margin-left:6px;flex-shrink:0">{{ cmd.riskLabel }}</el-tag>
+              </div>
+              <div style="font-size:11px;color:#999;margin-top:2px">{{ cmd.label }}</div>
+            </div>
           </div>
+          <el-empty v-if="!filteredExecCmds.length" description="无匹配命令" :image-size="40" />
         </el-card>
       </el-col>
     </el-row>
@@ -112,51 +150,119 @@ const history = ref([])
 const previewRisk = ref('')
 const previewRiskLabel = ref('')
 const execCategory = ref('')
+const cmdSearch = ref('')
 
-const quickCmds = [
-  { label: '磁盘空间', cmd: 'df -h', type: '' },
-  { label: '内存使用', cmd: 'free -h', type: '' },
-  { label: '系统负载', cmd: 'uptime', type: '' },
-  { label: '网络连接', cmd: 'ss -tlnp', type: '' },
-  { label: '最近登录', cmd: 'last -10', type: '' },
-  { label: '进程TOP10', cmd: 'ps aux --sort=-%cpu | head -11', type: '' },
-]
+const RISK_MAP = {
+  readonly: { color: 'success', label: '只读' },
+  reversible: { color: 'warning', label: '可逆' },
+  irreversible: { color: 'danger', label: '不可逆' },
+  critical: { color: 'danger', label: '关键' },
+}
 
+const catLabelMap = {
+  system: '🖥️ 系统',
+  process: '⚙️ 进程',
+  network: '🌐 网络',
+  disk: '💾 磁盘',
+  log: '📋 日志',
+  security: '🔒 安全',
+  service: '🔧 服务',
+}
+
+// 命令库（统一结构，包含风险标签）
 const execCmdLibrary = [
-  { cat: 'system', label: '系统版本', cmd: 'uname -a' },
-  { cat: 'system', label: '发行版', cmd: 'cat /etc/os-release' },
-  { cat: 'system', label: '运行时间', cmd: 'uptime' },
-  { cat: 'system', label: '内存', cmd: 'free -h' },
-  { cat: 'system', label: '磁盘', cmd: 'df -h' },
-  { cat: 'system', label: 'CPU信息', cmd: 'lscpu' },
-  { cat: 'system', label: '系统负载', cmd: 'top -bn1 | head -20' },
-  { cat: 'process', label: 'CPU Top', cmd: 'ps aux --sort=-%cpu | head -11' },
-  { cat: 'process', label: '内存Top', cmd: 'ps aux --sort=-%mem | head -11' },
-  { cat: 'process', label: '僵尸进程', cmd: 'ps aux | grep -i zombie' },
-  { cat: 'process', label: '进程树', cmd: 'ps -ef --forest | head -30' },
-  { cat: 'network', label: '监听端口', cmd: 'ss -tlnp' },
-  { cat: 'network', label: '连接统计', cmd: 'ss -s' },
-  { cat: 'network', label: '网络接口', cmd: 'ip addr show' },
-  { cat: 'network', label: '路由表', cmd: 'ip route show' },
-  { cat: 'network', label: '防火墙', cmd: 'iptables -L -n --line-numbers' },
-  { cat: 'network', label: '最近登录', cmd: 'last -20' },
-  { cat: 'network', label: '当前用户', cmd: 'who' },
-  { cat: 'network', label: '失败登录', cmd: 'lastb -10' },
-  { cat: 'disk', label: '日志大小', cmd: 'du -sh /var/log/*' },
-  { cat: 'disk', label: '临时文件', cmd: 'du -sh /tmp/*' },
-  { cat: 'disk', label: '大文件', cmd: 'find / -size +100M -type f 2>/dev/null' },
-  { cat: 'disk', label: '打开文件', cmd: 'lsof +D /var/log 2>/dev/null' },
-  { cat: 'security', label: '可登录用户', cmd: 'cat /etc/passwd | grep -v nologin' },
-  { cat: 'security', label: 'SUID文件', cmd: 'find / -perm -4000 -type f 2>/dev/null' },
-  { cat: 'security', label: '计划任务', cmd: 'crontab -l' },
-  { cat: 'security', label: '系统crontab', cmd: 'cat /etc/crontab' },
-  { cat: 'security', label: '运行服务', cmd: 'systemctl list-units --type=service --state=running' },
-]
+  // 系统信息
+  { cat: 'system', label: '系统版本', cmd: 'uname -a', risk: 'readonly' },
+  { cat: 'system', label: '发行版信息', cmd: 'cat /etc/os-release', risk: 'readonly' },
+  { cat: 'system', label: '运行时间', cmd: 'uptime', risk: 'readonly' },
+  { cat: 'system', label: '内存使用', cmd: 'free -h', risk: 'readonly' },
+  { cat: 'system', label: '磁盘使用', cmd: 'df -h', risk: 'readonly' },
+  { cat: 'system', label: 'CPU信息', cmd: 'lscpu', risk: 'readonly' },
+  { cat: 'system', label: '系统负载', cmd: 'top -bn1 | head -20', risk: 'readonly' },
+  { cat: 'system', label: '系统时间', cmd: 'date +"%Y-%m-%d %H:%M:%S"', risk: 'readonly' },
 
-const filteredExecCmds = computed(() => {
-  if (!execCategory.value) return quickCmds
-  return execCmdLibrary.filter(c => c.cat === execCategory.value)
+  // 进程管理
+  { cat: 'process', label: 'CPU Top进程', cmd: 'ps aux --sort=-%cpu | head -20', risk: 'readonly' },
+  { cat: 'process', label: '内存Top进程', cmd: 'ps aux --sort=-%mem | head -20', risk: 'readonly' },
+  { cat: 'process', label: '僵尸进程', cmd: 'ps aux | grep -i zombie', risk: 'readonly' },
+  { cat: 'process', label: '进程树', cmd: 'ps -ef --forest | head -30', risk: 'readonly' },
+  { cat: 'process', label: '强制终止进程', cmd: 'kill -9 PID', risk: 'irreversible' },
+  { cat: 'process', label: '按名称终止', cmd: 'pkill -f "进程名"', risk: 'irreversible' },
+
+  // 磁盘空间
+  { cat: 'disk', label: '日志目录大小', cmd: 'du -sh /var/log/*', risk: 'readonly' },
+  { cat: 'disk', label: '临时文件大小', cmd: 'du -sh /tmp/*', risk: 'readonly' },
+  { cat: 'disk', label: '大文件扫描', cmd: 'find / -size +100M -type f 2>/dev/null', risk: 'readonly' },
+  { cat: 'disk', label: '日志文件占用', cmd: 'lsof +D /var/log 2>/dev/null', risk: 'readonly' },
+
+  // 网络安全
+  { cat: 'network', label: '监听端口', cmd: 'ss -tlnp', risk: 'readonly' },
+  { cat: 'network', label: '连接统计', cmd: 'ss -s', risk: 'readonly' },
+  { cat: 'network', label: '网络接口', cmd: 'ip addr show', risk: 'readonly' },
+  { cat: 'network', label: '路由表', cmd: 'ip route show', risk: 'readonly' },
+  { cat: 'network', label: '防火墙规则', cmd: 'iptables -L -n --line-numbers', risk: 'readonly' },
+  { cat: 'network', label: 'DNS配置', cmd: 'cat /etc/resolv.conf', risk: 'readonly' },
+  { cat: 'network', label: '最近登录', cmd: 'last -20', risk: 'readonly' },
+  { cat: 'network', label: '当前登录用户', cmd: 'who', risk: 'readonly' },
+  { cat: 'network', label: '失败登录', cmd: 'lastb -10', risk: 'readonly' },
+
+  // 日志审计
+  { cat: 'log', label: '最近1小时日志', cmd: 'journalctl --since "1 hour ago" --no-pager', risk: 'readonly' },
+  { cat: 'log', label: '今日错误日志', cmd: 'journalctl -p err --since today --no-pager', risk: 'readonly' },
+  { cat: 'log', label: 'SSH日志', cmd: 'journalctl -u sshd --since today --no-pager', risk: 'readonly' },
+  { cat: 'log', label: '登录失败日志', cmd: 'grep -i "failed password" /var/log/auth.log | tail -20', risk: 'readonly' },
+  { cat: 'log', label: '内核日志', cmd: 'dmesg | tail -30', risk: 'readonly' },
+  { cat: 'log', label: '审计认证摘要', cmd: 'aureport --auth --summary', risk: 'readonly' },
+
+  // 安全加固
+  { cat: 'security', label: '可登录用户', cmd: 'cat /etc/passwd | grep -v nologin', risk: 'readonly' },
+  { cat: 'security', label: 'SUID文件', cmd: 'find / -perm -4000 -type f 2>/dev/null', risk: 'readonly' },
+  { cat: 'security', label: 'SGID文件', cmd: 'find / -perm -2000 -type f 2>/dev/null', risk: 'readonly' },
+  { cat: 'security', label: '当前用户计划任务', cmd: 'crontab -l', risk: 'readonly' },
+  { cat: 'security', label: '系统计划任务', cmd: 'cat /etc/crontab', risk: 'readonly' },
+  { cat: 'security', label: 'sudo配置', cmd: 'sudo -l', risk: 'readonly' },
+
+  // 服务管理
+  { cat: 'service', label: '运行中的服务', cmd: 'systemctl list-units --type=service --state=running', risk: 'readonly' },
+  { cat: 'service', label: 'SSH服务状态', cmd: 'systemctl status sshd', risk: 'readonly' },
+  { cat: 'service', label: '定时器', cmd: 'systemctl list-timers', risk: 'readonly' },
+  { cat: 'service', label: '重启SSH', cmd: 'systemctl restart sshd', risk: 'reversible' },
+].map(item => {
+  const rm = RISK_MAP[item.risk] || RISK_MAP.readonly
+  return { ...item, riskColor: rm.color, riskLabel: rm.label, value: item.cmd }
 })
+
+// 按分类+搜索过滤
+const filteredExecCmds = computed(() => {
+  let list = execCmdLibrary
+  if (execCategory.value) {
+    list = list.filter(c => c.cat === execCategory.value)
+  }
+  const q = cmdSearch.value?.toLowerCase().trim()
+  if (q) {
+    list = list.filter(c =>
+      c.cmd.toLowerCase().includes(q) ||
+      c.label.toLowerCase().includes(q)
+    )
+  }
+  return list
+})
+
+// 自动补全搜索
+function queryCommands(queryString, cb) {
+  const q = queryString.toLowerCase()
+  const results = queryString
+    ? execCmdLibrary.filter(c =>
+        c.cmd.toLowerCase().includes(q) ||
+        c.label.toLowerCase().includes(q)
+      )
+    : execCmdLibrary.slice(0, 20)
+  cb(results)
+}
+
+function onSelectCommand(item) {
+  form.command = item.cmd
+}
 
 const RISK_CN = { READONLY: '只读', REVERSIBLE: '可逆', IRREVERSIBLE: '不可逆', CRITICAL: '关键' }
 
@@ -232,6 +338,18 @@ async function execute() {
 .output-box pre { margin: 0; font-family: 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
 .history-item { padding: 6px 8px; border-radius: 4px; cursor: pointer; margin-bottom: 4px; transition: background 0.2s; }
 .history-item:hover { background: #f5f7fa; }
-.quick-cmds { display: flex; flex-wrap: wrap; gap: 8px; }
+.cmd-lib-list { max-height: 360px; overflow-y: auto; }
+.cmd-lib-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 4px;
+  transition: background 0.2s;
+  border: 1px solid transparent;
+}
+.cmd-lib-item:hover {
+  background: #f0f7ff;
+  border-color: #d0e3ff;
+}
 .risk-bar { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 </style>

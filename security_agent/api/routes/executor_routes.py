@@ -33,7 +33,12 @@ def _assess_command(command: str) -> tuple[str, str]:
 
 
 async def _precheck_execution(req: ExecuteRequest, user: User) -> None:
-    """企业级执行前检查：预算、三层防御、S4 审批."""
+    """企业级执行前检查：预算、三层防御、S4 审批.
+
+    沙箱模式下放宽检查 — 用户已主动选择隔离执行环境:
+      - deny 仍拦截（极度危险命令即使沙箱也不执行）
+      - confirm/approve 自动放行（沙箱已提供隔离保护）
+    """
     require_request_budget("executor")
 
     if req.confirm or req.approval_id:
@@ -56,7 +61,16 @@ async def _precheck_execution(req: ExecuteRequest, user: User) -> None:
     )
     verdict = str(result.overall_verdict.value if hasattr(result.overall_verdict, "value") else result.overall_verdict).lower()
 
-    if verdict in ("deny", "quarantine", "escalate"):
+    # deny 始终拦截，即使是沙箱模式也不执行极度危险命令
+    if verdict == "deny":
+        raise HTTPException(403, detail=f"安全门拒绝执行: {verdict} — {result.message}")
+
+    # 沙箱模式下: quarantine/escalate/approve/confirm 均放行
+    # 用户已主动选择沙箱隔离，沙箱本身已提供 OS 级保护
+    if req.sandbox:
+        return
+
+    if verdict in ("quarantine", "escalate"):
         raise HTTPException(403, detail=f"安全门拒绝执行: {verdict} — {result.message}")
 
     if result.requires_human_approval or verdict == "approve":
