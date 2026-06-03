@@ -1,1 +1,0 @@
-/home/oy0/security-agent/打开应用.sh
