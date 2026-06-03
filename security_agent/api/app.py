@@ -36,6 +36,7 @@ from security_agent.api.routes import (
     dify_routes,
     chat_ws_routes,
     resilience_routes,
+    ops_routes,
 )
 
 _START_TIME = time.time()
@@ -85,6 +86,7 @@ app.include_router(workflow_routes.router,   prefix="/api/workflow",     tags=["
 app.include_router(dify_routes.router,       prefix="/api/dify",         tags=["Dify 集成"])
 app.include_router(chat_ws_routes.router,     prefix="/api/agent",        tags=["WebSocket 实时聊天"])
 app.include_router(resilience_routes.router,  prefix="/api/resilience",   tags=["弹性"])
+app.include_router(ops_routes.router,         prefix="/api/ops",          tags=["运维操作"])
 
 # 健康检查（无需认证）
 @app.get("/api/health")

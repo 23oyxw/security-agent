@@ -139,6 +139,82 @@
       </el-col>
     </el-row>
 
+    <!-- 进程管理 + CPU 压测 -->
+    <el-row :gutter="16" style="margin-bottom:16px">
+      <el-col :span="12">
+        <el-card class="ops-card">
+          <template #header>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span>🧹 进程管理</span>
+              <div>
+                <el-button size="small" :loading="procLoading" @click="loadProcessSummary">刷新</el-button>
+                <el-button type="warning" size="small" :loading="procCleanLoading" @click="cleanZombies">清理僵尸</el-button>
+                <el-button type="danger" size="small" :loading="optimizeLoading" @click="systemOptimize">一键优化</el-button>
+              </div>
+            </div>
+          </template>
+          <div v-if="procSummary" style="margin-bottom:12px">
+            <el-descriptions :column="2" size="small" border>
+              <el-descriptions-item label="总进程数">
+                <el-tag type="info" size="large">{{ procSummary.total_processes }}</el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="僵尸进程">
+                <el-tag :type="procSummary.zombies > 0 ? 'danger' : 'success'" size="large">{{ procSummary.zombies }}</el-tag>
+              </el-descriptions-item>
+            </el-descriptions>
+            <div style="margin-top:8px">
+              <div v-for="(count, user) in procSummary.by_user" :key="user" style="display:inline-block;margin:4px">
+                <el-tag size="small">{{ user }}: {{ count }}个</el-tag>
+              </div>
+            </div>
+          </div>
+          <el-empty v-if="!procSummary && !procLoading" description="点击刷新查看进程状态" :image-size="40" />
+          <el-alert v-if="procCleanResult" :title="procCleanResult" :type="procCleanResult.includes('成功') || procCleanResult.includes('清理') ? 'success' : 'warning'" :closable="true" @close="procCleanResult=''" style="margin-top:8px" />
+          <el-alert v-if="optimizeResult" :title="optimizeResult" type="success" :closable="true" @close="optimizeResult=''" style="margin-top:8px" />
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card class="ops-card">
+          <template #header>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span>🔥 CPU 多核压测</span>
+              <div>
+                <el-button size="small" :loading="cpuInfoLoading" @click="loadCpuInfo">刷新信息</el-button>
+                <el-button type="danger" size="small" :loading="stressLoading" @click="runStress(10)">压测10秒</el-button>
+                <el-button type="danger" size="small" :loading="stressLoading" @click="runStress(30)">压测30秒</el-button>
+              </div>
+            </div>
+          </template>
+          <div v-if="cpuInfo">
+            <el-descriptions :column="2" size="small" border>
+              <el-descriptions-item label="CPU 型号" :span="2">{{ cpuInfo.model }}</el-descriptions-item>
+              <el-descriptions-item label="核心数">
+                <el-tag type="primary" size="large">{{ cpuInfo.cores }} 核</el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="频率">{{ cpuInfo.frequency }}</el-descriptions-item>
+              <el-descriptions-item label="平均负载">
+                {{ (cpuInfo.load_avg || []).map(v => v.toFixed(2)).join(' / ') }}
+              </el-descriptions-item>
+              <el-descriptions-item label="总 CPU 使用">
+                <el-progress :percentage="cpuInfo.avg_cpu_percent || 0" :color="progressColor(cpuInfo.avg_cpu_percent)" :stroke-width="14" :text-inside="true" />
+              </el-descriptions-item>
+            </el-descriptions>
+            <div style="margin-top:12px">
+              <div style="font-size:12px;color:#999;margin-bottom:6px">各核心使用率：</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <div v-for="(pct, i) in (cpuInfo.per_core_percent || [])" :key="i" style="width:60px;text-align:center">
+                  <el-progress type="circle" :percentage="pct" :width="48" :stroke-width="4" :color="progressColor(pct)" :show-text="false" />
+                  <div style="font-size:10px;color:#999">C{{ i }} {{ pct }}%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <el-empty v-if="!cpuInfo && !cpuInfoLoading" description="点击刷新查看 CPU 信息" :image-size="40" />
+          <el-alert v-if="stressResult" :title="stressResult" type="info" :closable="true" @close="stressResult=''" style="margin-top:8px" />
+        </el-card>
+      </el-col>
+    </el-row>
+
     <!-- 最近告警 -->
     <el-card header="最近告警">
       <div style="display:flex;justify-content:space-between;margin-bottom:12px">
@@ -206,6 +282,83 @@ const rcaReport = ref(null)
 const osPorts = ref([])
 const osZombies = ref(null)
 const osErrors = ref([])
+
+// 进程管理 + CPU 压测
+const procLoading = ref(false)
+const procCleanLoading = ref(false)
+const optimizeLoading = ref(false)
+const cpuInfoLoading = ref(false)
+const stressLoading = ref(false)
+const procSummary = ref(null)
+const procCleanResult = ref('')
+const optimizeResult = ref('')
+const cpuInfo = ref(null)
+const stressResult = ref('')
+
+async function loadProcessSummary() {
+  procLoading.value = true
+  try {
+    procSummary.value = await api.get('/ops/processes/summary')
+  } catch (e) {
+    procCleanResult.value = '加载失败: ' + (e.message || '未知')
+  } finally {
+    procLoading.value = false
+  }
+}
+
+async function cleanZombies() {
+  procCleanLoading.value = true
+  try {
+    const res = await api.post('/ops/processes/cleanup', { category: 'zombies' })
+    procCleanResult.value = res.cleaned > 0
+      ? `成功清理 ${res.cleaned} 个僵尸进程`
+      : '无僵尸进程需要清理'
+    loadProcessSummary()
+  } catch (e) {
+    procCleanResult.value = '清理失败: ' + (e.message || '未知')
+  } finally {
+    procCleanLoading.value = false
+  }
+}
+
+async function systemOptimize() {
+  optimizeLoading.value = true
+  try {
+    const res = await api.post('/ops/system/optimize')
+    const actions = (res.actions || []).map(a => `${a.action}: ${a.count || a.ok || a.found || '完成'}`)
+    optimizeResult.value = '优化完成 — ' + actions.join(' | ')
+    loadProcessSummary()
+  } catch (e) {
+    optimizeResult.value = '优化失败: ' + (e.message || '未知')
+  } finally {
+    optimizeLoading.value = false
+  }
+}
+
+async function loadCpuInfo() {
+  cpuInfoLoading.value = true
+  try {
+    cpuInfo.value = await api.get('/ops/cpu/info')
+  } catch (e) {
+    stressResult.value = 'CPU 信息获取失败: ' + (e.message || '未知')
+  } finally {
+    cpuInfoLoading.value = false
+  }
+}
+
+async function runStress(duration) {
+  stressLoading.value = true
+  stressResult.value = `正在执行 ${duration} 秒全核压测...`
+  try {
+    const res = await api.post('/ops/cpu/stress', null, { params: { duration, cores: 0 } })
+    stressResult.value = `压测完成: ${res.cores} 核心 × ${res.duration}秒 — ${res.output?.slice(0, 200) || 'OK'}`
+    loadCpuInfo()
+  } catch (e) {
+    stressResult.value = '压测失败: ' + (e.message || '未知')
+  } finally {
+    stressLoading.value = false
+  }
+}
 
 async function runRootCause() {
   rcaLoading.value = true
@@ -313,8 +466,10 @@ onMounted(async () => {
 
     initCharts()
 
-    // 加载 OS 深度感知数据
+    // 加载 OS 深度感知 + 进程/CPU 数据
     loadOsData()
+    loadProcessSummary()
+    loadCpuInfo()
   } catch {}
 })
 </script>
