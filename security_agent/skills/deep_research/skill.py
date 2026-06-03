@@ -319,3 +319,7 @@ class DeepResearchSkill(SkillBase):
             "合规检查: 关键系统应每周执行一次安全基线检查",
             "研究报告: 重大安全事件应生成研究报告存档",
         ]
+
+
+# ---- 全局实例 ----
+skill_instance = DeepResearchSkill()

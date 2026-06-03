@@ -305,3 +305,7 @@ def _fmt_time(ts: float) -> str:
     if not ts:
         return ""
     return time.strftime("%Y-%m-%d %H:%M", time.localtime(ts))
+
+
+# ---- 全局实例 ----
+skill_instance = MemoryPrioritySkill()
