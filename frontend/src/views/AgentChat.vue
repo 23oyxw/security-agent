@@ -1,8 +1,8 @@
 <template>
   <div class="agent-chat">
-    <el-row :gutter="16" style="height: calc(100vh - 140px)">
+    <el-row :gutter="12" style="height: calc(100vh - 100px)">
       <!-- 左侧：对话区域 -->
-      <el-col :span="16">
+      <el-col :span="18">
         <el-card style="height: 100%; display: flex; flex-direction: column">
           <template #header>
             <div style="display:flex;justify-content:space-between;align-items:center">
@@ -133,10 +133,10 @@
         </el-card>
       </el-col>
 
-      <!-- 右侧：会话信息 -->
-      <el-col :span="8">
+      <!-- 右侧：会话信息（可滚动） -->
+      <el-col :span="6" class="right-panel">
         <ArchitectureLayers highlight="L3" :trace-id="lastTraceId" />
-        <el-card header="Token · API 费用 · 上下文" style="margin-bottom:16px">
+        <el-card header="Token · 费用" style="margin-bottom:10px">
           <div class="token-panel">
             <div class="token-panel-row">
               <span class="token-panel-label">本会话 API 计费</span>
@@ -180,11 +180,11 @@
                 <el-icon><Bell /></el-icon> 告警管理
               </el-button>
             </div>
-            <div class="token-panel-hint">费用按模型单价×API 计费 token；占比为对话上下文估算（上限 {{ formatTokenNum(contextBar.limit) }}）</div>
+            <div class="token-panel-hint">费用按模型单价×API 计费 token</div>
           </div>
         </el-card>
 
-        <el-card header="会话信息" style="margin-bottom:16px">
+        <el-card header="会话信息" style="margin-bottom:10px">
           <el-descriptions :column="1" size="small" border>
             <el-descriptions-item label="会话 ID">{{ sessionId }}</el-descriptions-item>
             <el-descriptions-item label="传输">{{ transport === 'ws' ? 'WebSocket' : 'HTTP REST' }}</el-descriptions-item>
@@ -194,7 +194,7 @@
           </el-descriptions>
         </el-card>
 
-        <el-card style="margin-bottom:16px">
+        <el-card style="margin-bottom:10px">
           <template #header>
             <span>可用 Skill</span>
             <el-text type="info" size="small" style="margin-left:8px">点击即在助手中发送</el-text>
@@ -235,13 +235,12 @@
           <el-empty v-if="!flowSkills.length && !mcpSkills.length" description="加载中..." :image-size="30" />
         </el-card>
 
-        <el-card header="最近工具调用">
-          <el-timeline v-if="recentTools.length">
+        <el-card v-if="recentTools.length" header="最近工具调用">
+          <el-timeline>
             <el-timeline-item v-for="(t, i) in recentTools" :key="i" :timestamp="t.time" placement="top" :type="t.success ? 'success' : 'danger'">
               <span style="font-size:13px">{{ t.name }}</span>
             </el-timeline-item>
           </el-timeline>
-          <el-empty v-else description="暂无调用记录" :image-size="30" />
         </el-card>
       </el-col>
     </el-row>
