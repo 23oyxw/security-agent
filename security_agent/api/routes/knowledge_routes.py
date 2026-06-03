@@ -30,7 +30,7 @@ async def blue_team_repos(user: User = Depends(get_current_user)):
 
 @router.post("/blue-team/scan")
 async def blue_team_scan(user: User = Depends(get_current_user)):
-    """扫描蓝队开源项目（LLM 分析，不 clone）"""
+    """扫描蓝队开源项目（LLM 分析 + 预设知识，不 clone）"""
     import asyncio
     from security_agent.knowledge.blue_team_crawler import BlueTeamCrawler
 
@@ -45,8 +45,9 @@ async def blue_team_scan(user: User = Depends(get_current_user)):
             {
                 "name": p.name,
                 "category": p.category,
-                "skills": p.blue_team_skills[:5],
-                "patches": p.optimization_patches[:3],
+                "skills": p.blue_team_skills,
+                "patches": p.optimization_patches,
+                "scenarios": p.training_scenarios,
             }
             for p in report.projects
         ],
