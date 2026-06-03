@@ -247,9 +247,15 @@ _FLOWS: dict[str, FlowDef] = {
     ),
     "cpu_stress": FlowDef(
         name="cpu_stress",
-        display_name="CPU 多核压测",
-        description="多核压测 → 阈值监控自动停止 / 一键手动停止",
-        steps=[_step_cpu_stress, _step_cpu_stop],
+        display_name="CPU 多核压测（启动）",
+        description="启动多核压测 + 阈值监控，后台运行直到超时或阈值触发",
+        steps=[_step_cpu_stress],
+    ),
+    "cpu_stress_stop": FlowDef(
+        name="cpu_stress_stop",
+        display_name="CPU 压测（停止）",
+        description="立即停止正在运行的 CPU 压测任务",
+        steps=[_step_cpu_stop],
     ),
 }
 

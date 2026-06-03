@@ -87,6 +87,9 @@
         <el-form-item v-if="selected.name === 'cpu_stress'" label="自动停止阈值(%)">
           <el-input-number v-model="form.stress_threshold" :min="50" :max="98" :step="5" />
         </el-form-item>
+        <el-form-item v-if="selected.name === 'cpu_stress_stop'" label="说明">
+          <span style="font-size:13px;color:#606266">将立即停止正在运行的 CPU 压测任务（停止 stress-ng 进程 + 清理阈值监控定时器）</span>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="runFlow" :loading="running">执行流程</el-button>
           <el-button @click="selected = null">取消</el-button>

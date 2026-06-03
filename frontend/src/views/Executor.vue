@@ -78,9 +78,19 @@
           <el-empty v-if="!history.length" description="暂无执行记录" :image-size="40" />
         </el-card>
 
-        <el-card header="快速命令">
+        <el-card header="📖 命令库" style="margin-bottom:16px">
+          <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">
+            <el-radio-group v-model="execCategory" size="small">
+              <el-radio-button value="">全部</el-radio-button>
+              <el-radio-button value="system">🖥️ 系统</el-radio-button>
+              <el-radio-button value="process">⚙️ 进程</el-radio-button>
+              <el-radio-button value="network">🌐 网络</el-radio-button>
+              <el-radio-button value="disk">💾 磁盘</el-radio-button>
+              <el-radio-button value="security">🔒 安全</el-radio-button>
+            </el-radio-group>
+          </div>
           <div class="quick-cmds">
-            <el-button v-for="cmd in quickCmds" :key="cmd.cmd" size="small" @click="form.command = cmd.cmd" :type="cmd.type || ''">
+            <el-button v-for="cmd in filteredExecCmds" :key="cmd.cmd" size="small" @click="form.command = cmd.cmd" :type="cmd.type || ''">
               {{ cmd.label }}
             </el-button>
           </div>
@@ -91,7 +101,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 import api from '../api'
 import { ElMessage } from 'element-plus'
 
@@ -101,6 +111,7 @@ const executing = ref(false)
 const history = ref([])
 const previewRisk = ref('')
 const previewRiskLabel = ref('')
+const execCategory = ref('')
 
 const quickCmds = [
   { label: '磁盘空间', cmd: 'df -h', type: '' },
@@ -110,6 +121,42 @@ const quickCmds = [
   { label: '最近登录', cmd: 'last -10', type: '' },
   { label: '进程TOP10', cmd: 'ps aux --sort=-%cpu | head -11', type: '' },
 ]
+
+const execCmdLibrary = [
+  { cat: 'system', label: '系统版本', cmd: 'uname -a' },
+  { cat: 'system', label: '发行版', cmd: 'cat /etc/os-release' },
+  { cat: 'system', label: '运行时间', cmd: 'uptime' },
+  { cat: 'system', label: '内存', cmd: 'free -h' },
+  { cat: 'system', label: '磁盘', cmd: 'df -h' },
+  { cat: 'system', label: 'CPU信息', cmd: 'lscpu' },
+  { cat: 'system', label: '系统负载', cmd: 'top -bn1 | head -20' },
+  { cat: 'process', label: 'CPU Top', cmd: 'ps aux --sort=-%cpu | head -11' },
+  { cat: 'process', label: '内存Top', cmd: 'ps aux --sort=-%mem | head -11' },
+  { cat: 'process', label: '僵尸进程', cmd: 'ps aux | grep -i zombie' },
+  { cat: 'process', label: '进程树', cmd: 'ps -ef --forest | head -30' },
+  { cat: 'network', label: '监听端口', cmd: 'ss -tlnp' },
+  { cat: 'network', label: '连接统计', cmd: 'ss -s' },
+  { cat: 'network', label: '网络接口', cmd: 'ip addr show' },
+  { cat: 'network', label: '路由表', cmd: 'ip route show' },
+  { cat: 'network', label: '防火墙', cmd: 'iptables -L -n --line-numbers' },
+  { cat: 'network', label: '最近登录', cmd: 'last -20' },
+  { cat: 'network', label: '当前用户', cmd: 'who' },
+  { cat: 'network', label: '失败登录', cmd: 'lastb -10' },
+  { cat: 'disk', label: '日志大小', cmd: 'du -sh /var/log/*' },
+  { cat: 'disk', label: '临时文件', cmd: 'du -sh /tmp/*' },
+  { cat: 'disk', label: '大文件', cmd: 'find / -size +100M -type f 2>/dev/null' },
+  { cat: 'disk', label: '打开文件', cmd: 'lsof +D /var/log 2>/dev/null' },
+  { cat: 'security', label: '可登录用户', cmd: 'cat /etc/passwd | grep -v nologin' },
+  { cat: 'security', label: 'SUID文件', cmd: 'find / -perm -4000 -type f 2>/dev/null' },
+  { cat: 'security', label: '计划任务', cmd: 'crontab -l' },
+  { cat: 'security', label: '系统crontab', cmd: 'cat /etc/crontab' },
+  { cat: 'security', label: '运行服务', cmd: 'systemctl list-units --type=service --state=running' },
+]
+
+const filteredExecCmds = computed(() => {
+  if (!execCategory.value) return quickCmds
+  return execCmdLibrary.filter(c => c.cat === execCategory.value)
+})
 
 const RISK_CN = { READONLY: '只读', REVERSIBLE: '可逆', IRREVERSIBLE: '不可逆', CRITICAL: '关键' }
 
