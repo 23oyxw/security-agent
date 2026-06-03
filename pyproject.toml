@@ -28,6 +28,9 @@ dependencies = [
     # --- 新增: WebSocket ---
     "websockets>=15.0",
     "pyyaml>=6.0.3",
+    # --- 新增: API 限流 + 熔断重试 ---
+    "slowapi>=0.1.9",
+    "tenacity>=8.2.0",
 ]
 
 [tool.uv]

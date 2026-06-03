@@ -19,6 +19,49 @@ class KnowledgeRagRequest(BaseModel):
     include_grounding: bool = True
 
 
+@router.get("/blue-team/repos")
+async def blue_team_repos(user: User = Depends(get_current_user)):
+    """获取蓝队开源项目清单"""
+    from security_agent.knowledge.blue_team_crawler import BlueTeamCrawler
+
+    crawler = BlueTeamCrawler()
+    return {"repos": crawler.list_repos()}
+
+
+@router.post("/blue-team/scan")
+async def blue_team_scan(user: User = Depends(get_current_user)):
+    """扫描蓝队开源项目（LLM 分析，不 clone）"""
+    import asyncio
+    from security_agent.knowledge.blue_team_crawler import BlueTeamCrawler
+
+    crawler = BlueTeamCrawler()
+    report = await asyncio.to_thread(crawler.run)
+    return {
+        "total_projects": len(report.projects),
+        "total_skills": report.total_skills,
+        "total_patches": report.total_patches,
+        "total_scenarios": report.total_scenarios,
+        "projects": [
+            {
+                "name": p.name,
+                "category": p.category,
+                "skills": p.blue_team_skills[:5],
+                "patches": p.optimization_patches[:3],
+            }
+            for p in report.projects
+        ],
+    }
+
+
+@router.get("/blue-team/training")
+async def blue_team_training(user: User = Depends(get_current_user)):
+    """获取今日蓝队训练场景"""
+    from security_agent.knowledge.blue_team_crawler import BlueTeamCrawler
+
+    crawler = BlueTeamCrawler()
+    return crawler.get_daily_training()
+
+
 @router.post("/search")
 async def search(req: KnowledgeSearchRequest, user: User = Depends(get_current_user)):
     """检索知识库（混合检索）"""

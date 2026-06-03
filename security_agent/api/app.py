@@ -6,10 +6,13 @@ import logging
 import time
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +40,21 @@ from security_agent.api.routes import (
 
 _START_TIME = time.time()
 
+# ---- 速率限制器（slowapi）----
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 app = FastAPI(
     title="银河麒麟智能安全运维 Agent",
     description="多维感知 + 推理决策 + 安全控制",
     version="0.7.0",
 )
+app.state.limiter = limiter
+
+@app.exception_handler(RateLimitExceeded)
+async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": f"请求过于频繁，请稍后重试（限 {exc.detail}）"},
+    )
 
 # CORS — 允许前端 dev server
 app.add_middleware(
