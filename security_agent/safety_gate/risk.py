@@ -37,7 +37,7 @@ class RiskLevel(IntEnum):
         return self >= RiskLevel.IRREVERSIBLE
 
     def needs_backup(self) -> bool:
-        return self == RiskLevel.IRREVERSIBLE
+        return self >= RiskLevel.IRREVERSIBLE
 
     def needs_escalation(self) -> bool:
         return self == RiskLevel.CRITICAL
@@ -163,6 +163,7 @@ class RiskAssessor:
                     f"高危指令: {desc}",
                     rule_id="R-CRITICAL",
                     suggested_action=f"命令匹配高危规则「{desc}」，需人工审批",
+                    requires_backup=True,
                     requires_escalation=True,
                     metadata={"pattern": pat, "description": desc},
                 )
@@ -241,6 +242,7 @@ class RiskAssessor:
                 f"高危工具: {name} (PID={pid})",
                 rule_id="R-TOOL-CRITICAL",
                 suggested_action=f"拦截进程工具调用，需人工审批",
+                requires_backup=True,
                 requires_escalation=True,
                 metadata={"tool": name, "args": arguments or {}},
             )

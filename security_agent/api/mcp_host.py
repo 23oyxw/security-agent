@@ -1,4 +1,4 @@
-"""MCP Host 集中管理器 — 包装 knowledge/mcp/ 模块"""
+"""MCP Host 集中管理器 — 包装 mcp/ 模块"""
 
 from __future__ import annotations
 

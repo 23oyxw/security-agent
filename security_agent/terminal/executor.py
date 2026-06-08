@@ -37,6 +37,7 @@ class TerminalResult:
     executed_as_user: str = ""      # 实际执行的用户（最小权限）
     risk_level: str = ""            # 风险等级
     trace_id: str = ""              # 全链路追踪 ID
+    auto_rollback_triggered: bool = False  # 是否触发了自动回滚
 
     def to_text(self) -> str:
         ts = format_display(self.executed_at) if self.executed_at else "—"
@@ -53,6 +54,40 @@ class TerminalResult:
         if self.stderr:
             parts.append(f"stderr:\n{redact_text(self.stderr[:2000])}")
         return "\n".join(parts)
+
+
+def _maybe_auto_rollback(
+    result: TerminalResult,
+    snapshot_id: str | None,
+    risk_level: RiskLevel | None,
+) -> TerminalResult:
+    """执行后自动回滚：如果命令失败且风险不可逆，自动恢复快照."""
+    if snapshot_id is None or risk_level is None:
+        return result
+    if result.ok:
+        return result
+    if risk_level not in (RiskLevel.IRREVERSIBLE, RiskLevel.CRITICAL):
+        return result
+
+    from security_agent.safety_gate.snapshot import SnapshotManager
+
+    mgr = SnapshotManager()
+    restore = mgr.restore_snapshot(snapshot_id)
+    audit.append_audit(
+        "auto_rollback",
+        {
+            "trace_id": result.trace_id,
+            "command": result.command[:200],
+            "exit_code": result.exit_code,
+            "snapshot_id": snapshot_id,
+            "restored": restore.get("restored", []),
+            "failed": restore.get("failed", []),
+        },
+        level="warning",
+    )
+    result.auto_rollback_triggered = True
+    result.message = f"{result.message} | 自动回滚已触发(snap={snapshot_id})"
+    return result
 
 
 def _map_risk_level_to_mac(risk: RiskLevel) -> str:
@@ -103,6 +138,7 @@ def run_terminal_sync(
     user_confirmed: bool = False,
     risk_level: RiskLevel | None = None,
     force_sandbox: bool = False,
+    snapshot_id: str | None = None,
 ) -> TerminalResult:
     """同步执行 shell 命令，经过规则校验 + 最小权限代理。
 
@@ -192,18 +228,22 @@ def run_terminal_sync(
             },
             level="warning" if sandbox_result.exit_code != 0 else "info",
         )
-        return TerminalResult(
-            ok=sandbox_result.ok,
-            command=command,
-            stdout=sandbox_result.stdout,
-            stderr=sandbox_result.stderr,
-            exit_code=sandbox_result.exit_code,
-            verdict=check.verdict.value,
-            message="沙箱模式执行完成" if sandbox_result.ok else (sandbox_result.error or "沙箱执行失败"),
-            executed_at=executed_at,
-            executed_as_user=sandbox_result.executed_as_user,
-            risk_level=effective_risk.name or sandbox_result.risk_level or assessed_risk.name,
-            trace_id=trace_id,
+        return _maybe_auto_rollback(
+            TerminalResult(
+                ok=sandbox_result.ok,
+                command=command,
+                stdout=sandbox_result.stdout,
+                stderr=sandbox_result.stderr,
+                exit_code=sandbox_result.exit_code,
+                verdict=check.verdict.value,
+                message="沙箱模式执行完成" if sandbox_result.ok else (sandbox_result.error or "沙箱执行失败"),
+                executed_at=executed_at,
+                executed_as_user=sandbox_result.executed_as_user,
+                risk_level=effective_risk.name or sandbox_result.risk_level or assessed_risk.name,
+                trace_id=trace_id,
+            ),
+            snapshot_id,
+            effective_risk,
         )
 
     # 2.5 麒麟 MAC / SELinux 执行前钩子（L3 环境感知）
@@ -262,18 +302,22 @@ def run_terminal_sync(
             },
             level="warning" if sandbox_result.exit_code != 0 else "info",
         )
-        return TerminalResult(
-            ok=sandbox_result.ok,
-            command=command,
-            stdout=sandbox_result.stdout,
-            stderr=sandbox_result.stderr,
-            exit_code=sandbox_result.exit_code,
-            verdict=check.verdict.value,
-            message="沙箱执行完成" if sandbox_result.ok else (sandbox_result.error or "沙箱执行失败"),
-            executed_at=executed_at,
-            executed_as_user=sandbox_result.executed_as_user,
-            risk_level=effective_risk.name,
-            trace_id=trace_id,
+        return _maybe_auto_rollback(
+            TerminalResult(
+                ok=sandbox_result.ok,
+                command=command,
+                stdout=sandbox_result.stdout,
+                stderr=sandbox_result.stderr,
+                exit_code=sandbox_result.exit_code,
+                verdict=check.verdict.value,
+                message="沙箱执行完成" if sandbox_result.ok else (sandbox_result.error or "沙箱执行失败"),
+                executed_at=executed_at,
+                executed_as_user=sandbox_result.executed_as_user,
+                risk_level=effective_risk.name,
+                trace_id=trace_id,
+            ),
+            snapshot_id,
+            effective_risk,
         )
 
     broker = get_privilege_broker()
@@ -298,18 +342,22 @@ def run_terminal_sync(
         level="warning" if priv_result.exit_code != 0 else "info",
     )
 
-    return TerminalResult(
-        ok=priv_result.ok,
-        command=command,
-        stdout=priv_result.stdout,
-        stderr=priv_result.stderr,
-        exit_code=priv_result.exit_code,
-        verdict=check.verdict.value,
-        message="执行完成" if priv_result.ok else (priv_result.stderr or "执行失败"),
-        executed_at=executed_at,
-        executed_as_user=priv_result.executed_as_user,
-        risk_level=effective_risk.name,
-        trace_id=trace_id,
+    return _maybe_auto_rollback(
+        TerminalResult(
+            ok=priv_result.ok,
+            command=command,
+            stdout=priv_result.stdout,
+            stderr=priv_result.stderr,
+            exit_code=priv_result.exit_code,
+            verdict=check.verdict.value,
+            message="执行完成" if priv_result.ok else (priv_result.stderr or "执行失败"),
+            executed_at=executed_at,
+            executed_as_user=priv_result.executed_as_user,
+            risk_level=effective_risk.name,
+            trace_id=trace_id,
+        ),
+        snapshot_id,
+        effective_risk,
     )
 
 
@@ -321,6 +369,7 @@ async def run_terminal(
     user_confirmed: bool = False,
     risk_level: RiskLevel | None = None,
     force_sandbox: bool = False,
+    snapshot_id: str | None = None,
 ) -> TerminalResult:
     """异步封装：在线程池中运行同步执行器."""
     return await asyncio.to_thread(
@@ -331,6 +380,7 @@ async def run_terminal(
         user_confirmed=user_confirmed,
         risk_level=risk_level,
         force_sandbox=force_sandbox,
+        snapshot_id=snapshot_id,
     )
 
 

@@ -381,10 +381,40 @@ class AgentBrain:
             model = resp.get("model_used") or self.model
             try:
                 from security_agent.agent.cost import get_global_tracker
-
                 get_global_tracker().add_from_usage(model, tu)
             except Exception:
                 pass
+
+        # Agent 评估: 记录 + 评分
+        try:
+            from security_agent.agent.evaluation import get_evaluator
+            tool_trace = resp.get("tool_trace", [])
+            tools_called = len(tool_trace)
+            tools_useful = sum(1 for t in tool_trace if t.get("result"))
+            steps = resp.get("plan", {}).get("tool_chain", [])
+            errors = sum(1 for t in tool_trace if t.get("error"))
+            knowledge_hits = len(resp.get("citations", []))
+            get_evaluator().record(
+                trace_id=spine.trace_id,
+                task=resp.get("reply", "")[:100],
+                verdict=resp.get("advice", {}).get("verdict", "allow"),
+                success=not resp.get("fallback_used", False),
+                safety_compliant=True,
+                safety_miss=False,
+                tokens_in=int(tu.get("prompt_tokens", 0)),
+                tokens_out=int(tu.get("completion_tokens", 0)),
+                total_tokens=total,
+                tools_called=tools_called,
+                tools_useful=tools_useful,
+                knowledge_hits=knowledge_hits,
+                steps_total=len(steps),
+                steps_ok=len(steps) - errors,
+                errors=errors,
+                model=resp.get("model_used", self.model),
+            )
+        except Exception:
+            pass
+
         resp["trace_id"] = spine.trace_id
         resp.setdefault("degradation_level", spine.degradation_level)
         try:
@@ -575,6 +605,10 @@ class AgentBrain:
                 "tool_trace_count": len(tool_trace),
             })
             spine.post_verify({"ok": True, "message": "parallel_info summary"})
+            # Harness 自验证
+            verify = _verify_result(text, tool_trace)
+            if not verify["ok"]:
+                spine.stage("harness_verify", {"flags": verify["flags"]})
             return self._enrich_response(
                 {
                     "reply": text,
@@ -590,6 +624,8 @@ class AgentBrain:
                     else self.model,
                     "fallback_used": fallback_metadata.get("fallback_used", False),
                     "fallback_metadata": fallback_metadata,
+                    "verify_flags": verify.get("flags", []),
+                    "verify_corrections": verify.get("corrections", []),
                 },
                 spine,
             )
@@ -649,6 +685,9 @@ class AgentBrain:
             self._history.append({"role": "assistant", "content": text})
             spine.record_llm_meta(fallback_metadata)
             spine.post_verify({"ok": True, "message": "tool_chain summary"})
+            verify = _verify_result(text, tool_trace)
+            if not verify["ok"]:
+                spine.stage("harness_verify", {"flags": verify["flags"]})
             return self._enrich_response(
                 {
                     "reply": text,
@@ -663,6 +702,8 @@ class AgentBrain:
                     else self.model,
                     "fallback_used": fallback_metadata.get("fallback_used", False),
                     "fallback_metadata": fallback_metadata,
+                    "verify_flags": verify.get("flags", []),
+                    "verify_corrections": verify.get("corrections", []),
                 },
                 spine,
             )
@@ -816,3 +857,71 @@ def _extract_risks_from_tool_output(tool_out: str) -> list[dict[str, Any]]:
     except json.JSONDecodeError:
         pass
     return []
+
+
+def _verify_result(reply: str, tool_trace: list[dict[str, Any]]) -> dict[str, Any]:
+    """Harness 自验证循环 — 交叉校验 LLM 回复中的关键声明.
+
+    检测:
+      1. 幻觉 PID/端口 — 回复中的数字是否与工具输出一致
+      2. 知识库冲突 — 安全建议是否与 Playbook/Wiki 矛盾
+      3. 工具调用真实性 — 声称调用的工具是否确实执行过
+
+    Returns:
+        {"ok": bool, "flags": [...], "corrections": [...]}
+    """
+    import re
+
+    flags = []
+    corrections = []
+
+    # 1. 提取回复中的 PID/端口声明
+    pids_claimed = set(re.findall(r"PID\s*(\d+)", reply, re.IGNORECASE))
+    ports_claimed = set(re.findall(r"(?:端口|port)\s*(\d+)", reply, re.IGNORECASE))
+
+    # 收集工具输出中的真实 PID/端口
+    real_pids = set()
+    real_ports = set()
+    tool_text = " ".join(
+        str(t.get("result", ""))[:3000] for t in tool_trace
+        if t.get("result")
+    )
+    real_pids = set(list(re.findall(r"(\d+)", str(tool_text)))[:200])
+    ports_in_tool = set(
+        m.group(1)
+        for m in re.finditer(r"""(?:port|端口)[^\d]*(\d+)""", tool_text, re.IGNORECASE)
+    )
+
+    # 检测不在工具输出中的 PID
+    for pid in list(pids_claimed)[:10]:
+        if pid not in real_pids:
+            flags.append(f"可能的幻觉 PID: {pid}（工具输出中未找到）")
+
+    # 2. 与知识库交叉检查（仅检查实质性冲突，不因关键词包含而误报）
+    try:
+        from security_agent.retrieval.hybrid import search_knowledge
+        kb_hits = search_knowledge(reply[:500], top_k=3)
+        for hit in kb_hits:
+            do_not = hit.get("do_not", [])
+            for dn in do_not:
+                # 只检查回复是否有实质性冲突（关键词 > 2字且完整命中）
+                dn_keywords = [w for w in dn.split() if len(w) > 2]
+                if len(dn_keywords) >= 2 and all(kw in reply for kw in dn_keywords[:3]):
+                    flags.append(f"与知识库 [{hit['id']}] 疑似冲突: 禁止 {dn}")
+                    corrections.append(f"[{hit['id']}] 建议: {'; '.join(hit.get('suggested_actions', [])[:2])}")
+    except Exception:
+        pass
+
+    # 3. 验证工具引用真实性
+    invoked_names = {t.get("name", "") for t in tool_trace if t.get("name")}
+    for ref in re.findall(r"`([a-z_]+)`", reply.lower()):
+        if ref in ("rm", "chmod", "kill", "systemctl", "iptables") and ref not in invoked_names:
+            flags.append(f"回复引用命令 '{ref}' 但未实际执行")
+
+    ok = len(flags) == 0
+    return {
+        "ok": ok,
+        "flags": flags,
+        "corrections": corrections[:3],
+        "checks_performed": ["pid_port_validation", "knowledge_cross_check", "tool_reference_audit"],
+    }

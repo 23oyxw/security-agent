@@ -294,16 +294,28 @@ class MonitorService:
             self._cron_sigs = current_cron
 
     def _tick_cpu(self) -> None:
-        """全局 CPU 阈值检查（AIOps 核心）。超过阈值即发布高等级事件。"""
+        """全局 CPU 阈值检查（AIOps 核心）。动态阈值 + 硬编码兜底。"""
         try:
             cpu = psutil.cpu_percent(interval=0.1)
-            if cpu > self.cpu_threshold:
+            # 动态阈值优先，兜底使用硬编码上限
+            from security_agent.monitor.dynamic_threshold import get_dynamic_threshold
+
+            dt = get_dynamic_threshold()
+            thresholds = dt.compute()
+            effective_threshold = thresholds.get("cpu_threshold", self.cpu_threshold)
+
+            # 每次 tick 采样到历史（构建动态阈值基线）
+            mem = psutil.virtual_memory().percent
+            disk = psutil.disk_usage("/").percent
+            dt.record(cpu, mem, disk)
+
+            if cpu > effective_threshold:
                 self._push(
                     {
                         "ts": now_iso(),
                         "type": "CPU 占用过高",
                         "level": "高",
-                        "message": f"系统 CPU 使用率 {cpu:.1f}% 超过阈值 {self.cpu_threshold}%",
+                        "message": f"系统 CPU 使用率 {cpu:.1f}% 超过动态阈值 {effective_threshold:.1f}%（静态上限 {self.cpu_threshold}%）",
                         "cpu_percent": round(cpu, 1),
                     }
                 )

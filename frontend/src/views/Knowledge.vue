@@ -1,175 +1,791 @@
 <template>
-  <div>
-    <el-row :gutter="16">
-      <!-- 左侧：安全知识库搜索 -->
-      <el-col :span="16">
-        <el-card>
-          <template #header>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span>📚 安全知识库</span>
-              <el-tag type="info">共 {{ playbooks.length }} 条处置剧本</el-tag>
-            </div>
+  <div class="knowledge">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">知识库</h1>
+        <p class="page-subtitle">安全运维知识检索 · 蓝队防御 · 入侵排查 · 应急响应</p>
+      </div>
+      <div class="page-actions">
+        <el-button size="small" plain @click="refreshKnowledge">
+          <el-icon style="margin-right:4px"><Refresh /></el-icon> 刷新
+        </el-button>
+      </div>
+    </div>
+
+    <div class="search-section">
+      <div class="search-bar">
+        <el-input
+          v-model="query"
+          placeholder="搜索安全知识，如：后门排查、日志分析、SSH 加固..."
+          size="large"
+          clearable
+          @keydown.enter="doSearch"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
           </template>
+        </el-input>
+        <el-button type="primary" size="large" :loading="searching" @click="doSearch">
+          <el-icon style="margin-right:4px"><Search /></el-icon> 搜索
+        </el-button>
+      </div>
+        <div class="search-tags">
+        <span class="search-tag-label">热门搜索:</span>
+        <span v-for="tag in hotTags" :key="tag" class="search-tag" @click="query = tag; doSearch()">{{ tag }}</span>
+      </div>
+      <div class="blue-team-tags">
+        <span class="blue-team-tag-label">蓝队知识:</span>
+        <span v-for="bt in blueTeamTags" :key="bt.key" class="blue-team-tag" :style="{ background: bt.color + '15', color: bt.color, borderColor: bt.color + '30' }" @click="query = bt.key; doSearch()">
+          <el-icon :size="12"><component :is="bt.icon" /></el-icon>
+          {{ bt.label }}
+        </span>
+      </div>
+    </div>
 
-          <!-- 搜索 -->
-          <div style="margin-bottom:16px">
-            <el-input v-model="query" placeholder="搜索安全处置知识，例如：SSH暴力破解、端口暴露、提权攻击、审计配置..." clearable @keydown.enter="search" size="large">
-              <template #append>
-                <el-button :loading="searching" @click="search" type="primary">
-                  <el-icon><Search /></el-icon> 搜索
-                </el-button>
-              </template>
-            </el-input>
+    <div v-if="results.length" class="results-section">
+      <div class="results-meta">
+        <span class="results-count">共 {{ results.length }} 条结果</span>
+        <span class="results-time">{{ searchTime }}ms</span>
+      </div>
+      <div class="results-list">
+        <div v-for="(r, i) in results" :key="i" class="result-card" @click="openDetail(r)">
+          <div class="result-header">
+            <span class="result-source" :class="r.source">{{ r.source }}</span>
+            <span class="result-score" v-if="r.score">相关度 {{ (r.score * 100).toFixed(0) }}%</span>
           </div>
-
-          <!-- 搜索结果 -->
-          <div v-if="results.length" style="margin-bottom:16px">
-            <h4 style="margin-bottom:8px">🔍 搜索结果 ({{ results.length }})</h4>
-            <el-collapse v-model="activeResults">
-              <el-collapse-item v-for="r in results" :key="r.title" :name="r.title">
-                <template #title>
-                  <div style="display:flex;align-items:center;gap:8px;width:100%">
-                    <el-tag size="small" type="success">得分 {{ (r.score * 100).toFixed(0) }}%</el-tag>
-                    <span style="font-weight:500">{{ r.title }}</span>
-                    <span style="margin-left:auto;color:#999;font-size:12px">{{ r.source }}</span>
-                  </div>
-                </template>
-                <div class="result-content">{{ r.content }}</div>
-              </el-collapse-item>
-            </el-collapse>
+          <h3 class="result-title">{{ r.title }}</h3>
+          <p class="result-snippet">{{ r.content?.slice(0, 200) }}{{ r.content?.length > 200 ? '...' : '' }}</p>
+          <div v-if="r.tags?.length" class="result-tags">
+            <span v-for="tag in r.tags.slice(0, 5)" :key="tag" class="result-tag">{{ tag }}</span>
           </div>
+        </div>
+      </div>
+    </div>
 
-          <!-- 剧本列表 -->
-          <h4 style="margin-bottom:8px">📋 安全处置剧本</h4>
-          <el-table v-if="!loading" :data="paginatedPlaybooks" stripe size="small" empty-text="暂无剧本" max-height="400">
-            <el-table-column prop="id" label="编号" width="140" show-overflow-tooltip />
-            <el-table-column prop="title" label="标题" width="220" show-overflow-tooltip />
-            <el-table-column prop="category" label="分类" width="100">
-              <template #default="{ row }">
-                <el-tag size="small" :type="categoryColor(row.category)">{{ categoryLabel(row.category) }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="severity" label="严重度" width="90">
-              <template #default="{ row }">
-                <el-tag v-if="row.severity" :type="sevColor(row.severity)" size="small">{{ row.severity }}</el-tag>
-                <span v-else>--</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="description" label="说明" show-overflow-tooltip />
-            <el-table-column label="操作" width="80">
-              <template #default="{ row }">
-                <el-button text type="primary" size="small" @click="viewPlaybook(row)">详情</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div v-else v-loading="loading" style="min-height:200px"></div>
-          <div style="margin-top:12px;text-align:right">
-            <el-pagination v-model:current-page="page" :page-size="pageSize" :total="playbooks.length" layout="prev, pager, next" small />
+    <div v-else-if="!searching && !initial" class="empty-state">
+      <el-icon :size="48" color="var(--color-neutral-200)"><Reading /></el-icon>
+      <p>输入关键词搜索安全知识库</p>
+    </div>
+
+    <div v-if="initial && !results.length && !searching" class="browse-section">
+      <div class="section-card">
+        <div class="section-card-header">
+          <div style="display:flex;align-items:center;gap:12px">
+            <h3>知识分类</h3>
+            <el-tag v-if="wikiStatus === '已同步'" type="success" size="small">Wiki ✅</el-tag>
+            <el-tag v-else type="warning" size="small">仅 Playbooks · Wiki 待同步</el-tag>
           </div>
-        </el-card>
-      </el-col>
+        </div>
+        <div class="category-grid">
+          <div v-for="cat in categories" :key="cat.key" class="category-card" @click="query = cat.key; doSearch()">
+            <div class="category-icon" :style="{ background: cat.color + '15', color: cat.color }">
+              <el-icon :size="20"><component :is="cat.icon" /></el-icon>
+            </div>
+            <span class="category-name">{{ cat.label }}</span>
+            <span class="category-count">{{ cat.count }} 篇</span>
+          </div>
+        </div>
+      </div>
 
-      <!-- 右侧：详情与统计 -->
-      <el-col :span="8">
-        <el-card header="知识库统计" style="margin-bottom:16px">
-          <el-descriptions :column="1" size="small" border>
-            <el-descriptions-item label="剧本总数">{{ playbooks.length }}</el-descriptions-item>
-            <el-descriptions-item label="严重度分布">
-              <span v-for="s in sevStats" :key="s.label" style="margin-right:8px">
-                <el-tag :type="s.color" size="small">{{ s.label }}: {{ s.count }}</el-tag>
-              </span>
-              <span v-if="!sevStats.length" style="color:#999">加载中…</span>
-            </el-descriptions-item>
-          </el-descriptions>
-          <div style="margin-top:12px">
-            <div v-for="cat in categories" :key="cat" class="cat-row" @click="filterByCategory(cat)">
-              <el-tag size="small" :type="categoryColor(cat)">{{ categoryLabel(cat) }}</el-tag>
-              <span class="cat-count">{{ playbooks.filter(p => (p.category || '通用') === cat).length }} 条</span>
+      <!-- 蓝队知识推荐 -->
+      <div class="section-card">
+        <div class="section-card-header">
+          <h3>🔥 蓝队知识推荐</h3>
+          <el-button size="small" type="primary" plain @click="$router.push('/blue-team')">蓝队安全 →</el-button>
+        </div>
+        <div class="recommend-grid">
+          <div v-for="rec in blueTeamRecommend" :key="rec.key" class="recommend-card" @click="query = rec.key; doSearch()">
+            <div class="recommend-icon" :style="{ background: rec.color + '15', color: rec.color }">
+              <el-icon :size="18"><component :is="rec.icon" /></el-icon>
+            </div>
+            <div class="recommend-body">
+              <span class="recommend-title">{{ rec.label }}</span>
+              <span class="recommend-desc">{{ rec.desc }}</span>
+            </div>
+            <div class="recommend-heat">
+              <span class="heat-bar" :style="{ width: rec.heat + '%' }"></span>
+              <span class="heat-value">{{ rec.heat }}%</span>
             </div>
           </div>
-        </el-card>
+        </div>
+      </div>
 
-        <el-card header="选中剧本详情">
-          <template v-if="selected">
-            <h4 style="margin:0 0 8px">{{ selected.title }}</h4>
-            <el-descriptions :column="1" size="small" border>
-              <el-descriptions-item label="编号">{{ selected.id }}</el-descriptions-item>
-              <el-descriptions-item label="分类">{{ categoryLabel(selected.category) }}</el-descriptions-item>
-              <el-descriptions-item v-if="selected.severity" label="严重度">{{ selected.severity }}</el-descriptions-item>
-            </el-descriptions>
-            <div style="margin-top:12px;font-size:13px;line-height:1.6;white-space:pre-wrap">{{ selected.content || selected.description || '暂无详细内容' }}</div>
-            <div v-if="selected.steps" style="margin-top:10px;font-size:12px;color:#409eff;line-height:1.6">
-              <strong>✓ 处置步骤：</strong>{{ selected.steps }}
+      <!-- 知识热度排行 -->
+      <div class="section-card">
+        <div class="section-card-header">
+          <h3>📊 知识热度排行</h3>
+        </div>
+        <div class="hot-list">
+          <div v-for="(item, i) in hotKnowledge" :key="item.key" class="hot-item" @click="query = item.key; doSearch()">
+            <span class="hot-rank" :class="'rank-' + (i + 1)">{{ i + 1 }}</span>
+            <span class="hot-label">{{ item.label }}</span>
+            <div class="hot-bar-wrap">
+              <div class="hot-bar" :style="{ width: item.heat + '%' }"></div>
             </div>
-            <div v-if="selected.do_not?.length" style="margin-top:6px;font-size:12px;color:#e6a23c;line-height:1.6">
-              <strong>⚠ 禁止操作：</strong>{{ selected.do_not.join('、') }}
-            </div>
-          </template>
-          <el-empty v-else description="点击左侧剧本查看详情" :image-size="40" />
-        </el-card>
-      </el-col>
-    </el-row>
+            <span class="hot-count">{{ item.count }}次</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <el-dialog v-model="detailVisible" :title="detailItem?.title" width="720px" class="knowledge-detail-dialog">
+      <div v-if="detailItem" class="detail-body">
+        <div class="detail-meta">
+          <span class="detail-source" :class="detailItem.source">{{ detailItem.source }}</span>
+          <span v-if="detailItem.score" class="detail-score">相关度 {{ (detailItem.score * 100).toFixed(0) }}%</span>
+        </div>
+        <div v-if="detailItem.tags?.length" class="detail-tags">
+          <span v-for="tag in detailItem.tags" :key="tag" class="detail-tag">{{ tag }}</span>
+        </div>
+        <div class="detail-content" v-if="detailItem.content" v-html="renderMarkdown(detailItem.content || '')"></div>
+        <div v-else class="detail-content" style="color:var(--color-neutral-400)">暂无正文</div>
+        <div v-if="detailItem.do_not?.length" class="detail-do-not" style="margin-top:12px;padding:8px 12px;background:var(--color-danger-bg);border-radius:6px;font-size:13px">
+          ⚠️ 禁止: {{ detailItem.do_not.join(' · ') }}
+        </div>
+        <div v-if="detailItem.suggested_actions?.length" class="detail-suggest" style="margin-top:8px;padding:8px 12px;background:var(--color-success-bg);border-radius:6px;font-size:13px">
+          ✅ 建议: {{ detailItem.suggested_actions.join(' · ') }}
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '../api'
-import { CATEGORY_META, categoryLabel, categoryColor, sevTypeCN as sevColor } from '../utils/severity'
+import { ElMessage } from 'element-plus'
 
 const query = ref('')
 const results = ref([])
-const playbooks = ref([])
 const searching = ref(false)
-const loading = ref(true)
-const activeResults = ref([])
-const selected = ref(null)
-const page = ref(1)
-const pageSize = ref(10)
+const initial = ref(true)
+const searchTime = ref(0)
+const detailVisible = ref(false)
+const detailItem = ref(null)
 
-const categories = computed(() => [...new Set(playbooks.value.map(p => p.category || '通用'))])
-const sevStats = computed(() => {
-  const m = { '严重': { color: 'danger' }, '高': { color: 'warning' }, '中': { color: '' }, '低': { color: 'success' }, '信息': { color: 'info' } }
-  const counts = {}
-  playbooks.value.forEach(p => {
-    if (p.severity) counts[p.severity] = (counts[p.severity] || 0) + 1
-  })
-  return Object.entries(counts).map(([label, count]) => ({ label, count, ...(m[label] || {color: 'info'}) })).sort((a, b) => b.count - a.count)
-})
-const paginatedPlaybooks = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return playbooks.value.slice(start, start + pageSize.value)
-})
+const hotTags = ['后门排查', '日志分析', 'SSH 加固', '入侵检测', '应急响应', '文件完整性', '网络监控', '权限提升']
 
-// CATEGORY_META, categoryLabel, categoryColor, sevColor 均从 utils/severity.js 导入
+const blueTeamTags = [
+  { key: 'webshell', label: 'Webshell 检测', icon: 'WarningFilled', color: '#ef4444' },
+  { key: 'sigma', label: 'Sigma 规则', icon: 'List', color: '#f59e0b' },
+  { key: 'ioc', label: 'IOC 匹配', icon: 'Search', color: '#8b5cf6' },
+  { key: 'auditd', label: 'Auditd 规则', icon: 'Monitor', color: '#10b981' },
+  { key: 'file_integrity', label: '文件完整性', icon: 'CircleCheck', color: '#06b6d4' },
+  { key: 'kernel_hardening', label: '内核加固', icon: 'Lock', color: '#3b82f6' },
+]
 
-async function search() {
+const categories = ref([
+  { key: '入侵排查', label: '入侵排查', icon: 'Search', color: '#ef4444', count: 0 },
+  { key: '日志分析', label: '日志分析', icon: 'Document', color: '#f59e0b', count: 0 },
+  { key: '系统加固', label: '系统加固', icon: 'Lock', color: '#10b981', count: 0 },
+  { key: '网络监控', label: '网络监控', icon: 'Connection', color: '#4f6ef7', count: 0 },
+  { key: '应急响应', label: '应急响应', icon: 'AlarmClock', color: '#8b5cf6', count: 0 },
+  { key: '合规检查', label: '合规检查', icon: 'CircleCheck', color: '#06b6d4', count: 0 },
+])
+const wikiStatus = ref('未同步')
+
+const blueTeamRecommend = [
+  { key: 'webshell', label: 'Webshell 检测', desc: '检测 PHP/JSP/ASP 一句话木马、大马', icon: 'WarningFilled', color: '#ef4444', heat: 95 },
+  { key: 'sigma', label: 'Sigma 规则', desc: 'SIEM 通用检测规则转换与匹配', icon: 'List', color: '#f59e0b', heat: 88 },
+  { key: 'ioc', label: 'IOC 威胁情报', desc: 'IP/域名/Hash 恶意指标匹配', icon: 'Search', color: '#8b5cf6', heat: 82 },
+  { key: 'auditd', label: 'Auditd 审计', desc: 'Linux 内核级审计规则配置', icon: 'Monitor', color: '#10b981', heat: 76 },
+  { key: 'file_integrity', label: '文件完整性', desc: '关键文件变更监控与告警', icon: 'CircleCheck', color: '#06b6d4', heat: 70 },
+  { key: 'kernel_hardening', label: '内核加固', desc: 'sysctl 内核参数安全加固', icon: 'Lock', color: '#3b82f6', heat: 65 },
+]
+
+const hotKnowledge = [
+  { key: 'Webshell 检测', label: 'Webshell 检测与清除', heat: 100, count: 156 },
+  { key: '日志分析', label: 'Linux 日志分析技巧', heat: 92, count: 143 },
+  { key: 'SSH 加固', label: 'SSH 安全加固指南', heat: 85, count: 128 },
+  { key: '后门排查', label: '服务器后门排查方法', heat: 78, count: 112 },
+  { key: '入侵检测', label: '入侵检测与应急响应', heat: 70, count: 98 },
+  { key: '文件完整性', label: '文件完整性监控', heat: 62, count: 85 },
+  { key: '网络监控', label: '网络流量异常监控', heat: 55, count: 72 },
+  { key: '权限提升', label: '权限提升检测与防御', heat: 48, count: 60 },
+]
+
+async function doSearch() {
   if (!query.value.trim()) return
   searching.value = true
+  initial.value = false
+  const t0 = Date.now()
   try {
-    const res = await api.post('/knowledge/search', { query: query.value.trim(), top_k: 10 }).catch(() => ({ results: [] }))
-    results.value = res.results || res.items || []
-  } catch { results.value = [] }
-  finally { searching.value = false }
+    const res = await api.get('/knowledge/search', { params: { q: query.value } })
+    results.value = res.results || []
+    searchTime.value = Date.now() - t0
+  } catch (e) {
+    ElMessage.error('搜索失败: ' + (e.message || '未知'))
+  } finally {
+    searching.value = false
+  }
 }
 
-function viewPlaybook(row) { selected.value = row }
-function filterByCategory(cat) { query.value = cat; search() }
+function openDetail(item) {
+  detailItem.value = item
+  detailVisible.value = true
+}
 
-onMounted(async () => {
-  loading.value = true
+function renderMarkdown(content) {
+  if (!content) return ''
+  return content
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="md-code-block"><code>$2</code></pre>')
+    .replace(/### (.+)/g, '<h4>$1</h4>')
+    .replace(/## (.+)/g, '<h3>$1</h3>')
+    .replace(/# (.+)/g, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>')
+}
+
+async function refreshKnowledge() {
   try {
-    const res = await api.get('/knowledge/playbooks').catch(() => ({ playbooks: [] }))
-    playbooks.value = res.playbooks || res.items || res || []
-    if (!Array.isArray(playbooks.value)) playbooks.value = []
-  } catch { playbooks.value = [] }
-  finally { loading.value = false }
-})
+    await api.post('/knowledge/refresh')
+    ElMessage.success('知识库已刷新')
+    await loadKnowledgeStats()
+  } catch (e) {
+    ElMessage.error('刷新失败: ' + (e.message || '未知'))
+  }
+}
+
+async function loadKnowledgeStats() {
+  for (const cat of categories.value) {
+    try {
+      const res = await api.get('/knowledge/search', { params: { q: cat.key } })
+      cat.count = res.total || (res.results?.length || 0)
+    } catch { cat.count = 0 }
+  }
+  try {
+    const res = await api.get('/knowledge/search', { params: { q: 'test' } })
+    wikiStatus.value = (res.results?.some(r => r.source === 'wiki')) ? '已同步' : '待同步'
+  } catch { wikiStatus.value = '待同步' }
+}
+
+onMounted(() => { loadKnowledgeStats() })
 </script>
 
 <style scoped>
-.result-content { font-size: 13px; line-height: 1.6; color: #555; white-space: pre-wrap; padding: 8px; background: #f9f9f9; border-radius: 4px; }
-.cat-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
-.cat-row:hover { background: #f5f7fa; }
-.cat-count { font-size: 12px; color: #999; }
+.knowledge {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-neutral-900);
+  margin: 0;
+  letter-spacing: var(--tracking-tight);
+}
+
+.page-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-400);
+  margin: var(--space-1) 0 0;
+}
+
+.page-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ---- 搜索区 ---- */
+.search-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.search-bar {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.search-bar .el-input {
+  flex: 1;
+}
+
+.search-tags {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.search-tag-label {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+.search-tag {
+  font-size: var(--text-xs);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-600);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.search-tag:hover {
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
+}
+
+.blue-team-tags {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.blue-team-tag-label {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  font-weight: 600;
+}
+
+.blue-team-tag {
+  font-size: var(--text-xs);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.blue-team-tag:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* ---- 搜索结果 ---- */
+.results-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.results-meta {
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.result-card {
+  background: #fff;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.result-card:hover {
+  border-color: var(--color-primary-200);
+  box-shadow: var(--shadow-sm);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.result-source {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.result-source.blue_team { background: var(--color-info-bg); color: var(--color-info); }
+.result-source.playbook { background: var(--color-success-bg); color: var(--color-success); }
+.result-source.sigma { background: var(--color-warning-bg); color: var(--color-warning); }
+.result-source.ioc { background: var(--color-danger-bg); color: var(--color-danger); }
+
+.result-score {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+.result-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-800);
+  margin: 0 0 var(--space-2);
+  line-height: var(--leading-snug);
+}
+
+.result-snippet {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: var(--leading-relaxed);
+  margin: 0 0 var(--space-2);
+}
+
+.result-tags {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.result-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-500);
+}
+
+/* ---- 空状态 ---- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-12);
+  color: var(--color-neutral-300);
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+/* ---- 分类浏览 ---- */
+.browse-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.section-card {
+  background: #fff;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.section-card-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-neutral-100);
+}
+
+.section-card-header h3 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-700);
+  letter-spacing: var(--tracking-tight);
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.category-card:hover {
+  border-color: var(--color-primary-200);
+  box-shadow: var(--shadow-sm);
+}
+
+.category-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.category-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-700);
+}
+
+.category-count {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+/* ---- 蓝队知识推荐 ---- */
+.recommend-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.recommend-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.recommend-card:hover {
+  border-color: var(--color-primary-200);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.recommend-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recommend-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recommend-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-800);
+}
+
+.recommend-desc {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  line-height: var(--leading-relaxed);
+}
+
+.recommend-heat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.heat-bar {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--color-primary-400), var(--color-primary-600));
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.heat-value {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-primary-500);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 知识热度排行 ---- */
+.hot-list {
+  padding: var(--space-3) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.hot-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.hot-item:hover {
+  background: var(--color-neutral-50);
+}
+
+.hot-rank {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-neutral-400);
+  background: var(--color-neutral-100);
+  flex-shrink: 0;
+}
+
+.hot-rank.rank-1 { background: #fef3c7; color: #d97706; }
+.hot-rank.rank-2 { background: #f1f5f9; color: #64748b; }
+.hot-rank.rank-3 { background: #fef2f2; color: #dc2626; }
+
+.hot-label {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+
+.hot-bar-wrap {
+  flex: 1;
+  max-width: 120px;
+  height: 6px;
+  background: var(--color-neutral-100);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.hot-bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--color-primary-400), var(--color-primary-600));
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.hot-count {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  font-variant-numeric: tabular-nums;
+  width: 48px;
+  text-align: right;
+}
+
+/* ---- 详情弹窗 ---- */
+.detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.detail-meta {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.detail-source {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.detail-source.blue_team { background: var(--color-info-bg); color: var(--color-info); }
+.detail-source.playbook { background: var(--color-success-bg); color: var(--color-success); }
+.detail-source.sigma { background: var(--color-warning-bg); color: var(--color-warning); }
+.detail-source.ioc { background: var(--color-danger-bg); color: var(--color-danger); }
+
+.detail-score {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+.detail-tags {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.detail-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-500);
+}
+
+.detail-content {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-neutral-700);
+}
+
+.detail-content :deep(h2) {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-neutral-900);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.detail-content :deep(h3) {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-neutral-800);
+  margin: var(--space-3) 0 var(--space-1);
+}
+
+.detail-content :deep(h4) {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-700);
+  margin: var(--space-2) 0 var(--space-1);
+}
+
+.detail-content :deep(.md-code-block) {
+  background: var(--color-neutral-900);
+  color: #e2e5ef;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  margin: var(--space-2) 0;
+}
+
+.detail-content :deep(code) {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: var(--color-neutral-100);
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+}
+
+.detail-content :deep(strong) {
+  font-weight: 600;
+  color: var(--color-neutral-900);
+}
+
+@media (max-width: 768px) {
+  .category-grid { grid-template-columns: repeat(2, 1fr); }
+  .recommend-grid { grid-template-columns: repeat(2, 1fr); }
+}
 </style>

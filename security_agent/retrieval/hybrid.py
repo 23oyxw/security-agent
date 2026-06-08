@@ -23,17 +23,57 @@ def _tokenize(text: str) -> set[str]:
 
 
 def _keyword_score(query: str, doc: Playbook) -> float:
+    """多维度关键词匹配 + 中英映射 + 部分匹配."""
     q = _tokenize(query)
     if not q:
         return 0.0
+
     title = _tokenize(doc.title)
     body = _tokenize(doc.body)
     keys = {k.lower() for k in doc.keywords}
-    tags = {t.lower() for t in doc.threat_tags}
+    tags = {t.lower().replace('_', ' ') for t in doc.threat_tags}
+
+    # 中英双向映射
+    zh_en = {
+        "端口": ["port"], "日志": ["log","audit"], "进程": ["process"],
+        "账号": ["user","account","sudo","uid"], "权限": ["permission","privilege","suid","chmod","chown"],
+        "暴力": ["bruteforce","ssh","fail2ban"], "破解": ["bruteforce","ssh","fail2ban"],
+        "后门": ["backdoor","rootkit","shell"], "webshell": ["webshell","webshell"],
+        "shell": ["reverse_shell","shell"], "木马": ["trojan","rootkit","backdoor"],
+        "入侵": ["intrusion","attack","hack"], "提权": ["privilege","suid","sudo"],
+        "加固": ["hardening","hardening"], "防火墙": ["firewall","iptables"],
+        "检测": ["detection","sigma","yara"], "扫描": ["scan","scan"],
+        "监控": ["monitoring","monitor"], "审计": ["audit","auditd"],
+        "完整性": ["integrity","integrity"], "哈希": ["hash","md5sum","sha256"],
+        "备份": ["backup","snapshot"], "回滚": ["rollback","restore"],
+        "清理": ["cleanup","clean"], "网络": ["network","network"],
+        "连接": ["connection","network"], "磁盘": ["disk","disk"],
+        "内存": ["memory","memory"], "cpu": ["cpu","cpu"],
+        "负载": ["load","cpu"], "数据": ["data","exfiltration"],
+        "窃密": ["exfiltration","data"], "外联": ["exfiltration","network"],
+        "封禁": ["iptables","block"], "定时任务": ["crontab","persistence"],
+    }
+
+    expanded_tags = set(tags)
+    for qt in q:
+        if qt in zh_en:
+            for en in zh_en[qt]:
+                expanded_tags.add(en)
+
     hit_title = len(q & title) * 3.0
     hit_body = len(q & body) * 1.0
     hit_keys = len(q & keys) * 4.0
-    hit_tags = len(q & tags) * 2.5
+
+    hit_tags = 0.0
+    for qt in q:
+        if qt in expanded_tags:
+            hit_tags += 2.5
+        else:
+            for tag in expanded_tags:
+                if qt in tag or tag in qt:
+                    hit_tags += 1.5
+                    break
+
     return hit_title + hit_body + hit_keys + hit_tags
 
 
@@ -110,47 +150,18 @@ def build_vector_index(*, force: bool = False) -> dict[str, Any]:
 def search_knowledge(
     query: str,
     *,
-    top_k: int = 5,
+    top_k: int = 8,
     threat_tag: str | None = None,
-    keyword_weight: float = 0.55,
-    vector_weight: float = 0.45,
+    risk_level: str | None = None,
+    scenario: str | None = None,
 ) -> list[dict[str, Any]]:
-    """返回带分数与引用的知识条目."""
-    index = _load_vector_index()
-    q_vec = _embed_query(query) if index and config.RAG_USE_EMBEDDINGS else None
+    """统一结构化检索 — 委托给 knowledge_index 引擎."""
+    from security_agent.retrieval.knowledge_index import search_structured
 
-    scored: list[tuple[float, Playbook]] = []
-    for pb in PLAYBOOKS:
-        if threat_tag and threat_tag not in pb.threat_tags:
-            continue
-        kw = _keyword_score(query, pb)
-        vec = 0.0
-        if q_vec and pb.id in index:
-            vec = _cosine(q_vec, index[pb.id])
-        if index and q_vec:
-            score = keyword_weight * kw + vector_weight * vec * 10.0
-        else:
-            score = kw
-        if score > 0:
-            scored.append((score, pb))
-
-    scored.sort(key=lambda x: -x[0])
-    out: list[dict[str, Any]] = []
-    for score, pb in scored[:top_k]:
-        out.append(
-            {
-                "id": pb.id,
-                "title": pb.title,
-                "score": round(score, 3),
-                "severity": pb.severity,
-                "threat_tags": list(pb.threat_tags),
-                "requires_root_confirm": pb.requires_root_confirm,
-                "excerpt": pb.body[:280],
-                "do_not": list(pb.do_not),
-                "suggested_actions": list(pb.suggested_actions),
-            }
-        )
-    return out
+    results = search_structured(query, top_k=top_k, risk_level=risk_level, scenario=scenario)
+    if threat_tag:
+        results = [r for r in results if threat_tag in r.get("threat_tags", [])]
+    return results
 
 
 def format_grounding_block(hits: list[dict[str, Any]]) -> str:

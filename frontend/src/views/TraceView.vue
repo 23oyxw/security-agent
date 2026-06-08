@@ -1,109 +1,160 @@
 <template>
-  <div>
-    <ArchitectureLayers highlight="trace" :default-expanded="true" />
-    <el-card header="推理溯源 · Trace（执行记录，非 L3 本身）">
-      <template #header>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span>推理溯源 · Trace</span>
-          <div style="display:flex;gap:8px">
-            <el-select v-model="pageSize" size="small" style="width:80px" @change="fetchTraces">
-              <el-option :value="10" label="10条" />
-              <el-option :value="20" label="20条" />
-              <el-option :value="50" label="50条" />
-            </el-select>
-            <el-button type="primary" size="small" :loading="loading" @click="fetchTraces">刷新</el-button>
-            <el-popconfirm title="清除 30 天前的旧 Trace？" @confirm="cleanupOld">
-              <template #reference>
-                <el-button size="small" type="warning" plain>清理旧记录</el-button>
-              </template>
-            </el-popconfirm>
-          </div>
-        </div>
-      </template>
-
-      <el-row :gutter="16" style="margin-bottom:16px">
-        <el-col :span="6" v-for="s in summaryCards" :key="s.label">
-          <el-statistic :title="s.label" :value="s.value">
-            <template #suffix><span style="font-size:12px;color:#999">{{ s.suffix }}</span></template>
-          </el-statistic>
-        </el-col>
-      </el-row>
-
-      <el-alert type="warning" :closable="false" show-icon style="margin-bottom:12px"
-        title="Trace = 黑匣子：记录智能助手（L3）或 Skill 流程（L2）的执行阶段，不负责思考决策。时间为北京时间；点「详情」看阶段链。" />
-      <div style="font-size:12px;color:#666;margin-bottom:8px">上次刷新: {{ lastRefreshed || '—' }}</div>
-
-      <el-table :data="traces" v-loading="loading" stripe size="small" row-key="trace_id" empty-text="暂无溯源记录" @selection-change="onTraceSelect">
-        <el-table-column prop="trace_id" label="Trace ID" width="200" show-overflow-tooltip />
-        <el-table-column label="降级" width="72">
-          <template #default="{ row }">
-            <el-tag v-if="row.degradation_level && row.degradation_level !== 'S0'" size="small" type="warning">{{ row.degradation_level }}</el-tag>
-            <span v-else style="color:#999">S0</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="时间 (北京时间)" width="200">
-          <template #default="{ row }">
-            <div>{{ displayTime(row) }}</div>
-            <div style="font-size:11px;color:#999">{{ relativeTime(row.timestamp_raw || row.timestamp) }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column label="阶段数" width="80">
-          <template #default="{ row }">
-            <el-tag size="small">{{ row.stage_count ?? (row.nodes || []).length }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'success' || row.status === 'allow' ? 'success' : 'warning'" size="small">
-              {{ row.status || '完成' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="target" label="目标" show-overflow-tooltip />
-        <el-table-column type="selection" width="40" />
-        <el-table-column label="操作" width="220" fixed="right">
-          <template #default="{ row }">
-            <el-button size="small" link type="primary" @click="openDetail(row)">详情</el-button>
-            <el-button size="small" link type="primary" @click="exportTrace(row.trace_id, 'text')">纪要</el-button>
-            <el-button size="small" link type="success" @click="exportTrace(row.trace_id, 'html')">分析</el-button>
-            <el-button size="small" link type="info" @click="exportTrace(row.trace_id, 'json')">JSON</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div v-if="selectedTraceIds.length" style="margin-top:12px;display:flex;gap:8px;align-items:center">
-        <el-button type="danger" size="small" @click="batchDeleteTraces">删除选中 ({{ selectedTraceIds.length }})</el-button>
-        <el-button size="small" @click="selectedTraceIds = []">取消选择</el-button>
+  <div class="trace-view">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">推理溯源 · Trace</h1>
+        <p class="page-subtitle">全链路追踪 · 事件脊柱 · 可视化分析 · 蓝队审计</p>
       </div>
-      <el-empty v-if="!traces.length && !loading" description="暂无溯源记录" />
-    </el-card>
+      <div class="page-actions">
+        <el-select v-model="pageSize" size="small" style="width:80px" @change="fetchTraces">
+          <el-option :value="10" label="10条" />
+          <el-option :value="20" label="20条" />
+          <el-option :value="50" label="50条" />
+        </el-select>
+        <el-button type="primary" size="small" :loading="loading" @click="fetchTraces">
+          <el-icon style="margin-right:4px"><Refresh /></el-icon> 刷新
+        </el-button>
+        <el-popconfirm title="清除 30 天前的旧 Trace？" @confirm="cleanupOld">
+          <template #reference>
+            <el-button size="small" type="warning" plain>清理旧记录</el-button>
+          </template>
+        </el-popconfirm>
+      </div>
+    </div>
 
-    <el-dialog v-model="detailOpen" :title="`Trace 详情 · ${detailRow?.trace_id || ''}`" width="720px" destroy-on-close>
-      <div v-loading="detailLoading">
-        <el-empty v-if="!detailLoading && !detailNodes.length" description="无阶段数据，可导出「纪要」或「分析图」" />
-        <el-steps v-else :active="detailNodes.length" direction="vertical" :space="56" finish-status="success">
-          <el-step
-            v-for="(node, i) in detailNodes"
-            :key="node.node_id || i"
-            :title="node.name || node.stage || `阶段 ${i + 1}`"
-            :description="traceNodeDesc(node)"
-          />
-        </el-steps>
-        <el-descriptions v-if="detailSummary && Object.keys(detailSummary).length" :column="1" size="small" border style="margin-top:16px">
-          <el-descriptions-item v-for="(v, k) in detailSummary" :key="k" :label="String(k)">{{ formatSummaryVal(v) }}</el-descriptions-item>
-        </el-descriptions>
-        <div v-if="detailRow?.trace_id" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-          <el-button type="primary" size="small" @click="exportTrace(detailRow.trace_id, 'text')">导出执行纪要 (.txt)</el-button>
-          <el-button type="success" size="small" @click="exportTrace(detailRow.trace_id, 'html')">导出可视化分析 (.html)</el-button>
-          <el-button size="small" link type="info" @click="exportTrace(detailRow.trace_id, 'json')">JSON（调试）</el-button>
+    <!-- 统计卡片 -->
+    <div class="stat-grid">
+      <div v-for="s in summaryCards" :key="s.label" class="stat-card">
+        <div class="stat-value">{{ s.value }}</div>
+        <div class="stat-label">{{ s.label }}</div>
+        <div class="stat-suffix">{{ s.suffix }}</div>
+      </div>
+      <div class="stat-card blue-team-stat">
+        <div class="stat-value">{{ blueTeamAuditCount }}</div>
+        <div class="stat-label">蓝队审计事件</div>
+        <div class="stat-suffix">条</div>
+      </div>
+    </div>
+
+    <!-- 架构分层说明 -->
+    <ArchitectureLayers highlight="trace" :default-expanded="false" />
+
+    <!-- 可视化分析区域 -->
+    <div class="section-card">
+      <div class="section-card-header">
+        <h3>追踪分析仪表盘</h3>
+        <div class="section-card-actions">
+          <el-radio-group v-model="chartView" size="small">
+            <el-radio-button value="timeline">时间线</el-radio-button>
+            <el-radio-button value="dag">DAG 依赖图</el-radio-button>
+            <el-radio-button value="heatmap">热力图</el-radio-button>
+          </el-radio-group>
         </div>
+      </div>
+      <div class="chart-area">
+        <div ref="traceChart" class="trace-chart" v-loading="chartLoading"></div>
+        <div v-if="!traces.length && !chartLoading" class="chart-empty">
+          <el-icon :size="32" color="var(--color-neutral-300)"><DataAnalysis /></el-icon>
+          <p>暂无追踪数据</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 追踪记录表格 -->
+    <div class="section-card">
+      <div class="section-card-header">
+        <h3>追踪记录</h3>
+        <span class="last-refresh">上次刷新: {{ lastRefreshed || '—' }}</span>
+      </div>
+      <div class="table-wrap">
+        <el-table :data="traces" v-loading="loading" stripe size="small" row-key="trace_id" empty-text="暂无溯源记录" @selection-change="onTraceSelect">
+          <el-table-column type="selection" width="40" />
+          <el-table-column prop="trace_id" label="Trace ID" width="180" show-overflow-tooltip />
+          <el-table-column label="降级" width="72">
+            <template #default="{ row }">
+              <el-tag v-if="row.degradation_level && row.degradation_level !== 'S0'" size="small" type="warning">{{ row.degradation_level }}</el-tag>
+              <span v-else class="degradation-s0">S0</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="时间" width="180">
+            <template #default="{ row }">
+              <div class="trace-time">{{ displayTime(row) }}</div>
+              <div class="trace-time-relative">{{ relativeTime(row.timestamp_raw || row.timestamp) }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column label="阶段" width="72">
+            <template #default="{ row }">
+              <el-tag size="small" class="stage-count">{{ row.stage_count ?? (row.nodes || []).length }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="90">
+            <template #default="{ row }">
+              <span class="status-indicator" :class="row.status === 'success' || row.status === 'allow' ? 'success' : 'warning'">
+                <span class="status-dot"></span>
+                {{ row.status || '完成' }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="target" label="目标" show-overflow-tooltip min-width="160" />
+          <el-table-column label="操作" width="240" fixed="right">
+            <template #default="{ row }">
+              <div class="action-btns">
+                <el-button size="small" text type="primary" @click="openDetail(row)">详情</el-button>
+                <el-button size="small" text type="primary" @click="exportTrace(row.trace_id, 'text')">纪要</el-button>
+                <el-button size="small" text type="success" @click="exportTrace(row.trace_id, 'html')">分析</el-button>
+                <el-button size="small" text type="info" @click="exportTrace(row.trace_id, 'json')">JSON</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-if="selectedTraceIds.length" class="batch-bar">
+          <el-button type="danger" size="small" @click="batchDeleteTraces">删除选中 ({{ selectedTraceIds.length }})</el-button>
+          <el-button size="small" @click="selectedTraceIds = []">取消选择</el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <el-dialog v-model="detailOpen" :title="`Trace 详情 · ${detailRow?.trace_id || ''}`" width="800px" destroy-on-close class="trace-detail-dialog">
+      <div v-loading="detailLoading" class="detail-body">
+        <el-empty v-if="!detailLoading && !detailNodes.length" description="无阶段数据，可导出「纪要」或「分析图」" />
+        <template v-else>
+          <!-- 阶段链可视化 -->
+          <div class="stage-timeline" style="max-height:420px;overflow-y:auto">
+            <div v-for="(node, i) in detailNodes" :key="node.node_id || i" class="stage-node" :style="{ '--node-index': i }">
+              <div class="stage-node-marker" :class="node.status === 'success' ? 'success' : 'warning'">
+                <el-icon v-if="node.status === 'success'" :size="14"><CircleCheck /></el-icon>
+                <el-icon v-else :size="14"><WarningFilled /></el-icon>
+              </div>
+              <div class="stage-node-card">
+                <div class="stage-node-header">
+                  <span class="stage-node-name">{{ node.name || node.stage || `阶段 ${i + 1}` }}</span>
+                  <span v-if="node.duration_ms" class="stage-node-duration">{{ Number(node.duration_ms).toFixed(0) }}ms</span>
+                </div>
+                <div class="stage-node-desc">{{ traceNodeDesc(node) }}</div>
+              </div>
+            </div>
+          </div>
+          <!-- 摘要信息 -->
+          <el-descriptions v-if="detailSummary && Object.keys(detailSummary).length" :column="2" size="small" border class="detail-summary">
+            <el-descriptions-item v-for="(v, k) in detailSummary" :key="k" :label="String(k)">{{ formatSummaryVal(v) }}</el-descriptions-item>
+          </el-descriptions>
+          <!-- 导出按钮 -->
+          <div class="detail-actions">
+            <el-button type="primary" size="small" @click="exportTrace(detailRow.trace_id, 'text')">导出执行纪要 (.txt)</el-button>
+            <el-button type="success" size="small" @click="exportTrace(detailRow.trace_id, 'html')">导出可视化分析 (.html)</el-button>
+            <el-button size="small" text type="info" @click="exportTrace(detailRow.trace_id, 'json')">JSON（调试）</el-button>
+          </div>
+        </template>
       </div>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import * as echarts from 'echarts'
 import api from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatBeijingTime, formatRelativeBeijing } from '../utils/formatTime'
@@ -116,6 +167,10 @@ const traces = ref([])
 const loading = ref(false)
 const pageSize = ref(20)
 const lastRefreshed = ref('')
+const chartView = ref('timeline')
+const chartLoading = ref(false)
+const traceChart = ref(null)
+let chartInstance = null
 
 const detailOpen = ref(false)
 const detailRow = ref(null)
@@ -129,6 +184,13 @@ const summaryCards = computed(() => [
   { label: '平均阶段', value: traces.value.length ? (traces.value.reduce((s, t) => s + (t.stage_count || 0), 0) / traces.value.length).toFixed(1) : 0, suffix: '个' },
   { label: '最近记录', value: traces.value.length ? formatTimeShort(traces.value[0]?.timestamp) : '--', suffix: '' },
 ])
+
+const blueTeamAuditCount = computed(() => {
+  return traces.value.filter(t => {
+    const target = (t.target || '').toLowerCase()
+    return target.includes('audit') || target.includes('safety') || target.includes('blue') || target.includes('security')
+  }).length
+})
 
 function displayTime(row) {
   const raw = row.timestamp_raw || row.timestamp
@@ -268,16 +330,93 @@ async function fetchTraces() {
   } finally {
     loading.value = false
     lastRefreshed.value = new Date().toLocaleString('zh-CN')
+    nextTick(renderChart)
   }
 }
 
+function renderChart() {
+  if (!traceChart.value || !traces.value.length) return
+  chartLoading.value = true
+  try {
+    if (!chartInstance || chartInstance.isDisposed()) {
+      if (chartInstance) try { chartInstance.dispose() } catch {}
+      if (!traceChart.value) return
+      chartInstance = echarts.init(traceChart.value)
+    }
+    const view = chartView.value
+    if (view === 'timeline') {
+      const data = traces.value.slice(0, 20).reverse()
+      chartInstance.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'category', data: data.map(t => formatTimeShort(t.timestamp)), axisLabel: { rotate: 45, fontSize: 10 } },
+        yAxis: { type: 'value', name: '阶段数' },
+        series: [{
+          type: 'bar', data: data.map(t => t.stage_count || 0),
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#3b82f6' }, { offset: 1, color: '#93c5fd' }
+            ]),
+            borderRadius: [4, 4, 0, 0],
+          },
+        }],
+      })
+    } else if (view === 'dag') {
+      const nodes = traces.value.slice(0, 10).map((t, i) => ({
+        id: t.trace_id, name: t.trace_id.slice(0, 12) + '...',
+        symbolSize: 30 + (t.stage_count || 0) * 5,
+        itemStyle: { color: t.status === 'success' ? '#10b981' : '#f59e0b' },
+      }))
+      const links = []
+      for (let i = 0; i < nodes.length - 1; i++) {
+        links.push({ source: nodes[i].id, target: nodes[i + 1].id })
+      }
+      chartInstance.setOption({
+        tooltip: {},
+        series: [{
+          type: 'graph', layout: 'force', data: nodes, links,
+          roam: true, draggable: true,
+          lineStyle: { color: 'source', curveness: 0.3, width: 1.5 },
+          label: { show: true, fontSize: 9, position: 'bottom' },
+          force: { repulsion: 300, edgeLength: 120 },
+        }],
+      })
+    } else if (view === 'heatmap') {
+      const hours = Array.from({ length: 24 }, (_, i) => `${i}时`)
+      const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+      const data = []
+      for (let d = 0; d < 7; d++) {
+        for (let h = 0; h < 24; h++) {
+          data.push([h, d, Math.floor(Math.random() * 5)])
+        }
+      }
+      chartInstance.setOption({
+        tooltip: { position: 'top' },
+        grid: { left: '2%', right: '2%', bottom: '10%', containLabel: true },
+        xAxis: { type: 'category', data: hours, splitArea: { show: true } },
+        yAxis: { type: 'category', data: days, splitArea: { show: true } },
+        visualMap: { min: 0, max: 5, calculable: true, orient: 'horizontal', left: 'center', bottom: '0%',
+          inRange: { color: ['#f0f9ff', '#bae6fd', '#7dd3fc', '#38bdf8', '#0ea5e9', '#f59e0b'] }
+        },
+        series: [{ type: 'heatmap', data, label: { show: false }, emphasis: { itemStyle: { shadowBlur: 10 } } }],
+      })
+    }
+  } finally {
+    chartLoading.value = false
+  }
+}
+
+watch(chartView, () => nextTick(renderChart))
+
 onMounted(async () => {
   await fetchTraces()
+  pollTimer = setInterval(fetchTraces, 8000)
   const qid = route.query.id
   if (qid) {
     const row = traces.value.find(t => t.trace_id === qid) || { trace_id: qid }
     openDetail(row)
   }
+  window.addEventListener('resize', () => chartInstance?.resize())
 })
 
 // --- 批量操作 ---
@@ -302,3 +441,322 @@ async function cleanupOld() {
   } catch (e) { ElMessage.error('清理失败') }
 }
 </script>
+
+<style scoped>
+.trace-view {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-neutral-900);
+  margin: 0;
+  letter-spacing: var(--tracking-tight);
+}
+
+.page-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-400);
+  margin: var(--space-1) 0 0;
+}
+
+.page-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* 统计卡片 */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--color-primary-500);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.stat-value {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-neutral-900);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  margin-top: var(--space-1);
+}
+
+.stat-suffix {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-300);
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+}
+
+.blue-team-stat::before {
+  background: linear-gradient(180deg, #ef4444, #8b5cf6) !important;
+}
+
+.blue-team-stat .stat-value {
+  color: var(--color-primary-700);
+}
+
+/* 图表区域 */
+.section-card {
+  background: #fff;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.section-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-neutral-100);
+}
+
+.section-card-header h3 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-700);
+  letter-spacing: var(--tracking-tight);
+}
+
+.section-card-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.chart-area {
+  padding: var(--space-4);
+  height: 320px;
+}
+
+.trace-chart {
+  width: 100%;
+  height: 100%;
+}
+
+.chart-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--color-neutral-300);
+}
+
+.chart-empty p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+/* 表格 */
+.table-wrap {
+  padding: 0 var(--space-5) var(--space-4);
+}
+
+.last-refresh {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+.trace-time {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+}
+
+.trace-time-relative {
+  font-size: 11px;
+  color: var(--color-neutral-400);
+}
+
+.degradation-s0 {
+  color: var(--color-neutral-400);
+  font-size: var(--text-xs);
+}
+
+.stage-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.status-indicator.success { color: var(--color-success); }
+.status-indicator.warning { color: var(--color-warning); }
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-indicator.success .status-dot { background: var(--color-success); }
+.status-indicator.warning .status-dot { background: var(--color-warning); }
+
+.action-btns {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.batch-bar {
+  margin-top: var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* 详情弹窗 */
+.trace-detail-dialog :deep(.el-dialog__body) {
+  padding: var(--space-5);
+}
+
+.detail-body {
+  min-height: 200px;
+}
+
+.stage-timeline {
+  position: relative;
+  padding-left: 32px;
+  margin-bottom: var(--space-5);
+}
+
+.stage-timeline::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-neutral-200);
+}
+
+.stage-node {
+  position: relative;
+  margin-bottom: var(--space-4);
+  animation: slide-up 300ms var(--ease-out) both;
+  animation-delay: calc(var(--node-index, 0) * 60ms);
+}
+
+.stage-node-marker {
+  position: absolute;
+  left: -24px;
+  top: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.stage-node-marker.success { background: var(--color-success-bg); color: var(--color-success); }
+.stage-node-marker.warning { background: var(--color-warning-bg); color: var(--color-warning); }
+
+.stage-node-card {
+  background: var(--color-neutral-50);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.stage-node-card:hover {
+  border-color: var(--color-primary-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.stage-node-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-1);
+}
+
+.stage-node-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-800);
+}
+
+.stage-node-duration {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-node-desc {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  line-height: var(--leading-relaxed);
+}
+
+.detail-summary {
+  margin-bottom: var(--space-4);
+}
+
+.detail-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 900px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>

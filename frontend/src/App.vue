@@ -13,5 +13,5 @@ onMounted(() => {
 </script>
 
 <style>
-body { margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
+body { margin: 0; }
 </style>

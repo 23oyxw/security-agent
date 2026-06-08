@@ -19,25 +19,48 @@ class KnowledgeRagRequest(BaseModel):
     include_grounding: bool = True
 
 
+@router.get("/search")
+async def search_get(q: str = "", top_k: int = 8, risk_level: str = "", scenario: str = "", user: User = Depends(get_current_user)):
+    """检索知识库（GET方式 — 支持 facet 过滤）"""
+    from security_agent.retrieval.hybrid import search_knowledge
+    return _build_search_response(q, top_k, risk_level or None, scenario or None)
+
+
+@router.get("/facets")
+async def get_facets(user: User = Depends(get_current_user)):
+    """获取所有可用 facet 分类."""
+    from security_agent.retrieval.knowledge_index import list_facets
+    return list_facets()
+
+
 @router.post("/search")
 async def search(req: KnowledgeSearchRequest, user: User = Depends(get_current_user)):
-    """检索知识库（混合检索）"""
+    """检索知识库（POST方式）"""
     from security_agent.retrieval.hybrid import search_knowledge
+    return _build_search_response(req.query, req.top_k)
 
-    hits = search_knowledge(req.query, top_k=req.top_k)
+
+def _build_search_response(query: str, top_k: int = 8, risk_level: str | None = None, scenario: str | None = None):
+    """构建搜索响应."""
+    from security_agent.retrieval.hybrid import search_knowledge
+    hits = search_knowledge(query, top_k=top_k, risk_level=risk_level, scenario=scenario)
     results = [
         {
             "id": h["id"],
             "title": h["title"],
-            "content": h["excerpt"],
+            "content": h.get("body", h.get("excerpt", "")),  # 优先返回完整正文
+            "excerpt": h["excerpt"],
             "score": h["score"],
-            "source": "playbook",
+            "source": h.get("source", "playbook"),
             "severity": h.get("severity"),
             "threat_tags": h.get("threat_tags", []),
+            "tags": h.get("threat_tags", []),
+            "do_not": h.get("do_not", []),
+            "suggested_actions": h.get("suggested_actions", []),
         }
         for h in hits
     ]
-    return {"query": req.query, "results": results, "total": len(results)}
+    return {"query": query, "results": results, "total": len(results)}
 
 
 @router.post("/rag")

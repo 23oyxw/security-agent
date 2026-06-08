@@ -253,7 +253,7 @@ class MCPClientManager:
     async def connect_stdio(self, name: str, module_path: str) -> MCPServiceInfo:
         """连接 stdio 模式的 MCP 服务（待实现）."""
         # TODO: 使用 mcp.client.stdio 实现
-        raise NotImplementedError("stdio 模式通过 knowledge/mcp/client.py 实现")
+        raise NotImplementedError("stdio 模式通过 mcp/client.py 实现")
     
     async def disconnect(self, name: str) -> bool:
         """断开指定服务连接."""

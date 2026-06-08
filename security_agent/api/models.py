@@ -123,10 +123,35 @@ class ExecuteResponse(BaseModel):
     risk_label: str = ""
     execution_mode: str = "direct"
     rollback_id: Optional[str] = None
+    snapshot_id: Optional[str] = None
+    auto_rollback_triggered: bool = False
 
 
 class RollbackRequest(BaseModel):
     rollback_id: str
+
+
+# ========== 快照管理 ==========
+class SnapshotInfo(BaseModel):
+    id: str
+    created_at: str
+    operation: str
+    risk_level: str
+    user: str = ""
+    files_count: int = 0
+    restored_at: Optional[str] = None
+    restore_success: Optional[int] = None
+    restore_failed: Optional[int] = None
+
+
+class SnapshotRestoreResponse(BaseModel):
+    success: bool
+    snap_id: str
+    operation: str = ""
+    restored: List[str] = []
+    failed: List[str] = []
+    restored_count: int = 0
+    failed_count: int = 0
 
 
 # ========== Agent 对话 ==========

@@ -1,656 +1,698 @@
 <template>
   <div class="agent-chat">
-    <el-row :gutter="12" style="height: calc(100vh - 100px)">
-      <!-- 左侧：对话区域 -->
-      <el-col :span="18">
-        <el-card style="height: 100%; display: flex; flex-direction: column">
-          <template #header>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span>🤖 安全运维智能助手 <el-tag size="small" type="primary" effect="dark">L3 编排</el-tag></span>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <el-tag size="small" type="info">会话: {{ sessionId }}</el-tag>
-                <el-tag size="small" :type="useRest ? 'warning' : 'success'">
-                  传输: {{ useRest ? 'REST' : 'WebSocket' }}
-                </el-tag>
-                <el-tag v-if="lastSentChannel" size="small" type="info">上条: {{ lastSentChannel }}</el-tag>
-                <el-tag size="small" :type="connected ? 'success' : 'danger'">{{ connected ? '在线' : '离线' }}</el-tag>
-                <el-button size="small" plain @click="testApi">测 API</el-button>
-                <el-button size="small" type="warning" plain @click="simulateWsFallback">① REST</el-button>
-                <el-button size="small" type="success" plain @click="reconnectWs">② WS</el-button>
-                <el-button size="small" text @click="clearChat">清空</el-button>
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">智能助手</h1>
+        <p class="page-subtitle">与安全运维 Agent 对话 · 支持命令执行、知识检索、安全评估</p>
+      </div>
+      <div class="page-actions">
+        <el-button size="small" plain @click="clearChat">
+          <el-icon style="margin-right:4px"><Delete /></el-icon> 清空对话
+        </el-button>
+      </div>
+    </div>
+
+    <div class="chat-layout">
+      <div class="chat-main">
+        <div class="chat-messages" ref="messagesRef">
+          <div v-for="(msg, i) in messages" :key="i" class="message" :class="msg.role">
+            <div class="message-avatar">
+              <div class="avatar" :class="msg.role">
+                <el-icon :size="16"><component :is="msg.role === 'user' ? 'UserFilled' : 'MagicStick'" /></el-icon>
               </div>
             </div>
-          </template>
-          <el-alert
-            v-if="useRest"
-            type="warning"
-            :closable="false"
-            show-icon
-            style="margin:0 0 8px"
-            title="当前为 REST 模式：请在下方输入框发一条消息（或点快捷按钮）。看到「上条: REST」即验收通过。"
-          />
-
-          <!-- 消息列表 -->
-          <div ref="msgBox" class="msg-container">
-            <div v-if="!messages.length" class="welcome">
-              <el-icon :size="48" color="#409EFF"><ChatDotRound /></el-icon>
-              <h3>安全运维智能助手</h3>
-              <p>本页是 <strong>L3</strong>：负责理解、推理、选择工具或 L2 流程；<strong>Trace</strong> 只记录过程，在「推理溯源」查看。</p>
-              <div class="quick-actions">
-                <el-button size="small" :disabled="loading" @click="quickSend('查看系统健康状态')">系统健康</el-button>
-                <el-button size="small" :disabled="loading" @click="quickSend('扫描系统安全状态')">安全扫描</el-button>
-                <el-button size="small" :disabled="loading" @click="quickSend('检查异常进程')">进程检查</el-button>
-                <el-button size="small" :disabled="loading" @click="quickSend('分析最近的系统日志')">日志分析</el-button>
-                <el-button size="small" type="success" :disabled="loading" @click="quickSend('生成扫描报告')">扫描报告</el-button>
-                <el-button size="small" type="warning" :disabled="loading" @click="quickSend('告警响应处理')">告警响应</el-button>
+            <div class="message-body">
+              <div class="message-header">
+                <span class="message-role">{{ msg.role === 'user' ? '你' : 'Agent' }}</span>
+                <span class="message-time">{{ formatTime(msg.timestamp) }}</span>
               </div>
-            </div>
-
-            <div v-for="(m, i) in messages" :key="i" class="msg-item" :class="m.role">
-              <div class="msg-avatar">
-                <el-icon v-if="m.role === 'user'" :size="20"><User /></el-icon>
-                <el-icon v-else :size="20"><Monitor /></el-icon>
-              </div>
-              <div class="msg-body">
-                <div class="msg-header">
-                  <span class="msg-role">{{ m.role === 'user' ? '您' : '安全助手' }}</span>
-                  <span class="msg-time">{{ m.time }}</span>
-                  <el-tag
-                    v-if="m.role === 'assistant' && assistantTokenBrief(m)"
-                    size="small"
-                    type="info"
-                    effect="plain"
-                    class="msg-token-badge"
-                  >{{ assistantTokenBrief(m) }}</el-tag>
-                </div>
-                <div class="msg-content" v-html="renderContent(m.content)"></div>
-                <!-- 工具调用信息 -->
-                <div v-if="l1ToolsForMessage(m).length" class="msg-tools">
-                  <el-divider content-position="left" style="margin:8px 0">
-                    <el-icon><Connection /></el-icon> L1 调用 {{ l1ToolsForMessage(m).length }} 次
-                  </el-divider>
-                  <el-tag v-for="t in l1ToolsForMessage(m)" :key="t" size="small" type="info" style="margin:2px">L1 · {{ t }}</el-tag>
-                </div>
-                <!-- 风险等级 -->
-                <div v-if="m.risk_level && m.risk_level !== 'low'" class="msg-risk">
-                  <el-tag :type="m.risk_level === 'high' ? 'danger' : 'warning'" size="small" effect="dark">
-                    ⚠️ 风险等级: {{ m.risk_level }}
-                  </el-tag>
-                </div>
-                <!-- 执行分层 L3/L2 -->
-                <div v-if="m.role === 'assistant' && m.execution_meta?.layer" class="msg-layer">
-                  <el-tag :type="m.execution_meta.layer === 'L2' ? 'success' : 'primary'" size="small" effect="dark">
-                    {{ m.execution_meta.layer_title || m.execution_meta.layer }}
-                  </el-tag>
-                  <el-tag v-if="m.execution_meta.route" size="small" type="info" style="margin-left:4px">{{ m.execution_meta.route }}</el-tag>
-                  <span v-if="m.execution_meta.hint" class="layer-hint">{{ m.execution_meta.hint }}</span>
-                </div>
-                <!-- 可观测性 -->
-                <div v-if="m.trace_id || (m.degradation_level && m.degradation_level !== 'S0') || m.fallback_used" class="msg-obs">
-                  <el-tag v-if="m.trace_id" size="small" type="warning" style="margin:2px;cursor:pointer" @click="goTrace(m.trace_id)">Trace 记录: {{ m.trace_id }}</el-tag>
-                  <el-tag v-if="m.degradation_level && m.degradation_level !== 'S0'" size="small" type="warning" style="margin:2px">{{ m.degradation_level }}</el-tag>
-                  <el-tag v-if="m.fallback_used" size="small" type="warning" style="margin:2px">Fallback</el-tag>
-                </div>
-                <!-- Token / L2 流程（助手消息始终展示一行） -->
-                <div v-if="m.role === 'assistant'" class="msg-cost">
-                  <el-tag v-if="m.skill_flow && m.execution_meta?.layer !== 'L2'" size="small" type="success" style="margin:2px">L2: {{ m.skill_flow }}</el-tag>
-                  <el-tag size="small" :type="tokenDetail(m).total ? 'info' : 'warning'" style="margin:2px">
-                    {{ tokenDetail(m).line }}
-                  </el-tag>
+              <div class="message-content" v-html="renderContent(msg.content)"></div>
+              <div v-if="msg.tool_calls?.length" class="message-tools">
+                <div v-for="(tc, ti) in msg.tool_calls" :key="ti" class="tool-call">
+                  <span class="tool-call-tag">{{ tc.name }}</span>
+                  <span class="tool-call-args">{{ JSON.stringify(tc.arguments) }}</span>
                 </div>
               </div>
-            </div>
-
-            <div v-if="loading" class="msg-item assistant">
-              <div class="msg-avatar"><el-icon :size="20"><Monitor /></el-icon></div>
-              <div class="msg-body">
-                <div class="msg-content thinking">
-                  <span class="dot-typing"></span> 思考中...
+              <div v-if="msg.tool_results?.length" class="message-tools">
+                <div v-for="(tr, ti) in msg.tool_results" :key="ti" class="tool-result">
+                  <span class="tool-result-tag">{{ tr.name }}</span>
+                  <pre class="tool-result-content">{{ typeof tr.result === 'string' ? tr.result.slice(0, 500) : JSON.stringify(tr.result).slice(0, 500) }}</pre>
                 </div>
               </div>
             </div>
           </div>
+          <div v-if="thinking" class="message agent">
+            <div class="message-avatar">
+              <div class="avatar agent">
+                <el-icon :size="16"><MagicStick /></el-icon>
+              </div>
+            </div>
+            <div class="message-body">
+              <div class="message-header">
+                <span class="message-role">Agent</span>
+              </div>
+              <div class="thinking-indicator">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-          <!-- 输入区域 -->
-          <div class="input-area">
+        <div class="chat-input">
+          <div class="input-wrap">
             <el-input
               v-model="input"
               type="textarea"
               :rows="2"
-              placeholder="输入安全运维问题，例如：帮我检查系统安全状态、分析最近的登录日志..."
-              @keydown.enter.ctrl="send"
-              @keydown.enter.exact.prevent="send"
-              :disabled="loading"
-              resize="none"
+              placeholder="输入你的问题或指令..."
+              @keydown.enter.prevent="sendMessage"
+              :disabled="thinking"
             />
-            <div class="input-actions">
-              <span class="input-hint">Enter 发送 · Ctrl+Enter 换行</span>
-              <el-button type="primary" :loading="loading" @click="send" :disabled="!input.trim()">
-                <el-icon><Promotion /></el-icon> 发送
-              </el-button>
-            </div>
           </div>
-        </el-card>
-      </el-col>
+          <div class="input-actions">
+            <div class="input-tools">
+              <el-tooltip content="知识检索" placement="top">
+                <button class="input-tool-btn" @click="toggleKnowledge">
+                  <el-icon :size="16"><Reading /></el-icon>
+                </button>
+              </el-tooltip>
+              <el-tooltip content="安全评估" placement="top">
+                <button class="input-tool-btn" @click="toggleSafety">
+                  <el-icon :size="16"><Lock /></el-icon>
+                </button>
+              </el-tooltip>
+            </div>
+            <el-button type="primary" :loading="thinking" @click="sendMessage" :disabled="!input.trim()">
+              <el-icon style="margin-right:4px"><Promotion /></el-icon> 发送
+            </el-button>
+          </div>
+        </div>
+      </div>
 
-      <!-- 右侧：会话信息（可滚动） -->
-      <el-col :span="6" class="right-panel">
-        <ArchitectureLayers highlight="L3" :trace-id="lastTraceId" />
-        <el-card header="Token · 费用" style="margin-bottom:10px">
-          <div class="token-panel">
-            <div class="token-panel-row">
-              <span class="token-panel-label">本会话 API 计费</span>
-              <span class="token-panel-value">{{ formatTokenNum(sessionTokenStats.total) }} tok</span>
-            </div>
-            <div class="token-panel-row">
-              <span class="token-panel-label">累计费用（估）</span>
-              <span class="token-panel-value cost-cny">{{ sessionTokenStats.costCnyDisplay }}</span>
-            </div>
-            <div class="token-panel-row">
-              <span class="token-panel-label">输入 / 输出</span>
-              <span class="token-panel-sub">{{ formatTokenNum(sessionTokenStats.prompt) }} ↑ · {{ formatTokenNum(sessionTokenStats.completion) }} ↓</span>
-            </div>
-            <el-divider style="margin:10px 0" />
-            <div class="token-panel-row">
-              <span class="token-panel-label">上下文占比</span>
-              <span class="token-panel-sub">{{ contextBar.label }}</span>
-            </div>
-            <el-progress
-              :percentage="contextBar.percent"
-              :status="contextBar.status"
-              :stroke-width="10"
-              style="margin:6px 0 10px"
-            />
-            <div class="token-panel-row">
-              <span class="token-panel-label">上条 API 费用</span>
-              <span class="token-panel-value cost-cny">{{ lastReplyTokenStats.costDisplay || '—' }}</span>
-            </div>
-            <div class="token-panel-row">
-              <span class="token-panel-label">上条计费 token</span>
-              <span class="token-panel-value token-panel-last">{{ lastReplyTokenStats.line }}</span>
-            </div>
-            <div v-if="lastReplyTokenStats.model" class="token-panel-model">模型: {{ lastReplyTokenStats.model }}</div>
-            <div v-if="lastReplyTokenStats.pending" class="token-panel-hint">正在从 Trace 补全统计…</div>
-            <el-divider style="margin:10px 0" />
-            <div style="display:flex;gap:8px">
-              <el-button size="small" @click="router.push('/trace')">
-                <el-icon><List /></el-icon> Trace 溯源
-              </el-button>
-              <el-button size="small" @click="router.push('/alerts')">
-                <el-icon><Bell /></el-icon> 告警管理
-              </el-button>
-            </div>
-            <div class="token-panel-hint">费用按模型单价×API 计费 token</div>
+      <aside class="chat-sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h3>快捷指令</h3>
           </div>
-        </el-card>
-
-        <el-card header="会话信息" style="margin-bottom:10px">
-          <el-descriptions :column="1" size="small" border>
-            <el-descriptions-item label="会话 ID">{{ sessionId }}</el-descriptions-item>
-            <el-descriptions-item label="传输">{{ transport === 'ws' ? 'WebSocket' : 'HTTP REST' }}</el-descriptions-item>
-            <el-descriptions-item label="消息数">{{ messages.length }}</el-descriptions-item>
-            <el-descriptions-item label="工具调用">{{ totalTools }}</el-descriptions-item>
-            <el-descriptions-item label="最近 Trace">{{ lastTraceId || '—' }}</el-descriptions-item>
-          </el-descriptions>
-        </el-card>
-
-        <el-card style="margin-bottom:10px">
-          <template #header>
-            <span>可用 Skill</span>
-            <el-text type="info" size="small" style="margin-left:8px">点击即在助手中发送</el-text>
-          </template>
-          <div v-if="flowSkills.length" class="skill-group-title">
-            <el-tag type="warning" size="small" effect="plain">L2</el-tag>
-            <span>固定流程（Skill 流程页同款）</span>
-          </div>
-          <div
-            v-for="skill in flowSkills"
-            :key="'flow-' + skill.name"
-            class="skill-item"
-            @click="quickSend(skill.prompt)"
-          >
-            <el-icon :color="skill.color"><component :is="skill.icon" /></el-icon>
-            <div class="skill-item-body">
-              <div class="skill-item-title">{{ skill.label }}</div>
-              <div class="skill-item-desc">{{ skill.desc }}</div>
+          <div class="quick-commands">
+            <div v-for="cmd in quickCommands" :key="cmd.label" class="quick-command" @click="insertCommand(cmd.text)">
+              <el-icon :size="14"><component :is="cmd.icon" /></el-icon>
+              <span>{{ cmd.label }}</span>
             </div>
           </div>
-          <el-divider v-if="flowSkills.length && mcpSkills.length" style="margin:10px 0" />
-          <div v-if="mcpSkills.length" class="skill-group-title">
-            <el-tag type="success" size="small" effect="plain">L1</el-tag>
-            <span>MCP 能力（L3 编排调工具）</span>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h3>对话历史</h3>
           </div>
-          <div
-            v-for="skill in mcpSkills"
-            :key="'mcp-' + skill.name"
-            class="skill-item"
-            @click="quickSend(skill.prompt)"
-          >
-            <el-icon :color="skill.color"><component :is="skill.icon" /></el-icon>
-            <div class="skill-item-body">
-              <div class="skill-item-title">{{ skill.label }}</div>
-              <div class="skill-item-desc">{{ skill.desc }}</div>
+          <div class="history-list">
+            <div v-for="h in history" :key="h.id" class="history-item" @click="loadHistory(h.id)">
+              <span class="history-title">{{ h.title }}</span>
+              <span class="history-time">{{ formatTime(h.timestamp) }}</span>
             </div>
+            <div v-if="!history.length" class="history-empty">暂无历史记录</div>
           </div>
-          <el-empty v-if="!flowSkills.length && !mcpSkills.length" description="加载中..." :image-size="30" />
-        </el-card>
-
-        <el-card v-if="recentTools.length" header="最近工具调用">
-          <el-timeline>
-            <el-timeline-item v-for="(t, i) in recentTools" :key="i" :timestamp="t.time" placement="top" :type="t.success ? 'success' : 'danger'">
-              <span style="font-size:13px">{{ t.name }}</span>
-            </el-timeline-item>
-          </el-timeline>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
+      </aside>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import api from '../api'
-import { useMcpStore } from '../stores/mcp'
-import { useAgentWs } from '../composables/useAgentWs'
-import ArchitectureLayers from '../components/ArchitectureLayers.vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '../api'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const messages = ref([])
+const input = ref('')
+const thinking = ref(false)
+const messagesRef = ref(null)
+const history = ref([])
+const streamContent = ref('')
+const showSuggestions = ref(true)
 
-const mcpStore = useMcpStore()
-const { transport, connect, disconnect, chatViaWs } = useAgentWs()
-
-const forceRestMode = ref(false)
-const lastSentChannel = ref('')
-
-const useRest = computed(() => forceRestMode.value || transport.value !== 'ws')
-
-function simulateWsFallback() {
-  forceRestMode.value = true
-  disconnect()
-  ElMessage.warning('已切换 REST：请点「扫描报告」或输入后发送，看到标签「上条: REST」即通过')
-}
-
-function reconnectWs() {
-  forceRestMode.value = false
-  lastSentChannel.value = ''
-  connect()
-  ElMessage.success('已尝试重连 WebSocket，标签应变绿「传输: WebSocket」')
-}
-
-async function testApi() {
-  try {
-    const h = await api.get('/health')
-    ElMessage.success(`API 正常 v${h.version || '?'} @ ${window.location.host}`)
-  } catch (e) {
-    const msg = e.response?.data?.detail || e.message || '网络错误'
-    ElMessage.error(`API 不可达: ${msg}。请执行 bash boot_start.sh 并用 http://127.0.0.1:8900 打开`)
-  }
-}
-
-const input = ref(''), messages = ref([]), loading = ref(false), msgBox = ref(null)
-const connected = ref(true)
-const sessionId = ref('s-' + Math.random().toString(36).slice(2, 8))
-
-const flowSkills = ref([])
-const mcpSkills = ref([])
-const recentTools = ref([])
-
-const totalTools = computed(() => messages.value.reduce((s, m) => s + (m.tools_used?.length || 0), 0))
-
-function messageTokenTotal(m) {
-  const tu = m?.token_usage || {}
-  return Number(tu.total_tokens ?? m?.cost_tokens ?? 0) || 0
-}
-
-const sessionTokenStats = computed(() => {
-  let prompt = 0
-  let completion = 0
-  let total = 0
-  let costCny = 0
-  for (const m of messages.value) {
-    if (m.role !== 'assistant') continue
-    const tu = m.token_usage || {}
-    prompt += Number(tu.prompt_tokens || 0)
-    completion += Number(tu.completion_tokens || 0)
-    total += messageTokenTotal(m)
-    costCny += Number(m.cost_estimate?.cost?.cny || 0)
-  }
-  return {
-    prompt,
-    completion,
-    total,
-    costCny,
-    costCnyDisplay: costCny > 0 ? formatCny(costCny) : '—',
-  }
-})
-
-const contextBar = computed(() => {
-  for (let i = messages.value.length - 1; i >= 0; i--) {
-    const cu = messages.value[i].context_usage
-    if (cu && cu.context_limit) {
-      const pct = Math.min(Number(cu.usage_percent_raw ?? cu.usage_percent ?? 0), 100)
-      const est = Number(cu.estimated_tokens || 0)
-      const limit = Number(cu.context_limit || 0)
-      return {
-        percent: pct,
-        limit,
-        label: `${formatTokenNum(est)} / ${formatTokenNum(limit)}（${pct}%）`,
-        status: cu.is_over_limit ? 'exception' : pct >= 85 ? 'warning' : undefined,
-      }
-    }
-  }
-  return { percent: 0, limit: 124000, label: '—', status: undefined }
-})
-
-const lastReplyTokenStats = computed(() => {
-  for (let i = messages.value.length - 1; i >= 0; i--) {
-    const m = messages.value[i]
-    if (m.role === 'assistant') return tokenDetail(m)
-  }
-  return { total: 0, prompt: 0, completion: 0, line: '—', model: '', pending: false }
-})
-
-const lastTraceId = computed(() => {
-  for (let i = messages.value.length - 1; i >= 0; i--) {
-    if (messages.value[i].trace_id) return messages.value[i].trace_id
-  }
-  return ''
-})
-
-function formatTokenNum(n) {
-  const v = Number(n) || 0
-  return v.toLocaleString('zh-CN')
-}
-
-function formatCny(v) {
-  const n = Number(v) || 0
-  if (n >= 1) return `≈ ¥${n.toFixed(3)}`
-  if (n >= 0.01) return `≈ ¥${n.toFixed(2)}`
-  if (n > 0) return `≈ ${(n * 100).toFixed(1)} 分`
-  return '¥0'
-}
-
-function now() { return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) }
-
-function scroll() { nextTick(() => { if (msgBox.value) msgBox.value.scrollTop = msgBox.value.scrollHeight }) }
-
-function renderContent(text) {
-  if (!text) return ''
-  return text.replace(/\n/g, '<br>').replace(/`([^`]+)`/g, '<code>$1</code>')
-}
-
-function tokenDetail(m) {
-  if (m.skill_flow && !messageTokenTotal(m)) {
-    return { total: 0, prompt: 0, completion: 0, line: 'L2 固定流程 · 不消耗 LLM', costDisplay: '', model: '', pending: false }
-  }
-  const tu = m.token_usage || {}
-  const total = messageTokenTotal(m)
-  const prompt = Number(tu.prompt_tokens || 0)
-  const completion = Number(tu.completion_tokens || 0)
-  const costDisplay = m.cost_estimate?.display_cny || (m.cost_estimate?.cost?.cny ? formatCny(m.cost_estimate.cost.cny) : '')
-  if (!total) {
-    const hint = (m.tools_used?.length || 0) > 0 ? 'LLM 统计未返回（见 Trace）' : '无 LLM 调用'
-    return { total: 0, prompt: 0, completion: 0, line: hint, costDisplay: costDisplay || '—', model: m.model_used || '', pending: Boolean(m._tokenPending) }
-  }
-  const ctxPct = m.context_usage?.usage_percent
-  const ctxSuffix = ctxPct != null ? ` · 上下文 ${ctxPct}%` : ''
-  const line = `${formatTokenNum(prompt)}↑ ${formatTokenNum(completion)}↓ · ${formatTokenNum(total)}${costDisplay ? ' · ' + costDisplay : ''}${ctxSuffix}`
-  return { total, prompt, completion, line, costDisplay, model: m.model_used || '', pending: false }
-}
-
-function assistantTokenBrief(m) {
-  const d = tokenDetail(m)
-  if (m.skill_flow && !messageTokenTotal(m)) return 'L2'
-  if (d.costDisplay && d.costDisplay !== '—') return d.costDisplay
-  if (d.total) return `${formatTokenNum(d.total)} tok`
-  if (m.skill_flow) return 'L2'
-  return ''
-}
-
-function normalizeChatBody(raw) {
-  const body = raw?.data ?? raw ?? {}
-  const tu = body.token_usage || {}
-  const total = Number(tu.total_tokens ?? body.cost_tokens ?? 0) || 0
-  return {
-    reply: body.reply || body.message || '（无回复）',
-    tools_used: body.tools_used || [],
-    risk_level: body.risk_level || 'low',
-    cost_tokens: total,
-    token_usage: {
-      prompt_tokens: Number(tu.prompt_tokens ?? 0),
-      completion_tokens: Number(tu.completion_tokens ?? 0),
-      total_tokens: total,
-    },
-    model_used: body.model_used || '',
-    skill_flow: body.skill_flow || '',
-    trace_id: body.trace_id || '',
-    degradation_level: body.degradation_level || 'S0',
-    fallback_used: Boolean(body.fallback_used),
-    cost_estimate: body.cost_estimate || {},
-    context_usage: body.context_usage || {},
-    execution_meta: body.execution_meta || {},
-    plan_summary: body.plan_summary || {},
-  }
-}
-
-async function enrichTokensFromTrace(msg) {
-  if (!msg.trace_id || messageTokenTotal(msg) > 0) return
-  msg._tokenPending = true
-  try {
-    const bundle = await api.get(`/trace/${msg.trace_id}/export`)
-    const report = bundle?.reasoning_report || bundle?.reasoning?.report
-    const used = Number(report?.tokens_used ?? report?.summary?.tokens_used ?? 0)
-    if (used > 0) {
-      msg.cost_tokens = used
-      msg.token_usage = { ...msg.token_usage, total_tokens: used }
-      msg.model_used = msg.model_used || report?.model || ''
-    }
-  } catch {
-    /* ignore */
-  } finally {
-    msg._tokenPending = false
-  }
-}
-
-function goTrace(traceId) {
-  if (traceId) router.push({ path: '/trace', query: { id: traceId } })
-}
-
-/** 本条回复实际调用的 L1 工具名（不含 L2 flow: 前缀） */
-function l1ToolsForMessage(m) {
-  const fromMeta = m.execution_meta?.l1_tools
-  if (Array.isArray(fromMeta) && fromMeta.length) return fromMeta
-  return (m.tools_used || [])
-    .filter(t => typeof t === 'string' && !t.startsWith('flow:'))
-    .map(t => (typeof t === 'string' ? t : t.tool || t.name))
-    .filter(Boolean)
-}
-
-function clearChat() { messages.value = []; recentTools.value = []; sessionId.value = 's-' + Math.random().toString(36).slice(2, 8) }
-
-function quickSend(msg) {
-  sendMessage(msg)
-}
-
-async function send() {
-  await sendMessage(input.value)
-}
-
-async function sendMessage(raw) {
-  if (!raw?.trim() || loading.value) return
-  const msg = raw.trim()
-  messages.value.push({ role: 'user', content: msg, time: now() })
-  input.value = ''
-  loading.value = true
-  connected.value = true
-  scroll()
-  try {
-    let res
-    let channel = 'REST'
-    if (!useRest.value) {
-      try {
-        res = await chatViaWs(msg)
-        channel = 'WebSocket'
-      } catch {
-        ElMessage.warning('WebSocket 失败，已改用 REST')
-        res = await api.post('/agent/chat', { message: msg, session_id: sessionId.value })
-        channel = 'REST'
-      }
+// DeepSeek-GUI 风格：消息分组
+const messageGroups = computed(() => {
+  const groups = []
+  let currentGroup = null
+  for (const msg of messages.value) {
+    if (msg.role === 'user') {
+      if (currentGroup) groups.push(currentGroup)
+      currentGroup = { user: msg, assistant: null }
+    } else if (msg.role === 'assistant' && currentGroup) {
+      currentGroup.assistant = msg
+      groups.push(currentGroup)
+      currentGroup = null
     } else {
-      res = await api.post('/agent/chat', { message: msg, session_id: sessionId.value })
-      channel = 'REST'
+      groups.push({ user: null, assistant: msg })
     }
-    lastSentChannel.value = channel
-    const body = normalizeChatBody(res)
-    const assistantMsg = {
-      role: 'assistant',
-      content: body.reply,
-      time: now(),
-      tools_used: body.tools_used,
-      risk_level: body.risk_level,
-      cost_tokens: body.cost_tokens,
-      token_usage: body.token_usage,
-      model_used: body.model_used,
-      skill_flow: body.skill_flow,
-      trace_id: body.trace_id,
-      degradation_level: body.degradation_level,
-      fallback_used: body.fallback_used,
-      cost_estimate: body.cost_estimate,
-      context_usage: body.context_usage,
-      execution_meta: body.execution_meta,
-      plan_summary: body.plan_summary,
+  }
+  if (currentGroup) groups.push(currentGroup)
+  return groups
+})
+
+const quickCommands = [
+  { label: '查看系统状态', icon: 'Cpu', text: '查看当前系统运行状态和资源使用情况' },
+  { label: '安全扫描', icon: 'Search', text: '执行一次安全扫描，检查异常进程和端口' },
+  { label: '日志分析', icon: 'Document', text: '分析最近的系统日志，查找异常' },
+  { label: '网络检查', icon: 'Connection', text: '检查网络连接状态和开放端口' },
+  { label: '进程管理', icon: 'SetUp', text: '列出当前运行的进程，检查异常进程' },
+  { label: '知识检索', icon: 'Reading', text: '搜索安全知识库，查找入侵排查方案' },
+]
+
+// 初始欢迎消息（DeepSeek-GUI 风格）
+const welcomeMessage = {
+  role: 'assistant',
+  content: '你好！我是 **安全运维 Agent**，可以帮你：\n\n- 🔍 执行系统安全扫描\n- 📊 分析系统运行状态\n- 🛡️ 评估命令安全性\n- 📚 检索安全知识库\n- 🔧 执行运维操作\n\n请问有什么可以帮你的？',
+  timestamp: Date.now(),
+}
+
+function formatTime(ts) {
+  if (!ts) return ''
+  if (typeof ts === 'number') return new Date(ts).toLocaleString('zh-CN')
+  return String(ts).replace('T', ' ').slice(0, 19)
+}
+
+// DeepSeek-GUI 风格：Markdown 渲染 + 代码高亮 + 命令可点击执行
+function renderContent(content) {
+  if (!content) return ''
+  let html = content
+    // 代码块 — bash/sh 块内容变成可点击执行按钮
+    .replace(/```(?:bash|sh|shell)?\n([\s\S]*?)```/g, (match, code) => {
+      const commands = code.trim().split('\n').filter(c => c.trim() && !c.trim().startsWith('#'))
+      const chips = commands.map(c => {
+        const escaped = escapeHtml(c.trim().slice(0, 120))
+        return `<button class="cmd-chip" onclick="window.__execCmd &amp;&amp; window.__execCmd('${escaped.replace(/'/g, "\\\'")}')" title="点击在安全执行中运行">▶ ${escaped}</button>`
+      }).join('')
+      return `<div class="code-block-wrapper"><div class="code-block-header"><span>bash</span><button class="copy-btn" onclick="navigator.clipboard.writeText(\`${code.replace(/`/g, '\\`')}\`)">📋 复制</button></div><pre class="code-block"><code>${escapeHtml(code)}</code></pre>${chips ? `<div style="padding:6px 12px;display:flex;flex-wrap:wrap;gap:4px;background:#f8fafc;border-top:1px solid #e5e7eb">${chips}</div>` : ''}</div>`
+    })
+    // 行内代码 — 检测是否为完整命令并使其可点击
+    .replace(/`([^`]+)`/g, (match, code) => {
+      const trimmed = code.trim()
+      // 看起来像一个命令 (不是单个词)
+      if (trimmed.includes(' ') && trimmed.length > 10 && /^[a-z0-9\-/.]+/.test(trimmed)) {
+        const escaped = escapeHtml(trimmed.slice(0, 80))
+        return `<button class="cmd-chip-inline" onclick="window.__execCmd &amp;&amp; window.__execCmd('${escaped.replace(/'/g, "\\\'")}')" title="点击执行">▶ ${escaped}</button>`
+      }
+      return `<code class="inline-code">${escapeHtml(trimmed)}</code>`
+    })
+    // 加粗
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    // 列表
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+    // 换行
+    .replace(/\n/g, '<br>')
+  return html
+}
+
+function setupExecBridge() {
+  window.__execCmd = (cmd) => {
+    if (!cmd) return
+    router.push({ path: '/safety', query: { cmd, intent: 'Agent 建议执行' } })
+  }
+}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
+}
+
+function scrollToBottom() {
+  nextTick(() => {
+    if (messagesRef.value) {
+      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
     }
-    messages.value.push(assistantMsg)
-    if (!body.cost_tokens && body.trace_id) {
-      enrichTokensFromTrace(assistantMsg)
-    }
-    const tools = body.tools_used || []
-    if (tools.length) {
-      tools.forEach(t => {
-        recentTools.value.unshift({ name: typeof t === 'string' ? t : t.tool || t.name, time: now(), success: true })
-      })
-      if (recentTools.value.length > 10) recentTools.value = recentTools.value.slice(0, 10)
-    }
-  } catch (e) {
-    const detail = e.response?.data?.detail
-    const errText = typeof detail === 'object' ? JSON.stringify(detail) : (detail || e.message || '网络错误')
+  })
+}
+
+// 自动滚动
+watch([messages, streamContent], scrollToBottom)
+
+async function sendMessage() {
+  const text = input.value.trim()
+  if (!text || thinking.value) return
+
+  showSuggestions.value = false
+  messages.value.push({ role: 'user', content: text, timestamp: Date.now() })
+  input.value = ''
+  thinking.value = true
+  streamContent.value = ''
+  scrollToBottom()
+
+  const startTime = Date.now()
+  try {
+    const res = await api.post('/agent/chat', {
+      message: text,
+      stream: false,
+    }, { timeout: 120000 })
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+    const reply = res.reply || res.response || res.message || res.content || ''
     messages.value.push({
       role: 'assistant',
-      content: `请求失败 (${lastSentChannel.value || '—'}): ${errText}\n\n提示: 先点「测 API」；REST 验收请点「① REST」后发「生成扫描报告」`,
-      time: now(),
+      content: reply || '（无文本回复）',
+      tool_calls: res.tool_calls || [],
+      tool_results: res.tool_results || [],
+      timestamp: Date.now(),
+      meta: reply ? `⏱ ${elapsed}s · ${res.model_used || 'LLM'}` : '—',
     })
-    connected.value = false
-    ElMessage.error(errText.slice(0, 120))
-  } finally { loading.value = false; scroll() }
+  } catch (e) {
+    const errMsg = e.code === 'ECONNABORTED' ? '⏰ 请求超时（LLM 推理中，可重试）'
+      : e.response?.data?.detail || e.message || '请求失败'
+    messages.value.push({
+      role: 'assistant',
+      content: `❌ ${errMsg}`,
+      timestamp: Date.now(),
+    })
+  } finally {
+    thinking.value = false
+    streamContent.value = ''
+    scrollToBottom()
+  }
 }
 
-const FLOW_SKILL_META = {
-  scan_report: { label: '扫描报告', icon: 'Document', color: '#409EFF', prompt: '生成扫描报告', desc: 'L2：扫描+端口+HTML' },
-  alert_response: { label: '告警响应', icon: 'Bell', color: '#E6A23C', prompt: '告警响应处理', desc: 'L2：告警 Skill 路由' },
-  secure_exec: { label: '安全命令执行', icon: 'Lock', color: '#F56C6C', prompt: '安全执行 ls -la /tmp', desc: 'L2：三层防御→执行（可不加反引号）' },
-  block_process: { label: '进程拦截 (kill)', icon: 'CircleClose', color: '#F56C6C', prompt: '拦截进程 4911', desc: 'L2：kill/终止 PID' },
+function clearChat() {
+  messages.value = []
+  showSuggestions.value = true
+}
+
+function insertCommand(text) {
+  input.value = text
+}
+
+function toggleKnowledge() {
+  insertCommand('搜索安全知识库：')
+}
+
+function toggleSafety() {
+  insertCommand('安全评估：')
+}
+
+function loadHistory(id) {
+  // Placeholder for history loading
 }
 
 onMounted(async () => {
-  connect()
+  setupExecBridge()
+  // 显示欢迎消息
+  messages.value.push(welcomeMessage)
   try {
-    await mcpStore.fetchServers()
-    const mcpRes = { servers: mcpStore.servers }
-    const iconMap = {
-      healthcheck: { label: '健康巡检', icon: 'FirstAidKit', color: '#67C23A', prompt: '执行一次系统健康巡检', desc: 'L1：CPU/内存/磁盘/网络' },
-      scan: { label: '安全扫描', icon: 'Search', color: '#409EFF', prompt: '扫描系统安全状态', desc: 'L3：多工具+LLM（≠ L2 扫描报告）' },
-      process: { label: '进程管理', icon: 'List', color: '#E6A23C', prompt: '检查异常进程', desc: 'L1：进程列表与风险' },
-      log_analyzer: { label: '日志分析', icon: 'Document', color: '#909399', prompt: '分析最近的系统日志', desc: 'L1：日志异常模式' },
-      security_hardening: { label: '安全加固', icon: 'Lock', color: '#F56C6C', prompt: '执行安全加固扫描', desc: 'L1：SSH/防火墙/漏洞' },
-      monitor: { label: '实时监控', icon: 'View', color: '#409EFF', prompt: '启动监控服务', desc: 'L1：进程与路径监控' },
-      knowledge: { label: '安全知识库', icon: 'Reading', color: '#67C23A', prompt: '检索安全知识库', desc: 'L1：Playbook 查询' },
-      config_manager: { label: '配置管理', icon: 'Files', color: '#E6A23C', prompt: '审计配置文件状态', desc: 'L1：配置变更检测' },
-      incident_responder: { label: '故障响应', icon: 'Warning', color: '#F56C6C', prompt: '执行故障诊断', desc: 'L1：根因分析与自愈' },
-      terminal: { label: '终端运维', icon: 'Terminal', color: '#909399', prompt: '自主运维：全量安全巡检（端口、高危进程、健康、敏感路径）', desc: 'L3：多步自动规划' },
-      system_info: { label: '系统信息', icon: 'Platform', color: '#409EFF', prompt: '运行一键综合体检', desc: 'L1：全面安全检查' },
-    }
-    let flows = []
-    try {
-      const flowRes = await api.get('/skills/flows/')
-      flows = (flowRes.flows || []).map((f) => {
-        const meta = FLOW_SKILL_META[f.name] || {}
-        return {
-          name: f.name,
-          label: f.display_name || f.name,
-          icon: meta.icon || 'Document',
-          color: meta.color || '#409EFF',
-          prompt: meta.prompt || f.name,
-          desc: meta.desc || f.description || 'L2 固定流程',
-        }
-      })
-    } catch {
-      flows = Object.entries(FLOW_SKILL_META).map(([name, meta]) => ({
-        name,
-        label: meta.label || name,
-        ...meta,
-      }))
-    }
-    const mcps = (mcpRes.servers || [])
-      .filter(s => iconMap[s.name])
-      .map(s => {
-        const meta = iconMap[s.name]
-        return { name: s.name, label: meta.label || s.name, ...meta }
-      })
-    flowSkills.value = flows
-    mcpSkills.value = mcps
+    const res = await api.get('/agent/history').catch(() => ({ history: [] }))
+    history.value = res.history || []
   } catch {}
 })
-
-onUnmounted(() => disconnect())
 </script>
 
 <style scoped>
-.agent-chat { height: calc(100vh - 120px); }
-.msg-container { flex: 1; overflow-y: auto; padding: 12px; background: #f9f9f9; border-radius: 8px; margin-bottom: 12px; min-height: 300px; }
-.welcome { text-align: center; padding: 60px 20px; color: #666; }
-.welcome h3 { margin: 12px 0 8px; color: #333; }
-.welcome p { font-size: 13px; margin-bottom: 16px; }
-.quick-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; position: relative; z-index: 2; }
-.quick-actions .el-button { pointer-events: auto; }
-.msg-item { display: flex; gap: 10px; margin: 12px 0; }
-.msg-item.user { flex-direction: row-reverse; }
-.msg-item.user .msg-body { align-items: flex-end; }
-.msg-item.user .msg-content { background: #ecf5ff; border-color: #d9ecff; }
-.msg-avatar { width: 36px; height: 36px; border-radius: 50%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.msg-item.user .msg-avatar { background: #409EFF; color: #fff; }
-.msg-body { display: flex; flex-direction: column; max-width: 75%; }
-.msg-header { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
-.msg-role { font-size: 12px; font-weight: 600; color: #333; }
-.msg-time { font-size: 11px; color: #999; }
-.msg-content { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 10px 14px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
-.msg-content :deep(code) { background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 13px; color: #c7254e; }
-.msg-tools { margin-top: 6px; }
-.msg-risk { margin-top: 4px; }
-.msg-cost { margin-top: 4px; }
-.msg-token-badge { margin-left: 4px; }
-.token-panel { font-size: 13px; }
-.token-panel-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; gap: 8px; }
-.token-panel-label { color: #909399; flex-shrink: 0; }
-.token-panel-value { font-weight: 600; color: #303133; font-variant-numeric: tabular-nums; }
-.token-panel-last { font-size: 12px; text-align: right; max-width: 65%; word-break: break-word; }
-.token-panel-sub { color: #606266; font-variant-numeric: tabular-nums; }
-.token-panel-model { font-size: 11px; color: #909399; margin-top: 4px; }
-.token-panel-hint { font-size: 11px; color: #909399; margin-top: 4px; line-height: 1.4; }
-.cost-cny { color: #e6a23c; }
-.msg-layer { margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.layer-hint { font-size: 11px; color: #909399; margin-left: 4px; flex: 1 1 100%; }
-.thinking { color: #999; display: flex; align-items: center; gap: 8px; }
-.dot-typing { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #409EFF; animation: blink 1.4s infinite both; }
-@keyframes blink { 0%, 80%, 100% { opacity: 0; } 40% { opacity: 1; } }
-.input-area { border-top: 1px solid #eee; padding-top: 8px; }
-.input-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
-.input-hint { font-size: 11px; color: #999; }
-.skill-group-title { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #606266; margin: 4px 0 6px; }
-.skill-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-.skill-item:hover { background: #f5f7fa; }
-.skill-item-body { flex: 1; min-width: 0; }
-.skill-item-title { font-weight: 500; font-size: 13px; }
-.skill-item-desc { color: #999; font-size: 11px; line-height: 1.4; }
+.agent-chat {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  height: calc(100vh - var(--topbar-height) - var(--space-6) * 2);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-neutral-900);
+  margin: 0;
+  letter-spacing: var(--tracking-tight);
+}
+
+.page-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-400);
+  margin: var(--space-1) 0 0;
+}
+
+.page-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ---- 对话布局 ---- */
+.chat-layout {
+  display: flex;
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 0;
+}
+
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* ---- 消息区 ---- */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.message {
+  display: flex;
+  gap: var(--space-3);
+  max-width: 85%;
+}
+
+.message.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatar.user {
+  background: var(--color-primary-500);
+  color: #fff;
+}
+
+.avatar.agent {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.message-body {
+  min-width: 0;
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.message-role {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-neutral-600);
+}
+
+.message-time {
+  font-size: 10px;
+  color: var(--color-neutral-300);
+}
+
+.message-content {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-neutral-800);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-neutral-50);
+}
+
+.message.user .message-content {
+  background: var(--color-primary-50);
+  color: var(--color-primary-900);
+}
+
+.message-content :deep(.code-block) {
+  background: var(--color-neutral-900);
+  color: #e2e5ef;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  margin: var(--space-2) 0;
+}
+
+.message-content :deep(code) {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: var(--color-neutral-100);
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---- 工具调用 ---- */
+.message-tools {
+  margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tool-call, .tool-result {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-neutral-50);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+}
+
+.tool-call-tag, .tool-result-tag {
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.tool-call-tag {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.tool-result-tag {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.tool-call-args {
+  font-family: var(--font-mono);
+  color: var(--color-neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-result-content {
+  font-family: var(--font-mono);
+  color: var(--color-neutral-600);
+  margin: 0;
+  overflow-x: auto;
+  max-height: 100px;
+}
+
+/* ---- 思考指示器 ---- */
+.thinking-indicator {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  align-items: center;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-neutral-300);
+  animation: typing-pulse 1.4s infinite cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-pulse {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ---- 输入区 ---- */
+.chat-input {
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-neutral-200);
+}
+
+.input-wrap {
+  margin-bottom: var(--space-2);
+}
+
+.input-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.input-tools {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.input-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--color-neutral-400);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.input-tool-btn:hover {
+  background: var(--color-neutral-100);
+  color: var(--color-primary-500);
+}
+
+/* ---- 侧边栏 ---- */
+.chat-sidebar {
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.sidebar-section {
+  background: #fff;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.sidebar-section-header {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-neutral-100);
+}
+
+.sidebar-section-header h3 {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.quick-commands {
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.quick-command {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-600);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.quick-command:hover {
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
+}
+
+.history-list {
+  padding: var(--space-2);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.history-item {
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.history-item:hover {
+  background: var(--color-neutral-50);
+}
+
+.history-title {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-time {
+  display: block;
+  font-size: 10px;
+  color: var(--color-neutral-300);
+  margin-top: var(--space-1);
+}
+
+.history-empty {
+  padding: var(--space-4);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-300);
+}
+
+/* 可点击命令芯片 */
+.cmd-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; margin: 2px;
+  background: linear-gradient(135deg, #4f6ef7, #6366f1);
+  color: #fff; border: none; border-radius: var(--radius-full);
+  font-size: 11px; font-family: var(--font-mono); cursor: pointer;
+  transition: all .15s; white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis;
+}
+.cmd-chip:hover { background: linear-gradient(135deg, #4338ca, #4f46e5); transform: scale(1.03); box-shadow: 0 2px 8px rgba(79,110,247,.3); }
+
+.cmd-chip-inline {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 1px 8px; margin: 0 2px;
+  background: var(--color-primary-50); color: var(--color-primary-600);
+  border: 1px solid var(--color-primary-200); border-radius: var(--radius-sm);
+  font-size: 11px; font-family: var(--font-mono); cursor: pointer;
+  transition: all .15s; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+}
+.cmd-chip-inline:hover { background: var(--color-primary-100); border-color: var(--color-primary-400); }
+
+@media (max-width: 900px) {
+  .chat-sidebar { display: none; }
+}
 </style>

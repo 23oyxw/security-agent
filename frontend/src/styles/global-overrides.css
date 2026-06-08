@@ -1,0 +1,357 @@
+/* ============================================================
+   GLOBAL OVERRIDES — Element Plus 主题覆盖 v2
+   基于 taste-skill + impeccable 设计原则
+   impeccable anti-patterns: 无纯黑/纯灰，无卡片嵌套，无弹跳动效
+   ============================================================ */
+
+@import './design-tokens.css';
+
+/* ---- 全局基础样式 ---- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--color-neutral-800);
+  background: var(--color-neutral-50);
+}
+
+/* ---- Element Plus 主题覆盖 ---- */
+
+/* 按钮 — impeccable: 无弹跳动效，使用 ease-out */
+.el-button {
+  --el-button-font-weight: 500;
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--color-primary-500);
+  --el-button-border-color: var(--color-primary-500);
+  --el-button-hover-bg-color: var(--color-primary-600);
+  --el-button-hover-border-color: var(--color-primary-600);
+  --el-button-active-bg-color: var(--color-primary-700);
+}
+
+.el-button--small {
+  font-size: var(--text-sm);
+  padding: 6px 12px;
+}
+
+.el-button:active {
+  transform: scale(0.97);
+}
+
+/* 卡片 — impeccable: 无卡片嵌套，使用 tinted 阴影 */
+.el-card {
+  --el-card-border-color: var(--color-neutral-200);
+  --el-card-border-radius: var(--radius-lg);
+  --el-card-padding: var(--space-5);
+  border: 1px solid var(--color-neutral-200);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.el-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.el-card__header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-neutral-100);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-700);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* 表格 — impeccable: tinted 表头，无纯灰 */
+.el-table {
+  --el-table-border-color: var(--color-neutral-200);
+  --el-table-header-bg-color: var(--color-neutral-50);
+  --el-table-header-text-color: var(--color-neutral-600);
+  --el-table-row-hover-bg-color: var(--color-primary-50);
+  font-size: var(--text-sm);
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-neutral-500);
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: var(--color-neutral-50);
+}
+
+/* 标签 */
+.el-tag {
+  --el-tag-border-radius: var(--radius-sm);
+  font-weight: 500;
+  border: none;
+}
+
+.el-tag--small {
+  font-size: var(--text-xs);
+  padding: 0 6px;
+  height: 20px;
+  line-height: 20px;
+}
+
+.el-tag--success {
+  --el-tag-bg-color: var(--color-success-bg);
+  --el-tag-text-color: var(--color-success);
+}
+
+.el-tag--warning {
+  --el-tag-bg-color: var(--color-warning-bg);
+  --el-tag-text-color: var(--color-warning);
+}
+
+.el-tag--danger {
+  --el-tag-bg-color: var(--color-danger-bg);
+  --el-tag-text-color: var(--color-danger);
+}
+
+/* 输入框 — impeccable: 聚焦时使用 tinted 边框 */
+.el-input__wrapper,
+.el-textarea__inner {
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 1px var(--color-neutral-200) inset;
+  transition: box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.el-input__wrapper:hover,
+.el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px var(--color-neutral-300) inset;
+}
+
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 2px var(--color-primary-200) inset;
+}
+
+/* 菜单 */
+.el-menu {
+  border-right: none;
+}
+
+.el-menu-item {
+  border-radius: var(--radius-md);
+  margin: 2px 8px;
+  width: calc(100% - 16px);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.el-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.el-menu-item.is-active {
+  background: rgba(79, 110, 247, 0.15) !important;
+}
+
+/* 步骤条 */
+.el-step__title {
+  font-size: var(--text-sm);
+}
+
+.el-step__description {
+  font-size: var(--text-xs);
+}
+
+/* 警告 */
+.el-alert {
+  border-radius: var(--radius-md);
+  border: none;
+}
+
+.el-alert__title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+/* 描述列表 */
+.el-descriptions {
+  --el-descriptions-table-border-color: var(--color-neutral-200);
+}
+
+.el-descriptions__title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.el-descriptions__label {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+/* 进度条 */
+.el-progress-bar__outer {
+  border-radius: var(--radius-full);
+}
+
+.el-progress--text-inside .el-progress-bar__inner {
+  border-radius: var(--radius-full);
+}
+
+/* 空状态 */
+.el-empty__description {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-400);
+}
+
+/* 分割线 */
+.el-divider {
+  --el-divider-border-color: var(--color-neutral-200);
+}
+
+/* 折叠面板 */
+.el-collapse-item__header {
+  font-weight: 500;
+  font-size: var(--text-sm);
+}
+
+/* 弹窗 — impeccable: 使用 tinted 阴影 */
+.el-message {
+  border-radius: var(--radius-lg);
+  border: none;
+  box-shadow: var(--shadow-lg);
+}
+
+.el-message--success {
+  background: var(--color-success-bg);
+  box-shadow: inset 0 0 0 1px var(--color-success);
+}
+
+.el-message--warning {
+  background: var(--color-warning-bg);
+  box-shadow: inset 0 0 0 1px var(--color-warning);
+}
+
+.el-message--error {
+  background: var(--color-danger-bg);
+  box-shadow: inset 0 0 0 1px var(--color-danger);
+}
+
+/* 下拉菜单 */
+.el-dropdown-menu {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-neutral-200);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-2);
+}
+
+.el-dropdown-menu__item {
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.el-dropdown-menu__item:hover {
+  background: var(--color-primary-50);
+}
+
+/* 面包屑 */
+.el-breadcrumb__inner {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+}
+
+.el-breadcrumb__inner.is-link {
+  color: var(--color-primary-500);
+}
+
+/* 时间线 */
+.el-timeline-item__timestamp {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+/* 徽标 */
+.el-badge__content {
+  border: none;
+  font-size: 10px;
+  height: 16px;
+  line-height: 16px;
+  padding: 0 5px;
+}
+
+/* 开关 */
+.el-switch {
+  --el-switch-on-color: var(--color-primary-500);
+}
+
+/* 选择器 */
+.el-select .el-input__wrapper {
+  border-radius: var(--radius-md);
+}
+
+/* 数字输入 */
+.el-input-number .el-input__wrapper {
+  border-radius: var(--radius-md);
+}
+
+/* 复选框 */
+.el-checkbox__label {
+  font-size: var(--text-sm);
+}
+
+/* 滚动条美化 — impeccable: 细滚动条，tinted 颜色 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-300);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-400);
+}
+
+/* ---- 动效工具类 ---- */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.slide-up-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}

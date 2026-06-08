@@ -108,7 +108,14 @@ async function doReload() {
 
 function viewTools(row) {
   selectedServer.value = row.name
-  toolList.value = (row.tools?.length ? row.tools : mcpStore.tools.filter(t => t.server_name === row.name))
+  // 兼容两种数据格式: tools 已加载 或 tools_count 仅有计数
+  if (row.tools?.length) {
+    toolList.value = row.tools
+  } else if (row.tools_count) {
+    toolList.value = [{ name: '_info', description: `${row.tools_count} 个工具已注册（点击健康检查刷新详情）` }]
+  } else {
+    toolList.value = mcpStore.tools.filter(t => t.server_name === row.name)
+  }
   toolDialog.value = true
 }
 

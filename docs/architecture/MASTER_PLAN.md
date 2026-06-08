@@ -515,3 +515,136 @@ uv run uvicorn security_agent.api.app:app --host 0.0.0.0 --port 8000
 ---
 
 *最后更新：2026-05-30 · 维护者：security-agent 项目组*
+
+
+## 10. 2026-06-08 重构日志 — 架构清理 + Harness 工程化 + 权限管控
+
+### 10.1 清理死代码
+
+| 操作 | 模块 | 原因 |
+|------|------|------|
+| 删除 | `optimization/` (13 py) | DI容器/cache/adapters — 0次外部引用 |
+| 删除 | `plugins/` (2 py) | 被 skills/registry.py 取代 |
+| 删除 | `dify/` (2 py + routes) | P2 可选集成，无实例运行 |
+| 删除 | `blue_team_rules/` (8 py) | 空骨架，0 实现 |
+| 合并 | `knowledge/mcp/` → `mcp/` | 去重两套 MCP 目录 |
+| 删除 | `test_dify_bridge.py`, `test_blue_team_rules.py`, `dify_routes.py` | 关联死代码 |
+
+**结果**: 204 → 177 py 文件 (-13%)
+
+### 10.2 新功能
+
+| 编号 | 功能 | 文件 | 说明 |
+|------|------|------|------|
+| A | 自动回滚 | `safety_gate/risk.py`, `api/routes/executor_routes.py`, `terminal/executor.py` | SnapshotManager 接线 + `_maybe_auto_rollback()` |
+| B | tenacity 重试 | `agent/fallback.py` | LLM 主模型调用指数退避重试 |
+| C1 | 网络运维 MCP | `skills/network_ops/` (3 files) | 5 工具: 端口/连接/防火墙/DNS |
+| C2 | 磁盘管理 MCP | `skills/disk_manager/` (3 files) | 6 工具: 分区/IO/大文件/可清理/备份 |
+| D | 动态阈值 | `monitor/dynamic_threshold.py` | 移动平均+标准差自适应（Prometheus 端点: `api/routes/metrics_routes.py`）|
+| E | Gitee Wiki 知识库 | `knowledge/gitee_wiki/` (6 files) | API v5 客户端 + TF-IDF 向量索引 + MCP Server + 同步脚本 |
+| F | 语义记忆系统 | `memory/semantic_memory.py` | Mem0 风格 L1/L2/L3 三级记忆 |
+| G | 自验证循环 | `agent/brain.py:_verify_result()` | PID/端口幻觉检测 + 知识库交叉校验 |
+| H | 实时流程泳道 | `api/routes/workflow_routes.py:flow-status` | 四泳道聚合端点 |
+| I | 无限画布 | `frontend/src/views/InfiniteCanvas.vue` | 运维态势可视化画布 |
+| J | 任务分发引擎 | `ops/task_dispatch.py` | 权限管控 + 沙箱预演 + 封装内部指令 |
+| K | 快照管理 API | `api/routes/executor_routes.py` | GET/POST/DELETE /snapshots + 真实文件恢复 |
+
+### 10.3 前端重构
+
+| 改动 | 说明 |
+|------|------|
+| 侧边栏分组 | 11项扁平 → 4组 7项 (总览/安全管控/能力审计/知识) |
+| SafetyGate ↔ Executor 打通 | 评估通过 → 绿色按钮跳转执行；执行页顶部横幅"已通过三层防御" |
+| WorkflowView 重写 | 泳道实时视图 + 3 Tab (实时流程/工作流模板/Skill目录) |
+| 无限画布 | `/canvas` 路由，节点+连线+双击展开+实时数据 |
+| 隐藏路由 | `/flows`, `/workflow`, `/blue-team` 保留可访问但不出现在侧边栏 |
+
+### 10.4 Harness Engineering 六大模块对照
+
+| 模块 | 对标实现 | 完成度 |
+|------|---------|--------|
+| ① 上下文架构 | `react_context.py` 截断+瘦身 | 80% |
+| ② 架构约束 | `task_dispatch.py` 权限白名单 + `three_layer_defense.py` | 100% |
+| ③ 自验证循环 | `_verify_result()` PID幻觉检测+知识库交叉 | 85% |
+| ④ 上下文隔离 | 单Agent够用 | 60% |
+| ⑤ 熵治理 | `sync_gitee_wiki.sh` + `clean_old_snapshots(72h)` | 80% |
+| ⑥ 可拆卸模块化 | MCP热插拔 + 17 Skills + L1/L2/L3 | 100% |
+
+### 10.5 当前模块统计
+
+```
+security_agent/        177 py
+├── agent/             18 py   (脑、编排、回退、自验证)
+├── api/               28 py   (FastAPI + 路由 + WS)
+├── audit/              9 py   (事件脊柱、Trace、JSONL日志)
+├── auth/               5 py   (JWT + RBAC)
+├── confirm/            2 py   (S4 审批队列)
+├── demo/               7 py   (竞赛演练场景)
+├── knowledge/         12 py   (+ gitee_wiki/ 6 files)
+├── mcp/                3 py   (统一MCP注册中心)
+├── memory/             3 py   (对话记忆 + 语义记忆)
+├── monitor/            8 py   (巡检 + 动态阈值)
+├── notify/             2 py   (离屏告警)
+├── ops/                3 py   (守卫 + 任务分发)
+├── resilience/         4 py   (预算、熔断、降级)
+├── retrieval/          2 py   (混合检索: Playbook+Wiki)
+├── rules/              2 py   (规则引擎)
+├── safety_gate/        7 py   (三层防御、快照、注入、MAC检查)
+├── scanner/            2 py   (安全扫描)
+├── security/           2 py   (脱敏)
+├── skills/            41 py   (17 Skills: 含新增 network_ops/disk_manager)
+├── storage/            3 py   (快照+Trace 持久化)
+├── terminal/           4 py   (Executor + PrivilegeBroker + Sandbox)
+├── tools/              4 py   (工具注册中心)
+├── utils/              2 py   (Token管理)
+├── visualizer/         2 py   (Trace可视化)
+└── workflow/           2 py   (状态机引擎)
+```
+
+### 10.6 前端页面矩阵 (2026-06-09)
+
+| 路由 | 页面 | 侧边栏 | 定位 |
+|------|------|--------|------|
+| `/` | Dashboard.vue | 📊 总览 | 抽屉式折叠布局 · 系统指标 · Agent 评估(v2) |
+| `/agent` | AgentChat.vue | 📊 总览 | LLM 对话 + 命令芯片(点击→安全执行) |
+| `/canvas` | InfiniteCanvas.vue | 📊 总览 | 五层架构闭环画布 (19节点+21连线+实时) |
+| `/safety` | SafetyGate.vue | ⚙️ 安全管控 | **合并版**: 输入→评估→执行 (含自动回滚展示) |
+| `/alerts` | Alerts.vue | ⚙️ 安全管控 | 5s 自动轮询 |
+| `/mcp` | MCPManage.vue | 🔧 能力审计 | 17 Skills 管理 |
+| `/trace` | TraceView.vue | 🔧 能力审计 | 8s 自动轮询 · 时间线/DAG/热力图 |
+| `/knowledge` | Knowledge.vue | 📚 知识 | Facet 多维结构化搜索 |
+| `/guide` | GuidePage.vue | 📚 知识 | 技术导引 · 赛题架构 · 快速入门 |
+| — | — | — | — |
+| `/executor` | Executor.vue | **隐藏** | 已合并到 SafetyGate |
+| `/flows` | SkillFlows.vue | **隐藏** | Skill Flow 测试 |
+| `/workflow` | WorkflowView.vue | **隐藏** | 旧工作流页 |
+| `/blue-team` | BlueTeam.vue | **隐藏** | 蓝队知识 |
+| `/users` | Users.vue | **隐藏(admin)** | 用户管理 |
+
+### 10.7 评估模型 v2
+
+| 特性 | 旧 (v1) | 新 (v2) |
+|------|---------|---------|
+| 聚合 | 加权和 | 几何平均 (避免短板被掩盖) |
+| 维度 | 5 | 6 (新增知识相关度) |
+| 小样本 | 1次失败=全面F | Wilson 置信区间下界 + 贝叶斯收缩 |
+| 安全漏报 | 权重扣分 | 硬约束: 所有维度 ×0.85 |
+| 趋势 | 无 | improving/stable/declining |
+| Token | 仅累计 | 线性回归预测 + 方向判定 |
+
+### 10.8 后端模块现状 (181 py)
+
+```
+agent/   19py   Brain · Orchestrator · Fallback · evaluation(v2)
+api/     29py   FastAPI + 路由 + WS + eval_routes
+audit/    9py   IncidentSpine · Trace · 六阶段
+knowledge/10py  Playbooks(53条) · Gitee Wiki(27篇) · seed
+retrieval/ 3py  knowledge_index(多维Facet) · hybrid
+skills/  41py   17 Skills (network_ops/disk_manager)
+safety_gate/8py 三层防御 · 快照 · 注入 · mac_checker
+terminal/ 4py   Executor · PrivilegeBroker · Sandbox (_maybe_auto_rollback)
+resilience/4py  预算·熔断·降级 S0-S4
+monitor/  8py   巡检 + 动态阈值
+memory/   3py   ConversationMemory + SemanticMemory(Mem0)
+ops/      3py   Guardrails + TaskDispatch(权限管控)
+data/     agent_eval.json · wiki_cache · snapshots/ · alerts/

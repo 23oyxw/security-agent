@@ -9,17 +9,21 @@ const routes = [
     children: [
       { path: '', name: 'Dashboard', component: () => import('../views/Dashboard.vue') },
       { path: 'agent', name: 'Agent', component: () => import('../views/AgentChat.vue') },
-      { path: 'mcp', name: 'MCP', component: () => import('../views/MCPManage.vue') },
       { path: 'safety', name: 'Safety', component: () => import('../views/SafetyGate.vue') },
-      { path: 'flows', name: 'SkillFlows', component: () => import('../views/SkillFlows.vue') },
-      { path: 'workflow', name: 'Workflow', component: () => import('../views/WorkflowView.vue') },
-      { path: 'executor', name: 'Executor', component: () => import('../views/Executor.vue') },
-      { path: 'trace', name: 'Trace', component: () => import('../views/TraceView.vue') },
       { path: 'alerts', name: 'Alerts', component: () => import('../views/Alerts.vue') },
+      { path: 'mcp', name: 'MCP', component: () => import('../views/MCPManage.vue') },
+      { path: 'trace', name: 'Trace', component: () => import('../views/TraceView.vue') },
       { path: 'knowledge', name: 'Knowledge', component: () => import('../views/Knowledge.vue') },
+      { path: 'guide', name: 'Guide', component: () => import('../views/GuidePage.vue') },
+      { path: 'canvas', name: 'Canvas', component: () => import('../views/InfiniteCanvas.vue') },
       { path: 'users', name: 'Users', component: () => import('../views/Users.vue'), meta: { admin: true } },
     ],
   },
+  // 隐藏路由
+  { path: '/executor', name: 'Executor', component: () => import('../views/Executor.vue'), meta: { hidden: true } },
+  { path: '/flows', name: 'SkillFlows', component: () => import('../views/SkillFlows.vue'), meta: { hidden: true } },
+  { path: '/workflow', name: 'Workflow', component: () => import('../views/WorkflowView.vue'), meta: { hidden: true } },
+  { path: '/blue-team', name: 'BlueTeam', component: () => import('../views/BlueTeam.vue'), meta: { hidden: true } },
 ]
 
 const router = createRouter({ history: createWebHistory(), routes })

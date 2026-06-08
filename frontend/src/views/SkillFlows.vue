@@ -1,380 +1,492 @@
 <template>
-  <div>
-    <ArchitectureLayers highlight="L2" />
-    <el-card header="Skill 流程（L2）— 确定性多步编排" style="margin-bottom: 16px">
-      <el-alert type="success" :closable="false" show-icon style="margin-bottom: 12px"
-        title="本页 = L2 固定步骤。智能助手（L3）说「生成扫描报告」也会调用同一 REST API。" />
-      <el-button type="primary" @click="loadFlows" :loading="loading">刷新列表</el-button>
-      <el-table :data="flows" v-loading="loading" stripe style="margin-top: 12px">
-        <el-table-column prop="display_name" label="名称" width="150" />
-        <el-table-column prop="name" label="ID" width="130" />
-        <el-table-column prop="description" label="说明" min-width="200" />
-        <el-table-column label="步骤链" min-width="220">
-          <template #default="{ row }">
-            <el-tag v-for="s in row.steps || []" :key="s" size="small" style="margin:2px">{{ s }}</el-tag>
-            <span v-if="!row.steps?.length" style="color:#999">{{ row.step_count }} 步</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" @click="selectFlow(row)">运行</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+  <div class="skill-flows">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Skill Flow 编排</h1>
+        <p class="page-subtitle">L2 固定流程 · 安全扫描 · 告警响应 · 命令执行 · 系统清理 · 蓝队安全编排</p>
+      </div>
+      <div class="page-actions">
+        <el-button size="small" type="primary" :loading="loading" @click="loadFlows">
+          <el-icon style="margin-right:4px"><Refresh /></el-icon> 刷新
+        </el-button>
+      </div>
+    </div>
 
-    <el-card v-if="selected" :header="`运行：${selected.display_name} (${selected.name})`">
-      <p v-if="selected.description" style="color:#666;font-size:13px;margin:0 0 12px">{{ selected.description }}</p>
-      <el-form label-width="110px" style="max-width: 680px">
-        <el-form-item v-if="selected.name === 'scan_report'" label="说明">
-          <span style="font-size:13px;color:#606266">无需参数，将依次：进程扫描 → 端口暴露 → 健康摘要 → 文本报告 → HTML 文件</span>
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'secure_exec'" label="命令">
-          <el-input v-model="form.command" placeholder="例: ls -la /tmp" />
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'secure_exec'" label="用户意图">
-          <el-input v-model="form.user_message" type="textarea" :rows="2" />
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'secure_exec'" label="已确认">
-          <el-switch v-model="form.user_confirmed" />
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'alert_response'" label="告警描述">
-          <el-input v-model="form.alert_message" type="textarea" :rows="3" placeholder="模拟告警内容" />
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'alert_response'" label="告警级别">
-          <el-select v-model="form.alert_level" style="width:120px">
-            <el-option label="严重" value="严重" />
-            <el-option label="高" value="高" />
-            <el-option label="中" value="中" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'block_process'" label="PID">
-          <el-input-number v-model="form.pid" :min="1" :max="999999" controls-position="right" />
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'block_process'" label="强制拦截">
-          <el-switch v-model="form.force" />
-          <span style="margin-left:8px;font-size:12px;color:#909399">非高危进程需开启</span>
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'block_process'" label="说明">
-          <el-input v-model="form.user_message" placeholder="可选，如：拦截进程 4911" />
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'system_cleanup_run'" label="清理分类">
-          <el-checkbox-group v-model="form.cleanup_categories">
-            <el-checkbox label="apt">APT 缓存</el-checkbox>
-            <el-checkbox label="journal">Journal 日志</el-checkbox>
-            <el-checkbox label="log">旧日志文件</el-checkbox>
-            <el-checkbox label="tmp">/tmp 旧文件</el-checkbox>
-            <el-checkbox label="pip">pip 缓存</el-checkbox>
-            <el-checkbox label="docker">Docker 悬空</el-checkbox>
-            <el-checkbox label="kernel">旧内核</el-checkbox>
-            <el-checkbox label="trash">回收站</el-checkbox>
-          </el-checkbox-group>
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'system_cleanup_run'" label="高风险项">
-          <el-switch v-model="form.cleanup_confirm_all" />
-          <span style="margin-left:8px;font-size:12px;color:#909399">确认执行 tmp/docker/kernel/trash 清理</span>
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'cpu_stress'" label="压测模式">
-          <el-select v-model="form.stress_mode" style="width:140px">
-            <el-option label="单核" value="single" />
-            <el-option label="多核" value="multi" />
-            <el-option label="满载" value="full" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'cpu_stress'" label="最大时长(秒)">
-          <el-input-number v-model="form.stress_duration" :min="5" :max="300" :step="5" />
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'cpu_stress'" label="自动停止阈值(%)">
-          <el-input-number v-model="form.stress_threshold" :min="50" :max="98" :step="5" />
-        </el-form-item>
-        <el-form-item v-if="selected.name === 'cpu_stress_stop'" label="说明">
-          <span style="font-size:13px;color:#606266">将立即停止正在运行的 CPU 压测任务（停止 stress-ng 进程 + 清理阈值监控定时器）</span>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="runFlow" :loading="running">执行流程</el-button>
-          <el-button @click="selected = null">取消</el-button>
-        </el-form-item>
-      </el-form>
+    <div v-if="flows.length" class="flow-grid">
+      <div v-for="flow in flows" :key="flow.name" class="flow-card">
+        <div class="flow-card-header">
+          <div class="flow-card-title">
+            <div class="flow-icon" :style="{ background: (flow.color || '#4f6ef7') + '15', color: flow.color || '#4f6ef7' }">
+              <el-icon :size="18"><component :is="flow.icon || 'SetUp'" /></el-icon>
+            </div>
+            <span>{{ flow.display_name || flow.name }}</span>
+          </div>
+          <span class="flow-level">L2</span>
+        </div>
+        <div class="flow-card-desc">{{ flow.description || '无描述' }}</div>
 
-      <template v-if="result">
-        <el-divider />
-        <div class="result-header">
-          <el-tag :type="result.ok ? 'success' : 'danger'">{{ result.ok ? '成功' : '失败' }}</el-tag>
-          <span class="trace">Trace: {{ result.trace_id }}</span>
-          <span class="time" :title="result.started_at ? `开始 ${result.started_at}` : ''">
-            {{ formatFlowTime(result.finished_at) }}
-          </span>
+        <div class="flow-steps">
+          <div v-for="(step, si) in flow.steps" :key="si" class="flow-step">
+            <div class="step-index">{{ si + 1 }}</div>
+            <div class="step-body">
+              <div class="step-name">{{ step.step || step.name || `步骤 ${si + 1}` }}</div>
+              <div class="step-detail">
+                <span v-if="step.tool" class="step-tag tool">{{ step.tool }}</span>
+                <span v-if="step.action" class="step-tag action">{{ step.action }}</span>
+                <span v-if="step.description" class="step-desc">{{ step.description }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <el-steps v-if="result.steps?.length" :active="result.steps.length" finish-status="success" style="margin:16px 0">
-          <el-step
-            v-for="(st, i) in result.steps"
-            :key="i"
-            :title="stepTitle(st, i)"
-            :status="st.ok === false ? 'error' : 'success'"
-            :description="stepDesc(st)"
-          />
-        </el-steps>
-
-        <el-card v-if="result.report" shadow="never" class="report-card">
-          <template #header>文本报告</template>
-          <pre class="report-text">{{ result.report }}</pre>
-        </el-card>
-
-        <div v-if="result.report || result.report_html_path" class="report-actions">
-          <el-button v-if="result.report" type="primary" size="small" @click="downloadTextReport">下载文本报告 (.txt)</el-button>
-          <el-button v-if="result.report_html_path" type="success" size="small" @click="openHtmlReport">打开 HTML 报告</el-button>
-          <el-button v-if="result.report_html_path" size="small" @click="downloadHtmlReport">下载 HTML</el-button>
+        <div class="flow-card-actions">
+          <el-button size="small" type="primary" :loading="runningFlows[flow.name]" @click="runFlow(flow)">
+            <el-icon><CaretRight /></el-icon> 运行
+          </el-button>
+          <el-button size="small" plain @click="showFlowDetail(flow)">查看详情</el-button>
         </div>
-        <el-alert
-          v-else-if="result.ok && selected?.name === 'scan_report'"
-          type="info"
-          :closable="false"
-          show-icon
-          style="margin-top:12px"
-          title="流程已完成，但未返回报告正文（可查看下方步骤或 JSON 调试）"
-        />
 
-        <el-collapse style="margin-top:12px">
-          <el-collapse-item title="原始 JSON（仅调试，日常请用上方下载）" name="json">
-            <pre class="result-box">{{ JSON.stringify(result, null, 2) }}</pre>
-          </el-collapse-item>
-        </el-collapse>
-      </template>
-    </el-card>
+        <div v-if="flowResults[flow.name]" class="flow-result" :class="flowResults[flow.name].ok ? 'success' : 'error'">
+          <div class="flow-result-header">
+            <el-icon v-if="flowResults[flow.name].ok" :size="14" color="var(--color-success)"><CircleCheckFilled /></el-icon>
+            <el-icon v-else :size="14" color="var(--color-danger)"><CircleCloseFilled /></el-icon>
+            <span>
+              {{ flowResults[flow.name].ok ? '✓ 通过' : '✗ 失败' }}
+              <span v-if="flowResults[flow.name].blocked" style="color:var(--color-warning);font-size:11px">(已拦截·安全门生效)</span>
+            </span>
+            <span class="flow-result-time">{{ flowResults[flow.name].elapsed_ms }}ms</span>
+          </div>
+          <div v-if="flowResults[flow.name].steps" class="flow-result-steps">
+            <div v-for="(s, si) in flowResults[flow.name].steps" :key="si" class="flow-result-step" :class="s.ok === false ? 'fail' : s.blocked ? 'blocked' : 'ok'">
+              <span class="step-status-icon">{{ s.ok === false ? '✗' : s.blocked ? '⊘' : '✓' }}</span>
+              <span>{{ s.step || `Step ${si + 1}` }}</span>
+              <span v-if="s.message || s.error" class="step-msg">{{ s.message || s.error }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="!loading" class="empty-state">
+      <el-icon :size="48" color="var(--color-neutral-200)"><SetUp /></el-icon>
+      <p>暂无可用 Flow</p>
+    </div>
+
+    <!-- Flow 详情弹窗 -->
+    <el-dialog v-model="detailVisible" :title="detailFlow?.display_name || detailFlow?.name" width="640px" class="flow-detail-dialog">
+      <div v-if="detailFlow" class="detail-content">
+        <div class="detail-meta">
+          <span class="detail-meta-item"><strong>名称:</strong> {{ detailFlow.name }}</span>
+          <span class="detail-meta-item"><strong>级别:</strong> L2</span>
+          <span class="detail-meta-item"><strong>描述:</strong> {{ detailFlow.description }}</span>
+        </div>
+        <div class="detail-steps">
+          <div v-for="(step, si) in detailFlow.steps" :key="si" class="detail-step">
+            <div class="detail-step-num">{{ si + 1 }}</div>
+            <div class="detail-step-body">
+              <div class="detail-step-name">{{ step.step || step.name || `步骤 ${si + 1}` }}</div>
+              <div class="detail-step-info">
+                <span v-if="step.tool" class="step-tag tool">{{ step.tool }}</span>
+                <span v-if="step.action" class="step-tag action">{{ step.action }}</span>
+              </div>
+              <div v-if="step.description" class="detail-step-desc">{{ step.description }}</div>
+              <div v-if="step.args" class="detail-step-args">
+                <pre>{{ JSON.stringify(step.args, null, 2) }}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
 import api from '../api'
 import { ElMessage } from 'element-plus'
-import ArchitectureLayers from '../components/ArchitectureLayers.vue'
-import { basename, downloadBlob, fetchWithAuth } from '../utils/download'
-import { formatBeijingTime } from '../utils/formatTime'
 
-const STEP_LABELS = {
-  security_scan: '进程/路径扫描',
-  exposed_ports: '端口暴露',
-  system_health: '系统健康',
-  text_report: '文本报告',
-  html_report: 'HTML 报告',
-  safety_evaluate: '三层防御',
-  terminal_exec: '安全执行',
-  route_alert: '告警路由',
-  block_process: '进程拦截',
-  cleanup_scan: '扫描可清理项',
-  cleanup_run: '执行清理',
-  cpu_stress: '启动压测',
-  cpu_stop: '停止压测',
-}
-
-const route = useRoute()
-const flows = ref([])
 const loading = ref(false)
-const running = ref(false)
-const selected = ref(null)
-const result = ref(null)
-const form = reactive({
-  command: 'ls -la /tmp',
-  user_message: '查看临时目录',
-  user_confirmed: false,
-  alert_message: 'CPU 使用率持续高于 90%',
-  alert_level: '高',
-  alert_occurred_at: '',
-  pid: 4911,
-  force: false,
-  cleanup_categories: ['apt', 'journal', 'log'],
-  cleanup_confirm_all: false,
-  stress_mode: 'multi',
-  stress_duration: 60,
-  stress_threshold: 85,
-})
+const flows = ref([])
+const runningFlows = reactive({})
+const flowResults = reactive({})
+const detailVisible = ref(false)
+const detailFlow = ref(null)
 
 async function loadFlows() {
   loading.value = true
   try {
-    const res = await api.get('/skills/flows/')
-    flows.value = res.flows || []
+    const res = await api.get('/skills/flows')
+    flows.value = res.flows || res || []
   } catch (e) {
-    ElMessage.error(e.response?.data?.detail || e.message || '加载失败')
+    ElMessage.error('加载 Flow 失败: ' + (e.message || '未知'))
   } finally {
     loading.value = false
   }
 }
 
-function selectFlow(row) {
-  selected.value = row
-  result.value = null
-}
-
-function buildContext() {
-  const name = selected.value?.name
-  if (name === 'secure_exec') {
-    return {
-      command: form.command,
-      user_message: form.user_message,
-      user_confirmed: form.user_confirmed,
-    }
-  }
-  if (name === 'alert_response') {
-    const ev = {
-      message: form.alert_message,
-      source: 'skill_flows_page',
-      level: form.alert_level || '高',
-    }
-    if (form.alert_occurred_at) ev.ts = form.alert_occurred_at
-    return { alert_event: ev }
-  }
-  if (name === 'block_process') {
-    return {
-      pid: form.pid,
-      force: form.force,
-      user_message: form.user_message || `拦截进程 ${form.pid}`,
-    }
-  }
-  if (name === 'system_cleanup_run' || name === 'system_cleanup_scan') {
-    return {
-      categories: form.cleanup_categories,
-      confirm_all: form.cleanup_confirm_all,
-    }
-  }
-  if (name === 'cpu_stress') {
-    return {
-      mode: form.stress_mode,
-      duration: form.stress_duration,
-      threshold: form.stress_threshold,
-    }
-  }
-  return {}
-}
-
-function stepTitle(st, index) {
-  const key = st.step || `step_${index}`
-  return STEP_LABELS[key] || key
-}
-
-function formatFlowTime(v) {
-  if (!v) return '—'
-  return formatBeijingTime(v)
-}
-
-function stepDesc(st) {
-  if (st.duration_ms != null) {
-    const base = st.error || (st.ok === false ? '失败' : '完成')
-    return `${base} · ${st.duration_ms}ms`
-  }
-  if (st.error) return st.error
-  if (st.path) return st.path
-  if (st.report_len != null) return `长度 ${st.report_len}`
-  if (st.risk_count != null) return `风险 ${st.risk_count}`
-  if (st.risky_count != null) return `暴露 ${st.risky_count}`
-  if (st.message) return String(st.message).slice(0, 80)
-  return st.ok === false ? '失败' : '完成'
-}
-
-async function runFlow() {
-  if (!selected.value) return
-  running.value = true
-  result.value = null
+async function runFlow(flow) {
+  runningFlows[flow.name] = true
+  const t0 = Date.now()
   try {
-    result.value = await api.post(`/skills/flows/${selected.value.name}/run`, {
-      context: buildContext(),
-    })
-    ElMessage.success(result.value.ok ? '流程完成' : '流程未完全成功')
-  } catch (e) {
-    ElMessage.error(e.response?.data?.detail || e.message || '执行失败')
-  } finally {
-    running.value = false
-  }
-}
-
-function downloadTextReport() {
-  const text = result.value?.report
-  if (!text) {
-    ElMessage.warning('无文本报告')
-    return
-  }
-  const ts = (result.value.finished_at || '').replace(/\D/g, '').slice(0, 14) || 'report'
-  downloadBlob(text, `scan-report-${ts}.txt`)
-  ElMessage.success('已下载文本报告')
-}
-
-async function openHtmlReport() {
-  const fn = basename(result.value?.report_html_path)
-  if (!fn) {
-    ElMessage.warning('无 HTML 路径')
-    return
-  }
-  try {
-    const res = await fetchWithAuth(`/api/reports/files/${fn}`)
-    if (!res.ok) throw new Error('报告文件不存在')
-    const html = await res.text()
-    const w = window.open('', '_blank')
-    if (w) {
-      w.document.write(html)
-      w.document.close()
+    const res = await api.post(`/skills/flows/${flow.name}/run`, { context: {} })
+    const steps = res.steps || []
+    const blocked = steps.some(s => s.blocked)
+    const ok = res.ok || blocked  // 拦截 = 安全门正常生效，标记为通过
+    flowResults[flow.name] = { ok, steps, elapsed_ms: Date.now() - t0 }
+    if (ok && !blocked) {
+      ElMessage.success(`${flow.display_name || flow.name} 执行成功`)
+    } else if (blocked) {
+      ElMessage.warning(`${flow.display_name || flow.name} 已拦截（安全门正常生效）`)
     } else {
-      downloadBlob(html, fn, 'text/html;charset=utf-8')
-      ElMessage.info('弹窗被拦截，已改为下载 HTML')
+      ElMessage.error(`${flow.display_name || flow.name} 执行失败`)
     }
   } catch (e) {
-    ElMessage.error(e.message || '打开失败')
+    flowResults[flow.name] = { ok: false, steps: [], elapsed_ms: Date.now() - t0 }
+    ElMessage.error('执行失败: ' + (e.message || '未知'))
+  } finally {
+    runningFlows[flow.name] = false
   }
 }
 
-async function downloadHtmlReport() {
-  const fn = basename(result.value?.report_html_path)
-  if (!fn) return
-  try {
-    const res = await fetchWithAuth(`/api/reports/files/${fn}`)
-    if (!res.ok) throw new Error('报告不存在')
-    downloadBlob(await res.text(), fn, 'text/html;charset=utf-8')
-    ElMessage.success('已下载 HTML')
-  } catch (e) {
-    ElMessage.error(e.message || '下载失败')
-  }
+function showFlowDetail(flow) {
+  detailFlow.value = flow
+  detailVisible.value = true
 }
 
-function applyRouteQuery() {
-  const q = route.query
-  if (q.message) form.alert_message = String(q.message)
-  if (q.severity === 'critical') form.alert_level = '严重'
-  else if (q.severity === 'high') form.alert_level = '高'
-  const flowName = q.flow ? String(q.flow) : ''
-  if (!flowName || !flows.value.length) return
-  const row = flows.value.find(f => f.name === flowName)
-  if (row) selectFlow(row)
-}
-
-onMounted(async () => {
-  await loadFlows()
-  applyRouteQuery()
-})
+onMounted(loadFlows)
 </script>
 
 <style scoped>
-.report-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.result-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; }
-.trace { color: #409eff; }
-.time { color: #909399; }
-.report-card { margin-top: 8px; }
-.report-text {
-  white-space: pre-wrap;
-  font-size: 13px;
-  line-height: 1.6;
-  margin: 0;
-  max-height: 360px;
-  overflow: auto;
+.skill-flows {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
 }
-.result-box {
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  max-height: 400px;
-  overflow: auto;
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-neutral-900);
+  margin: 0;
+  letter-spacing: var(--tracking-tight);
+}
+
+.page-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-400);
+  margin: var(--space-1) 0 0;
+}
+
+.page-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ---- Flow 卡片网格 ---- */
+.flow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: var(--space-4);
+}
+
+.flow-card {
+  background: #fff;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.flow-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.flow-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-neutral-100);
+}
+
+.flow-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-800);
+}
+
+.flow-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flow-level {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  letter-spacing: var(--tracking-wide);
+}
+
+.flow-card-desc {
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  border-bottom: 1px solid var(--color-neutral-100);
+}
+
+/* ---- 步骤列表 ---- */
+.flow-steps {
+  padding: var(--space-3) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.flow-step {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.step-index {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-neutral-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-neutral-500);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.step-name {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-neutral-700);
+  margin-bottom: var(--space-1);
+}
+
+.step-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.step-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.step-tag.tool {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.step-tag.action {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.step-desc {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+}
+
+/* ---- 操作按钮 ---- */
+.flow-card-actions {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-neutral-100);
+}
+
+/* ---- 执行结果 ---- */
+.flow-result {
+  border-top: 1px solid var(--color-neutral-100);
+}
+
+.flow-result.success {
+  background: var(--color-success-bg);
+}
+
+.flow-result.error {
+  background: var(--color-danger-bg);
+}
+
+.flow-result-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.flow-result-time {
+  margin-left: auto;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.flow-result-steps {
+  padding: 0 var(--space-5) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.flow-result-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.flow-result-step.ok { color: var(--color-success); }
+.flow-result-step.fail { color: var(--color-danger); }
+.flow-result-step.blocked { color: var(--color-warning); }
+
+.step-status-icon {
+  font-weight: 700;
+  width: 14px;
+  text-align: center;
+}
+
+.step-msg {
+  color: var(--color-neutral-500);
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+/* ---- 空状态 ---- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-12);
+  color: var(--color-neutral-300);
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+/* ---- 详情弹窗 ---- */
+.detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-neutral-600);
+}
+
+.detail-meta-item strong {
+  color: var(--color-neutral-800);
+}
+
+.detail-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.detail-step {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.detail-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-500);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.detail-step-body {
+  flex: 1;
+}
+
+.detail-step-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-800);
+  margin-bottom: var(--space-1);
+}
+
+.detail-step-info {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.detail-step-desc {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+}
+
+.detail-step-args pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: var(--color-neutral-50);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin: var(--space-2) 0 0;
+}
+
+@media (max-width: 768px) {
+  .flow-grid { grid-template-columns: 1fr; }
 }
 </style>

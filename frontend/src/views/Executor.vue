@@ -1,426 +1,646 @@
 <template>
-  <div>
-    <el-row :gutter="16">
-      <el-col :span="14">
-        <el-card>
-          <template #header>
-            <span>⚡ 安全执行器</span>
-          </template>
+  <div class="executor">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">命令执行器</h1>
+        <p class="page-subtitle">安全命令执行 · 三层防御评估 · 实时输出</p>
+      </div>
+    </div>
 
-          <el-form :model="form" label-width="80px" @submit.prevent="execute">
-            <el-form-item label="命令">
-              <el-autocomplete
-                v-model="form.command"
-                :fetch-suggestions="queryCommands"
-                placeholder="输入命令或关键词搜索命令库"
-                clearable
-                size="large"
-                style="width:100%"
-                @select="onSelectCommand"
-              >
-                <template #default="{ item }">
-                  <div style="display:flex;justify-content:space-between;align-items:center">
-                    <span><code>{{ item.value }}</code></span>
-                    <div style="display:flex;gap:4px;align-items:center">
-                      <el-tag v-if="item.cat" size="small" type="info" effect="plain">{{ catLabelMap[item.cat] || item.cat }}</el-tag>
-                      <el-tag :type="item.riskColor" size="small" effect="plain">{{ item.riskLabel }}</el-tag>
-                    </div>
+    <div class="executor-layout">
+      <div class="executor-main">
+        <div v-if="fromSafety" class="safety-banner">
+          <el-icon><CircleCheckFilled /></el-icon>
+          <span>已通过三层防御评估，命令可直接执行</span>
+          <el-button size="small" text @click="router.push('/safety')">← 返回安全评估</el-button>
+        </div>
+        <div class="section-card">
+          <div class="section-card-header">
+            <h3>命令输入</h3>
+            <div class="section-card-actions">
+              <el-tooltip content="清空输出" placement="top">
+                <el-button size="small" plain @click="clearOutput">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </el-tooltip>
+            </div>
+          </div>
+          <div class="executor-body">
+            <div class="executor-input">
+              <div class="executor-input-wrapper">
+                <el-input
+                  v-model="command"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="输入要执行的命令，如：ls -la /tmp"
+                  @keydown.enter.prevent="execute"
+                  @keydown.up.prevent="navigateHistory(-1)"
+                  @keydown.down.prevent="navigateHistory(1)"
+                  :disabled="executing"
+                />
+                <!-- CLI-Anything 风格：命令历史下拉 -->
+                <div v-if="filteredHistory.length > 0 && command.trim()" class="history-dropdown">
+                  <div
+                    v-for="(h, i) in filteredHistory"
+                    :key="i"
+                    class="history-item"
+                    :class="{ active: i === historyIndex }"
+                    @click="selectHistory(h)"
+                  >
+                    <el-icon :size="12"><Clock /></el-icon>
+                    <span>{{ h }}</span>
                   </div>
-                </template>
-              </el-autocomplete>
-            </el-form-item>
-            <el-form-item label="模式">
-              <el-radio-group v-model="form.sandbox">
-                <el-radio-button :value="true">沙箱模式</el-radio-button>
-                <el-radio-button :value="false">直接执行</el-radio-button>
-              </el-radio-group>
-              <el-tag v-if="!form.sandbox" type="danger" size="small" style="margin-left:8px">⚠️ 危险</el-tag>
-            </el-form-item>
-            <el-form-item v-if="previewRisk" label="预估风险">
-              <el-tag :type="riskColor(previewRisk)" effect="dark" size="small">
-                {{ normRisk(previewRisk) }}（{{ previewRiskLabel || RISK_CN[normRisk(previewRisk)] }}）
-              </el-tag>
-              <span style="margin-left:8px;font-size:12px;color:#999">执行后以下方结果为准</span>
-            </el-form-item>
-            <el-form-item label="超时">
-              <el-input-number v-model="form.timeout" :min="5" :max="120" :step="5" />
-              <span style="margin-left:8px;color:#999">秒</span>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" :loading="executing" @click="execute" :disabled="!form.command.trim()">
-                <el-icon><CaretRight /></el-icon> 执行
+                </div>
+              </div>
+            </div>
+            <div class="executor-options">
+              <el-checkbox v-model="sudo">使用 sudo</el-checkbox>
+              <el-checkbox v-model="confirm">需要用户确认</el-checkbox>
+            </div>
+            <div class="executor-actions">
+              <el-button type="primary" :loading="executing" @click="execute" :disabled="!command.trim()">
+                <el-icon style="margin-right:4px"><CaretRight /></el-icon> 执行
               </el-button>
-              <el-button @click="form.command = ''">清空</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-
-        <!-- 执行结果 -->
-        <el-card v-if="result" style="margin-top:16px">
-          <template #header>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span>执行结果</span>
-              <el-tag :type="result.success ? 'success' : 'danger'" size="small">
-                {{ result.success ? '成功' : '失败' }} · {{ result.duration_ms?.toFixed(0) || 0 }}ms
-              </el-tag>
-            </div>
-          </template>
-          <div class="output-box" :class="result.success ? 'success' : 'error'">
-            <pre>{{ result.output || result.error || '（无输出）' }}</pre>
-          </div>
-          <div class="risk-bar">
-            <el-tag :type="riskColor(result.risk_level)" size="small" effect="dark">
-              风险等级: {{ riskDisplay(result) }}
-            </el-tag>
-            <el-tag v-if="result.execution_mode" size="small" type="info" style="margin-left:8px">
-              {{ result.execution_mode === 'sandbox' ? '沙箱执行' : '直接执行' }}
-            </el-tag>
-            <el-tag v-if="result.rollback_id" type="warning" size="small" style="margin-left:8px">
-              可回滚: {{ result.rollback_id }}
-            </el-tag>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :span="10">
-        <el-card header="执行历史" style="margin-bottom:16px">
-          <div v-for="(h, i) in history" :key="i" class="history-item" @click="form.command = h.command">
-            <div style="display:flex;align-items:center;gap:6px">
-              <el-icon :color="h.success ? '#67C23A' : '#F56C6C'" :size="14">
-                <component :is="h.success ? 'CircleCheckFilled' : 'CircleCloseFilled'" />
-              </el-icon>
-              <code style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ h.command }}</code>
-              <span style="font-size:11px;color:#999">{{ h.duration_ms?.toFixed(0) }}ms</span>
+              <el-button plain @click="command = ''">清空</el-button>
+              <span v-if="executionTime" class="exec-time">耗时 {{ executionTime }}ms</span>
             </div>
           </div>
-          <el-empty v-if="!history.length" description="暂无执行记录" :image-size="40" />
-        </el-card>
+        </div>
 
-        <el-card header="📖 命令库" style="margin-bottom:16px">
-          <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">
-            <el-radio-group v-model="execCategory" size="small">
-              <el-radio-button value="">全部</el-radio-button>
-              <el-radio-button value="system">🖥️ 系统</el-radio-button>
-              <el-radio-button value="process">⚙️ 进程</el-radio-button>
-              <el-radio-button value="network">🌐 网络</el-radio-button>
-              <el-radio-button value="disk">💾 磁盘</el-radio-button>
-              <el-radio-button value="log">📋 日志</el-radio-button>
-              <el-radio-button value="security">🔒 安全</el-radio-button>
-              <el-radio-button value="service">🔧 服务</el-radio-button>
-            </el-radio-group>
-          </div>
-          <el-input
-            v-model="cmdSearch"
-            placeholder="搜索命令或说明…"
-            size="small"
-            clearable
-            style="margin-bottom:8px"
-          >
-            <template #prefix><el-icon><Search /></el-icon></template>
-          </el-input>
-          <div class="cmd-lib-list">
-            <div
-              v-for="cmd in filteredExecCmds"
-              :key="cmd.cmd"
-              class="cmd-lib-item"
-              @click="form.command = cmd.cmd"
-            >
-              <div style="display:flex;align-items:center;justify-content:space-between;flex:1;min-width:0">
-                <code style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ cmd.cmd }}</code>
-                <el-tag :type="cmd.riskColor" size="small" effect="plain" style="margin-left:6px;flex-shrink:0">{{ cmd.riskLabel }}</el-tag>
-              </div>
-              <div style="font-size:11px;color:#999;margin-top:2px">{{ cmd.label }}</div>
+        <div class="section-card">
+          <div class="section-card-header">
+            <h3>执行输出</h3>
+            <div class="section-card-actions">
+              <el-button size="small" plain @click="copyOutput" v-if="output">
+                <el-icon><CopyDocument /></el-icon>
+              </el-button>
             </div>
           </div>
-          <el-empty v-if="!filteredExecCmds.length" description="无匹配命令" :image-size="40" />
-        </el-card>
+          <div class="output-body">
+            <div v-if="output" class="output-content">
+              <pre class="output-text">{{ output }}</pre>
+            </div>
+            <div v-else-if="!executing" class="output-empty">
+              <el-icon :size="32" color="var(--color-neutral-200)"><Terminal /></el-icon>
+              <p>输入命令并点击执行</p>
+            </div>
+            <div v-if="executing" class="output-loading">
+              <span class="loading-dot"></span>
+              <span class="loading-dot"></span>
+              <span class="loading-dot"></span>
+              <span class="loading-text">执行中...</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <el-card header="🧠 安全知识库检索">
-          <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-            <el-input
-              v-model="kbQuery"
-              placeholder="关键词：后门、SSH、Sigma"
-              size="small"
-              style="width:200px"
-              clearable
-              @keyup.enter="searchKb"
-            >
-              <template #prefix><el-icon><Search /></el-icon></template>
-            </el-input>
-            <el-button size="small" type="primary" @click="searchKb" :loading="kbLoading">检索</el-button>
+      <aside class="executor-sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h3>安全评估</h3>
           </div>
-          <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">
-            <el-tag
-              v-for="t in kbTags.slice(0, 8)"
-              :key="t.name"
-              :type="kbActiveTag === t.name ? '' : 'info'"
-              :effect="kbActiveTag === t.name ? 'dark' : 'plain'"
-              size="small"
-              style="cursor:pointer"
-              @click="toggleKbTag(t.name)"
-            >{{ t.name }} ({{ t.count }})</el-tag>
-          </div>
-          <div v-if="kbResults.length" class="kb-list">
-            <div v-for="item in kbResults" :key="item.id" class="kb-item" @click="toggleKbDetail(item)">
-              <div style="display:flex;align-items:center;gap:6px">
-                <el-tag :type="sevType(item.severity)" size="small">{{ item.severity }}</el-tag>
-                <span style="font-weight:500;font-size:13px">{{ item.title }}</span>
-                <el-tag v-if="item._score" size="small" type="success" effect="plain" style="margin-left:auto">{{ '★'.repeat(Math.min(item._score, 5)) }}</el-tag>
-                <el-tag v-if="item.requires_root_confirm" size="small" type="danger" effect="dark" style="margin-left:2px">需Root确认</el-tag>
-              </div>
-              <div style="font-size:11px;color:#999;margin-top:2px;line-clamp:2;-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden">{{ item.body }}</div>
-              <div style="margin-top:4px;display:flex;gap:3px;flex-wrap:wrap">
-                <el-tag v-for="tag in item.threat_tags" :key="tag" size="small" type="info" effect="plain">{{ tag }}</el-tag>
-              </div>
-              <div v-if="kbDetailItem?.id === item.id" style="margin-top:8px;padding:8px;background:#f9f9f9;border-radius:4px;font-size:12px;line-height:1.6">
-                <div v-if="item.suggested_actions?.length"><strong>建议操作：</strong>{{ item.suggested_actions.join('；') }}</div>
-                <div v-if="item.do_not?.length" style="margin-top:4px;color:#e6a23c"><strong>⚠️ 禁止：</strong>{{ item.do_not.join('；') }}</div>
+          <div v-if="assessment" class="assessment-body">
+            <div class="assessment-verdict" :class="assessment.verdict === 'safe' ? 'safe' : assessment.verdict === 'blocked' ? 'blocked' : 'review'">
+              <el-icon v-if="assessment.verdict === 'safe'" :size="16" color="var(--color-success)"><CircleCheckFilled /></el-icon>
+              <el-icon v-else-if="assessment.verdict === 'blocked'" :size="16" color="var(--color-danger)"><CircleCloseFilled /></el-icon>
+              <el-icon v-else :size="16" color="var(--color-warning)"><WarningFilled /></el-icon>
+              <span>{{ assessment.verdict === 'safe' ? '安全' : assessment.verdict === 'blocked' ? '已拦截' : '需审核' }}</span>
+            </div>
+            <div class="assessment-score">
+              <span class="assessment-score-label">安全评分</span>
+              <span class="assessment-score-value" :class="assessment.verdict === 'safe' ? 'safe' : assessment.verdict === 'blocked' ? 'blocked' : 'review'">{{ assessment.score || assessment.total_score || 0 }}</span>
+            </div>
+            <div v-if="assessment.layers?.length" class="assessment-layers">
+              <div v-for="(layer, i) in assessment.layers" :key="i" class="assessment-layer">
+                <div class="assessment-layer-header">
+                  <span>{{ layer.name || `第 ${i + 1} 层` }}</span>
+                  <span :class="layer.ok ? 'pass' : 'fail'">{{ layer.score || 0 }}分</span>
+                </div>
+                <div class="assessment-layer-bar">
+                  <div class="assessment-layer-fill" :style="{ width: (layer.score || 0) + '%', background: layer.ok ? 'var(--color-success)' : 'var(--color-danger)' }"></div>
+                </div>
+                <div v-if="layer.reason" class="assessment-layer-reason">{{ layer.reason }}</div>
               </div>
             </div>
           </div>
-          <el-empty v-else-if="kbSearched" description="未找到匹配项" :image-size="40" />
-          <el-text v-else type="info" size="small">输入关键词或点击标签检索（共 {{ kbTotal }} 条）</el-text>
-        </el-card>
-      </el-col>
-    </el-row>
+          <div v-else class="assessment-empty">
+            <p>执行命令后将显示安全评估结果</p>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h3>常用命令</h3>
+          </div>
+          <div class="quick-commands">
+            <div v-for="cmd in quickCommands" :key="cmd.label" class="quick-command" @click="command = cmd.cmd">
+              <el-icon :size="14"><component :is="cmd.icon" /></el-icon>
+              <span>{{ cmd.label }}</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, watch, computed, onMounted } from 'vue'
-import { Search } from '@element-plus/icons-vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { ElMessage } from 'element-plus'
 
-const form = reactive({ command: '', sandbox: true, timeout: 30 })
-const result = ref(null)
+const route = useRoute()
+const router = useRouter()
+const command = ref(route.query.command || '')
+const fromSafety = ref(!!route.query.from_safety)
+const sudo = ref(false)
+const confirm = ref(true)
 const executing = ref(false)
-const history = ref([])
-const previewRisk = ref('')
-const previewRiskLabel = ref('')
-const execCategory = ref('')
-const cmdSearch = ref('')
+const output = ref('')
+const executionTime = ref(null)
+const assessment = ref(null)
+const historyIndex = ref(-1)
+const commandHistory = ref([])
+const outputRef = ref(null)
 
-const RISK_MAP = {
-  readonly: { color: 'success', label: '只读' },
-  reversible: { color: 'warning', label: '可逆' },
-  irreversible: { color: 'danger', label: '不可逆' },
-  critical: { color: 'danger', label: '关键' },
-}
-
-const catLabelMap = {
-  system: '🖥️ 系统',
-  process: '⚙️ 进程',
-  network: '🌐 网络',
-  disk: '💾 磁盘',
-  log: '📋 日志',
-  security: '🔒 安全',
-  service: '🔧 服务',
-}
-
-// 命令库（统一结构，包含风险标签）
-const execCmdLibrary = [
-  // 系统信息
-  { cat: 'system', label: '系统版本', cmd: 'uname -a', risk: 'readonly' },
-  { cat: 'system', label: '发行版信息', cmd: 'cat /etc/os-release', risk: 'readonly' },
-  { cat: 'system', label: '运行时间', cmd: 'uptime', risk: 'readonly' },
-  { cat: 'system', label: '内存使用', cmd: 'free -h', risk: 'readonly' },
-  { cat: 'system', label: '磁盘使用', cmd: 'df -h', risk: 'readonly' },
-  { cat: 'system', label: 'CPU信息', cmd: 'lscpu', risk: 'readonly' },
-  { cat: 'system', label: '系统负载', cmd: 'top -bn1 | head -20', risk: 'readonly' },
-  { cat: 'system', label: '系统时间', cmd: 'date +"%Y-%m-%d %H:%M:%S"', risk: 'readonly' },
-
-  // 进程管理
-  { cat: 'process', label: 'CPU Top进程', cmd: 'ps aux --sort=-%cpu | head -20', risk: 'readonly' },
-  { cat: 'process', label: '内存Top进程', cmd: 'ps aux --sort=-%mem | head -20', risk: 'readonly' },
-  { cat: 'process', label: '僵尸进程', cmd: 'ps aux | grep -i zombie', risk: 'readonly' },
-  { cat: 'process', label: '进程树', cmd: 'ps -ef --forest | head -30', risk: 'readonly' },
-  { cat: 'process', label: '强制终止进程', cmd: 'kill -9 PID', risk: 'irreversible' },
-  { cat: 'process', label: '按名称终止', cmd: 'pkill -f "进程名"', risk: 'irreversible' },
-
-  // 磁盘空间
-  { cat: 'disk', label: '日志目录大小', cmd: 'du -sh /var/log/*', risk: 'readonly' },
-  { cat: 'disk', label: '临时文件大小', cmd: 'du -sh /tmp/*', risk: 'readonly' },
-  { cat: 'disk', label: '大文件扫描', cmd: 'find / -size +100M -type f 2>/dev/null', risk: 'readonly' },
-  { cat: 'disk', label: '日志文件占用', cmd: 'lsof +D /var/log 2>/dev/null', risk: 'readonly' },
-
-  // 网络安全
-  { cat: 'network', label: '监听端口', cmd: 'ss -tlnp', risk: 'readonly' },
-  { cat: 'network', label: '连接统计', cmd: 'ss -s', risk: 'readonly' },
-  { cat: 'network', label: '网络接口', cmd: 'ip addr show', risk: 'readonly' },
-  { cat: 'network', label: '路由表', cmd: 'ip route show', risk: 'readonly' },
-  { cat: 'network', label: '防火墙规则', cmd: 'iptables -L -n --line-numbers', risk: 'readonly' },
-  { cat: 'network', label: 'DNS配置', cmd: 'cat /etc/resolv.conf', risk: 'readonly' },
-  { cat: 'network', label: '最近登录', cmd: 'last -20', risk: 'readonly' },
-  { cat: 'network', label: '当前登录用户', cmd: 'who', risk: 'readonly' },
-  { cat: 'network', label: '失败登录', cmd: 'lastb -10', risk: 'readonly' },
-
-  // 日志审计
-  { cat: 'log', label: '最近1小时日志', cmd: 'journalctl --since "1 hour ago" --no-pager', risk: 'readonly' },
-  { cat: 'log', label: '今日错误日志', cmd: 'journalctl -p err --since today --no-pager', risk: 'readonly' },
-  { cat: 'log', label: 'SSH日志', cmd: 'journalctl -u sshd --since today --no-pager', risk: 'readonly' },
-  { cat: 'log', label: '登录失败日志', cmd: 'grep -i "failed password" /var/log/auth.log | tail -20', risk: 'readonly' },
-  { cat: 'log', label: '内核日志', cmd: 'dmesg | tail -30', risk: 'readonly' },
-  { cat: 'log', label: '审计认证摘要', cmd: 'aureport --auth --summary', risk: 'readonly' },
-
-  // 安全加固
-  { cat: 'security', label: '可登录用户', cmd: 'cat /etc/passwd | grep -v nologin', risk: 'readonly' },
-  { cat: 'security', label: 'SUID文件', cmd: 'find / -perm -4000 -type f 2>/dev/null', risk: 'readonly' },
-  { cat: 'security', label: 'SGID文件', cmd: 'find / -perm -2000 -type f 2>/dev/null', risk: 'readonly' },
-  { cat: 'security', label: '当前用户计划任务', cmd: 'crontab -l', risk: 'readonly' },
-  { cat: 'security', label: '系统计划任务', cmd: 'cat /etc/crontab', risk: 'readonly' },
-  { cat: 'security', label: 'sudo配置', cmd: 'sudo -l', risk: 'readonly' },
-
-  // 服务管理
-  { cat: 'service', label: '运行中的服务', cmd: 'systemctl list-units --type=service --state=running', risk: 'readonly' },
-  { cat: 'service', label: 'SSH服务状态', cmd: 'systemctl status sshd', risk: 'readonly' },
-  { cat: 'service', label: '定时器', cmd: 'systemctl list-timers', risk: 'readonly' },
-  { cat: 'service', label: '重启SSH', cmd: 'systemctl restart sshd', risk: 'reversible' },
-].map(item => {
-  const rm = RISK_MAP[item.risk] || RISK_MAP.readonly
-  return { ...item, riskColor: rm.color, riskLabel: rm.label, value: item.cmd }
+// CLI-Anything 风格：命令历史搜索
+const filteredHistory = computed(() => {
+  if (!command.value.trim()) return []
+  return commandHistory.value.filter(h => h.includes(command.value)).slice(0, 8)
 })
 
-// 按分类+搜索过滤
-const filteredExecCmds = computed(() => {
-  let list = execCmdLibrary
-  if (execCategory.value) {
-    list = list.filter(c => c.cat === execCategory.value)
-  }
-  const q = cmdSearch.value?.toLowerCase().trim()
-  if (q) {
-    list = list.filter(c =>
-      c.cmd.toLowerCase().includes(q) ||
-      c.label.toLowerCase().includes(q)
-    )
-  }
-  return list
+// 命令语法高亮（模拟终端效果）
+const highlightedOutput = computed(() => {
+  if (!output.value) return ''
+  return output.value
+    .replace(/(error|Error|ERROR|failed|Failed|FAILED)/g, '<span class="hl-error">$1</span>')
+    .replace(/(warning|Warning|WARNING)/g, '<span class="hl-warn">$1</span>')
+    .replace(/(\d{1,3}\.){3}\d{1,3}/g, '<span class="hl-ip">$1</span>')
+    .replace(/`[^`]+`/g, '<span class="hl-code">$&</span>')
 })
 
-// 自动补全搜索
-function queryCommands(queryString, cb) {
-  const q = queryString.toLowerCase()
-  const results = queryString
-    ? execCmdLibrary.filter(c =>
-        c.cmd.toLowerCase().includes(q) ||
-        c.label.toLowerCase().includes(q)
-      )
-    : execCmdLibrary.slice(0, 20)
-  cb(results)
-}
-
-function onSelectCommand(item) {
-  form.command = item.cmd
-}
-
-const RISK_CN = { READONLY: '只读', REVERSIBLE: '可逆', IRREVERSIBLE: '不可逆', CRITICAL: '关键' }
-
-function normRisk(r) {
-  return String(r || 'READONLY').toUpperCase()
-}
-
-function riskColor(r) {
-  const k = normRisk(r)
-  return { CRITICAL: 'danger', IRREVERSIBLE: 'danger', REVERSIBLE: 'warning', READONLY: 'success' }[k] || 'info'
-}
-
-function riskDisplay(resOrLevel) {
-  if (resOrLevel && typeof resOrLevel === 'object') {
-    const lv = normRisk(resOrLevel.risk_level)
-    return resOrLevel.risk_label ? `${lv}（${resOrLevel.risk_label}）` : `${lv}（${RISK_CN[lv] || lv}）`
+// 自动滚动到输出底部
+watch(output, async () => {
+  await nextTick()
+  if (outputRef.value) {
+    outputRef.value.scrollTop = outputRef.value.scrollHeight
   }
-  const lv = normRisk(resOrLevel)
-  return `${lv}（${RISK_CN[lv] || lv}）`
-}
-
-// ---- 知识库检索 (shared composable) ----
-import { useKnowledgeSearch } from '../composables/useKnowledgeSearch'
-import { sevTypeCN } from '../utils/severity'
-const {
-  query: kbQuery, activeTag: kbActiveTag, results: kbResults,
-  tags: kbTags, total: kbTotal, loading: kbLoading,
-  searched: kbSearched,
-  search: searchKb, toggleTag: toggleKbTag, toggleDetail: toggleKbDetail,
-} = useKnowledgeSearch({ limit: 20 })
-function sevType(s) { return sevTypeCN(s) }
-
-let previewTimer = null
-watch(() => form.command, (cmd) => {
-  clearTimeout(previewTimer)
-  if (!cmd?.trim()) {
-    previewRisk.value = ''
-    previewRiskLabel.value = ''
-    return
-  }
-  previewTimer = setTimeout(async () => {
-    try {
-      const res = await api.get('/executor/assess-risk', { params: { command: cmd.trim() } })
-      previewRisk.value = res.risk_level
-      previewRiskLabel.value = res.risk_label
-    } catch {
-      previewRisk.value = ''
-    }
-  }, 400)
 })
+
+const quickCommands = [
+  { label: '查看目录', icon: 'FolderOpened', cmd: 'ls -la /tmp' },
+  { label: '查看进程', icon: 'SetUp', cmd: 'ps aux --sort=-%cpu | head -20' },
+  { label: '磁盘使用', icon: 'DataBoard', cmd: 'df -h' },
+  { label: '内存使用', icon: 'Coin', cmd: 'free -h' },
+  { label: '网络连接', icon: 'Connection', cmd: 'ss -tlnp' },
+  { label: '系统日志', icon: 'Document', cmd: 'journalctl -n 50 --no-pager' },
+  { label: '系统信息', icon: 'Monitor', cmd: 'uname -a' },
+  { label: '运行时间', icon: 'Timer', cmd: 'uptime' },
+]
 
 async function execute() {
-  if (!form.command.trim()) return
+  if (!command.value.trim() || executing.value) return
   executing.value = true
-  result.value = null
+  output.value = ''
+  assessment.value = null
+  const t0 = Date.now()
   try {
     const res = await api.post('/executor/execute', {
-      command: form.command.trim(),
-      sandbox: form.sandbox,
-      timeout: form.timeout,
+      command: command.value,
+      sudo: sudo.value,
+      require_confirmation: confirm.value,
     })
-    result.value = res
-    history.value.unshift({
-      command: form.command.trim(),
-      success: res.success,
-      duration_ms: res.duration_ms,
-      timestamp: Date.now(),
-    })
-    if (history.value.length > 20) history.value = history.value.slice(0, 20)
-    if (res.success) ElMessage.success('执行成功')
-    else ElMessage.warning('执行完成（有错误）')
+    executionTime.value = Date.now() - t0
+    output.value = res.output || res.stdout || ''
+    if (res.stderr) output.value += '\n\n[STDERR]\n' + res.stderr
+    assessment.value = res.assessment || res.safety || null
+    if (res.blocked) {
+      ElMessage.warning('命令已被安全策略拦截')
+    } else if (res.exit_code !== 0) {
+      ElMessage.warning(`命令执行异常，退出码: ${res.exit_code}`)
+    } else {
+      ElMessage.success('命令执行成功')
+    }
   } catch (e) {
-    const err = { success: false, output: '', error: e.response?.data?.detail || e.message, duration_ms: 0 }
-    result.value = err
-    history.value.unshift({ command: form.command.trim(), ...err, timestamp: Date.now() })
-    ElMessage.error('执行失败')
-  } finally { executing.value = false }
+    executionTime.value = Date.now() - t0
+    const detail = e.response?.data?.detail || e.message || '未知错误'
+    output.value = `执行失败: ${detail}`
+    assessment.value = e.response?.data?.assessment || null
+    ElMessage.error('执行失败: ' + detail)
+  } finally {
+    executing.value = false
+  }
+}
+
+function navigateHistory(direction) {
+  const history = filteredHistory.value
+  if (!history.length) return
+  historyIndex.value += direction
+  if (historyIndex.value < 0) historyIndex.value = 0
+  if (historyIndex.value >= history.length) historyIndex.value = history.length - 1
+  command.value = history[historyIndex.value]
+}
+
+function selectHistory(cmd) {
+  command.value = cmd
+  historyIndex.value = -1
+}
+
+function clearOutput() {
+  output.value = ''
+  assessment.value = null
+  executionTime.value = null
+}
+
+async function copyOutput() {
+  try {
+    await navigator.clipboard.writeText(output.value)
+    ElMessage.success('已复制到剪贴板')
+  } catch {
+    ElMessage.warning('复制失败')
+  }
 }
 </script>
 
 <style scoped>
-.output-box { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 16px; max-height: 400px; overflow-y: auto; }
-.output-box.error { background: #2d1b1b; }
-.output-box pre { margin: 0; font-family: 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
-.history-item { padding: 6px 8px; border-radius: 4px; cursor: pointer; margin-bottom: 4px; transition: background 0.2s; }
-.history-item:hover { background: #f5f7fa; }
-.cmd-lib-list { max-height: 360px; overflow-y: auto; }
-.cmd-lib-item {
-  padding: 8px 10px;
-  border-radius: 6px;
+.executor {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  height: calc(100vh - var(--topbar-height) - var(--space-6) * 2);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-neutral-900);
+  margin: 0;
+  letter-spacing: var(--tracking-tight);
+}
+
+.page-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-400);
+  margin: var(--space-1) 0 0;
+}
+
+/* ---- 布局 ---- */
+.executor-layout {
+  display: flex;
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 0;
+}
+
+.executor-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* ---- 卡片 ---- */
+.section-card {
+  background: #fff;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.section-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-neutral-100);
+}
+
+.section-card-header h3 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neutral-700);
+  letter-spacing: var(--tracking-tight);
+}
+
+.section-card-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ---- 执行器主体 ---- */
+.executor-body {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ---- 命令输入区域 ---- */
+.executor-input-wrapper {
+  position: relative;
+}
+
+.history-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 2px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--color-neutral-600);
   cursor: pointer;
-  margin-bottom: 4px;
-  transition: background 0.2s;
-  border: 1px solid transparent;
+  transition: all var(--duration-fast) var(--ease-out);
 }
-.cmd-lib-item:hover {
-  background: #f0f7ff;
-  border-color: #d0e3ff;
+
+.history-item:hover,
+.history-item.active {
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
 }
-.risk-bar { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.kb-list { max-height: 300px; overflow-y: auto; }
-.kb-item {
-  padding: 8px 10px;
-  border-radius: 6px;
-  margin-bottom: 6px;
-  border: 1px solid #ebeef5;
-  transition: border-color 0.2s;
+
+.history-item.active {
+  font-weight: 600;
 }
-.kb-item:hover {
-  border-color: #409eff;
+
+.executor-options {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.executor-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.exec-time {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 输出 ---- */
+.output-body {
+  position: relative;
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.output-content {
+  padding: var(--space-4) var(--space-5);
+}
+
+.output-text {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
+  color: var(--color-neutral-700);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.output-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8);
+  color: var(--color-neutral-300);
+}
+
+.output-empty p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.output-loading {
+  position: absolute;
+  bottom: var(--space-4);
+  left: var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.loading-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary-500);
+  animation: pulse 1.4s infinite ease-in-out;
+}
+
+.loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+.loading-text {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  margin-left: var(--space-1);
+}
+
+@keyframes pulse {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ---- 侧边栏 ---- */
+.executor-sidebar {
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.sidebar-section {
+  background: #fff;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.sidebar-section-header {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-neutral-100);
+}
+
+.sidebar-section-header h3 {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+/* ---- 安全评估 ---- */
+.assessment-body {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.assessment-verdict {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.assessment-verdict.safe { background: var(--color-success-bg); color: var(--color-success); }
+.assessment-verdict.blocked { background: var(--color-danger-bg); color: var(--color-danger); }
+.assessment-verdict.review { background: var(--color-warning-bg); color: var(--color-warning); }
+
+.assessment-score {
+  text-align: center;
+  padding: var(--space-2);
+}
+
+.assessment-score-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-400);
+  margin-bottom: var(--space-1);
+}
+
+.assessment-score-value {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.assessment-score-value.safe { color: var(--color-success); }
+.assessment-score-value.review { color: var(--color-warning); }
+.assessment-score-value.blocked { color: var(--color-danger); }
+
+.assessment-layers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.assessment-layer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assessment-layer-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-600);
+}
+
+.assessment-layer-header .pass { color: var(--color-success); font-weight: 600; }
+.assessment-layer-header .fail { color: var(--color-danger); font-weight: 600; }
+
+.assessment-layer-bar {
+  height: 4px;
+  background: var(--color-neutral-100);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.assessment-layer-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: transform var(--duration-slow) var(--ease-out);
+  transform-origin: left;
+}
+
+.assessment-layer-reason {
+  font-size: 10px;
+  color: var(--color-neutral-400);
+}
+
+.assessment-empty {
+  padding: var(--space-4);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-300);
+}
+
+.assessment-empty p {
+  margin: 0;
+}
+
+/* ---- 常用命令 ---- */
+.quick-commands {
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.quick-command {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-600);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.quick-command:hover {
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
+}
+
+.safety-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-md);
+  color: var(--color-success);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .executor-sidebar { display: none; }
 }
 </style>

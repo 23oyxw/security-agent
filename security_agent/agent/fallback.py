@@ -10,6 +10,14 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from openai import OpenAI, APIError, APITimeoutError
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_log,
+    after_log,
+)
 
 from security_agent import config
 from security_agent.resilience.budget import get_request_budget
@@ -19,6 +27,9 @@ from security_agent.resilience.circuit import (
     reset_circuit,
     reset_circuits_prefix,
 )
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 def _alternate_model_name(model: str) -> str | None:
@@ -35,6 +46,20 @@ def _alternate_model_name(model: str) -> str | None:
     if m in ("mimo-v2.5", "mimo-v2.5-pro"):
         return "mimo-v2.5"
     return None
+
+
+def _llm_retry_decorator(max_attempts: int = 3):
+    """tenacity 重试装饰器 — 指数退避 + 仅重试临时性错误."""
+    return retry(
+        stop=stop_after_attempt(max_attempts),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type(
+            (APIError, APITimeoutError, ConnectionError, TimeoutError)
+        ),
+        before=before_log(logger, logging.DEBUG),
+        after=after_log(logger, logging.DEBUG),
+        reraise=True,
+    )
 
 
 @dataclass
@@ -158,9 +183,9 @@ class FallbackClient:
 
         call_model = config.resolve_agent_model(self.primary_model)
 
-        # 1. 尝试主模型（已解析 Pro→v2.5 等）
-        try:
-            response = self.primary_client.chat.completions.create(
+        @_llm_retry_decorator(max_attempts=3)
+        def _call_primary():
+            return self.primary_client.chat.completions.create(
                 model=call_model,
                 messages=messages,
                 tools=tools,
@@ -168,6 +193,10 @@ class FallbackClient:
                 timeout=llm_timeout,
                 **kwargs,
             )
+
+        # 1. 尝试主模型（tenacity 指数退避重试临时性错误）
+        try:
+            response = _call_primary()
             circuit.record_success()
             fallback_model = self.fallback_config.fallback_model if self.fallback_config else None
             record_fallback_call(fallback_used=False, primary_model=self.primary_model, fallback_model=fallback_model)

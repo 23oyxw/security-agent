@@ -33,10 +33,11 @@ from security_agent.api.routes import (
     audit_routes,
     skill_flow_routes,
     workflow_routes,
-    dify_routes,
     chat_ws_routes,
     resilience_routes,
     ops_routes,
+    metrics_routes,
+    eval_routes,
 )
 
 _START_TIME = time.time()
@@ -83,10 +84,11 @@ app.include_router(admin_routes.router,     prefix="/api/admin",     tags=["管�
 app.include_router(audit_routes.router,     prefix="/api/audit",     tags=["审计"])
 app.include_router(skill_flow_routes.router, prefix="/api/skills/flows", tags=["Skill Flow"])
 app.include_router(workflow_routes.router,   prefix="/api/workflow",     tags=["工作流"])
-app.include_router(dify_routes.router,       prefix="/api/dify",         tags=["Dify 集成"])
 app.include_router(chat_ws_routes.router,     prefix="/api/agent",        tags=["WebSocket 实时聊天"])
 app.include_router(resilience_routes.router,  prefix="/api/resilience",   tags=["弹性"])
 app.include_router(ops_routes.router,         prefix="/api/ops",          tags=["运维操作"])
+app.include_router(metrics_routes.router,     prefix="",                  tags=["监控指标"])
+app.include_router(eval_routes.router,         prefix="/api/eval",         tags=["Agent 评估"])
 
 # 健康检查（无需认证）
 @app.get("/api/health")
@@ -96,17 +98,16 @@ async def health():
         "version": "0.7.0",
         "uptime": round(time.time() - _START_TIME, 2),
         "modules": {
-            "agent": "active",
-            "safety_gate": "active",
-            "audit": "active",
-            "monitor": "active",
-            "knowledge": "active",
-            "mcp": "active",
-            "dify": "active",
-            "websocket": "active",
-            "incident_spine": "active",
-            "resilience": "active",
-            "approvals": "active",
+            "智能 Agent 引擎": "active",
+            "安全门禁(三层防御)": "active",
+            "审计日志(事件脊柱)": "active",
+            "监控服务(动态阈值)": "active",
+            "知识库(Playbook+Wiki)": "active",
+            "MCP 热插拔(17 Skills)": "active",
+            "WebSocket 流式": "active",
+            "全链路 Trace": "active",
+            "弹性熔断降级": "active",
+            "S4 人工审批": "active",
         },
     }
 

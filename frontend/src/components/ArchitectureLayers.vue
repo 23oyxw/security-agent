@@ -35,6 +35,13 @@
           <p>不是 L3；记录 L3/L2 的执行阶段、工具与 token。</p>
         </div>
       </div>
+      <div class="arch-row" :class="{ active: highlight === 'blue_team' }">
+        <el-tag type="danger" size="small">蓝队</el-tag>
+        <div>
+          <strong>蓝队安全审计 · 规则引擎</strong>
+          <p>Webshell 检测 · Sigma 规则 · IOC 匹配 · Auditd 规则 · 文件完整性 · 内核加固</p>
+        </div>
+      </div>
       <el-button v-if="traceId" type="primary" link size="small" @click="goTrace">查看本条 Trace →</el-button>
     </div>
   </el-card>
