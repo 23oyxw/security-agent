@@ -28,30 +28,31 @@ const routes = [
 
 const router = createRouter({ history: createWebHistory(), routes })
 
-// P0 修复：仅在首次导航时初始化认证，避免每次路由切换冗余请求
 let isAuthInitialized = false
 
 router.beforeEach(async (to, from, next) => {
-  const token = localStorage.getItem('token')
+  // 从 Pinia store 读取 token（而非直接读 localStorage）
+  // Pinia 持久化插件存储在 security-agent-user key 中
+  const store = useUserStore()
+  const token = store.token
 
   // 无 token 且非公开页面 → 登录
   if (!to.meta.public && !token) return next('/login')
 
+  // 已登录用户访问登录页 → 跳转首页
+  if (to.meta.public && token) return next('/')
+
   // 有 token + 非公开页面 + 首次初始化
   if (!isAuthInitialized && token && !to.meta.public) {
-    const store = useUserStore()
-    store.hydrateFromStorage()
     if (!store.username) {
       try {
         await store.fetchMe()
         isAuthInitialized = true
       } catch (e) {
-        // 区分 401 认证失败 vs 网络抖动
         if (e.response?.status === 401) {
           store.logout()
           return next('/login')
         }
-        // 网络错误不登出，允许离线使用缓存状态
         console.warn('Auth fetch failed, will retry on next navigation')
       }
     } else {
@@ -61,12 +62,10 @@ router.beforeEach(async (to, from, next) => {
 
   // 管理员路由守卫
   if (to.meta.admin) {
-    const store = useUserStore()
     if (store.role !== 'admin') return next('/')
   }
 
   next()
 })
 
-export { router, isAuthInitialized }
 export default router

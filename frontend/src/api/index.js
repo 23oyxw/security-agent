@@ -1,11 +1,14 @@
 import axios from 'axios'
 import { getApiBase } from './base'
 import router from '../router'
+import { useUserStore } from '../stores/user'
 
 const api = axios.create({ baseURL: getApiBase(), timeout: 120000 })
 
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
+  // 从 Pinia store 读取 token（与持久化插件同步）
+  const store = useUserStore()
+  const token = store.token
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -15,12 +18,12 @@ api.interceptors.response.use(
   async err => {
     const { config, response } = err
 
-    // 安全访问 status
     const status = response?.status
 
-    // 401 → SPA 软跳转登录（避免全页刷新丢失状态）
+    // 401/403 → 清除认证状态，跳转登录
     if (status === 401 || status === 403) {
-      localStorage.removeItem('token')
+      const store = useUserStore()
+      store.logout()
       if (router.currentRoute.value.path !== '/login') {
         router.push('/login')
       }
