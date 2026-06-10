@@ -3,11 +3,18 @@ import api from '../api'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    token: localStorage.getItem('token') || '',
+    token: '',
     username: '',
     role: '',
-    isLoggedIn: !!localStorage.getItem('token'),
+    isLoggedIn: false,
   }),
+  persist: {
+    key: 'security-agent-user',
+    paths: ['token', 'username', 'role', 'isLoggedIn'],
+  },
+  getters: {
+    isAdmin: (state) => state.role === 'admin',
+  },
   actions: {
     async login(username, password) {
       const res = await api.post('/auth/login', { username, password })
@@ -15,8 +22,6 @@ export const useUserStore = defineStore('user', {
       this.username = res.username
       this.role = res.role
       this.isLoggedIn = true
-      localStorage.setItem('token', res.access_token)
-      localStorage.setItem('user', JSON.stringify({ username: res.username, role: res.role }))
       return res
     },
     logout() {
@@ -24,24 +29,14 @@ export const useUserStore = defineStore('user', {
       this.username = ''
       this.role = ''
       this.isLoggedIn = false
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
     },
     async fetchMe() {
       const res = await api.get('/auth/me')
       this.username = res.username
       this.role = res.role
-      localStorage.setItem('user', JSON.stringify({ username: res.username, role: res.role }))
     },
     hydrateFromStorage() {
-      const u = localStorage.getItem('user')
-      if (u) {
-        try {
-          const parsed = JSON.parse(u)
-          this.username = parsed.username || ''
-          this.role = parsed.role || ''
-        } catch { /* ignore */ }
-      }
+      // pinia-plugin-persistedstate 已自动同步，此方法保留兼容
     },
   },
 })

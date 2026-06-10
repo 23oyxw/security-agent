@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import api from '../api'
 
+let pollTimerId = null
+
 export const useAlertsStore = defineStore('alerts', {
   state: () => ({
     items: [],
@@ -9,6 +11,7 @@ export const useAlertsStore = defineStore('alerts', {
     total: 0,
     loading: false,
     lastFetchedAt: 0,
+    error: null,
   }),
   getters: {
     unacknowledged: (s) => s.items.filter(a => !a.acknowledged),
@@ -16,11 +19,14 @@ export const useAlertsStore = defineStore('alerts', {
   actions: {
     async fetchAlerts(params = {}) {
       this.loading = true
+      this.error = null
       try {
         const res = await api.get('/alerts/', { params })
         this.items = res.alerts || []
         this.total = res.total ?? this.items.length
         this.lastFetchedAt = Date.now()
+      } catch (e) {
+        this.error = e.response?.status || e.code || 'unknown'
       } finally {
         this.loading = false
       }
@@ -45,12 +51,25 @@ export const useAlertsStore = defineStore('alerts', {
     },
     async acknowledge(alertId) {
       await api.post(`/alerts/${alertId}/acknowledge`)
-      const patch = (a) => {
-        if ((a.id || a.alert_id) === alertId) a.acknowledged = true
-      }
-      this.items.forEach(patch)
-      this.recent.forEach(patch)
+      // 使用 immutable 更新代替手动 patch
+      this.items = this.items.map(a =>
+        (a.id || a.alert_id) === alertId ? { ...a, acknowledged: true } : a
+      )
+      this.recent = this.recent.map(a =>
+        (a.id || a.alert_id) === alertId ? { ...a, acknowledged: true } : a
+      )
       await this.fetchUnreadCount()
+    },
+    startPolling(intervalMs = 10000) {
+      this.stopPolling()
+      this.fetchRecent()
+      pollTimerId = setInterval(() => this.fetchRecent(), intervalMs)
+    },
+    stopPolling() {
+      if (pollTimerId) {
+        clearInterval(pollTimerId)
+        pollTimerId = null
+      }
     },
   },
 })
