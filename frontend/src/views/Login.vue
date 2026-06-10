@@ -117,9 +117,10 @@ async function handleLogin() {
   position: absolute;
   top: 0;
   left: -100%;
-  width: 50%;
+  width: 200%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
+  background: linear-gradient(90deg, transparent 30%, rgba(255, 255, 255, 0.06) 50%, transparent 70%);
+  background-size: 200% 100%;
   animation: shimmer 4s ease-in-out infinite;
   pointer-events: none;
   z-index: 1;

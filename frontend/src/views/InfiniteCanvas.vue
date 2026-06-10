@@ -235,7 +235,6 @@ function autoLayout() {
 }
 
 function fitView() { if (vueFlowRef.value) vueFlowRef.value.fitView({padding:0.2}) }
-resetView = fitView
 
 // ---- 实时数据 ----
 async function fetchLiveData() {

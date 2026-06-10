@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { getApiBase } from './base'
+import router from '../router'
 
 const api = axios.create({ baseURL: getApiBase(), timeout: 120000 })
 
@@ -13,10 +14,12 @@ api.interceptors.response.use(
   res => res.data,
   async err => {
     const { config, response } = err
-    // 401 → 立即跳转登录
+    // 401 → SPA 软跳转登录（避免全页刷新丢失状态）
     if (response?.status === 401) {
       localStorage.removeItem('token')
-      window.location.href = '/login'
+      if (router.currentRoute.value.path !== '/login') {
+        router.push('/login')
+      }
       return Promise.reject(err)
     }
     // 5xx / 网络错误 → 最多重试 2 次（指数退避）

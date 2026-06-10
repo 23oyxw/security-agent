@@ -286,10 +286,13 @@ async function runSingleTest(tc) {
 }
 async function runAllTests() { testAllLoading.value = true; for (const tc of testCases) await runSingleTest(tc); testAllLoading.value = false }
 
+let chartInstance = null
 function renderChart() {
   if (!resourceBar.value) return
-  const chart = echarts.init(resourceBar.value)
-  chart.setOption({
+  if (!chartInstance) {
+    chartInstance = echarts.init(resourceBar.value)
+  }
+  chartInstance.setOption({
     tooltip: { trigger: 'axis' },
     grid: { top:8, bottom:24, left:40, right:12 },
     xAxis: { type:'category', data:['CPU','内存','磁盘'] },
@@ -306,7 +309,7 @@ function renderChart() {
 }
 
 onMounted(() => { fetchAll(); refreshProc(); pollTimer = setInterval(fetchAll, pollSec.value*1000) })
-onUnmounted(() => { clearInterval(pollTimer) })
+onUnmounted(() => { clearInterval(pollTimer); if (chartInstance) { chartInstance.dispose(); chartInstance = null } })
 </script>
 
 <style scoped>

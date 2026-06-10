@@ -79,6 +79,10 @@ body {
 
 .el-card:hover {
   box-shadow: var(--shadow-md);
+}
+
+/* 仅对无入场动画的卡片应用浮动效果 */
+.el-card:not([class*="slide-up"]):not([class*="scale-in"]):hover {
   transform: translateY(-1px);
 }
 
