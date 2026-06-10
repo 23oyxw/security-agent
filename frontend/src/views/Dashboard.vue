@@ -169,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import api from '../api'
 import { useAlertsStore } from '../stores/alerts'
