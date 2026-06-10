@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">智能助手</h1>
-        <p class="page-subtitle">与安全运维 Agent 对话 · 支持命令执行、知识检索、安全评估</p>
+        <p class="page-subtitle">与安全运维 Agent 对话 · 支持命令执行、知识检索、安全评估 <el-tag v-if="wsReady" size="small" type="success" effect="dark" style="margin-left:8px">● 实时</el-tag><el-tag v-else size="small" type="info" effect="plain" style="margin-left:8px">REST</el-tag></p>
       </div>
       <div class="page-actions">
         <el-button size="small" plain @click="clearChat">
@@ -121,10 +121,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { ElMessage } from 'element-plus'
+import { useAgentWs } from '../composables/useAgentWs'
 
 const router = useRouter()
 const messages = ref([])
@@ -134,6 +135,9 @@ const messagesRef = ref(null)
 const history = ref([])
 const streamContent = ref('')
 const showSuggestions = ref(true)
+
+// WebSocket 实时对话
+const { transport, wsReady, connect: connectWs, disconnect: disconnectWs, chatViaWs } = useAgentWs()
 
 // DeepSeek-GUI 风格：消息分组
 const messageGroups = computed(() => {
@@ -249,10 +253,18 @@ async function sendMessage() {
 
   const startTime = Date.now()
   try {
-    const res = await api.post('/agent/chat', {
-      message: text,
-      stream: false,
-    }, { timeout: 120000 })
+    let res
+    // 优先 WebSocket 实时通道，失败回退 REST
+    if (wsReady.value) {
+      try {
+        res = await chatViaWs(text)
+      } catch (wsErr) {
+        console.warn('WS chat failed, falling back to REST:', wsErr.message)
+        res = await api.post('/agent/chat', { message: text, stream: false }, { timeout: 120000 })
+      }
+    } else {
+      res = await api.post('/agent/chat', { message: text, stream: false }, { timeout: 120000 })
+    }
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
     const reply = res.reply || res.response || res.message || res.content || ''
     messages.value.push({
@@ -303,10 +315,16 @@ onMounted(async () => {
   setupExecBridge()
   // 显示欢迎消息
   messages.value.push(welcomeMessage)
+  // 尝试建立 WebSocket 实时连接
+  connectWs()
   try {
     const res = await api.get('/agent/history').catch(() => ({ history: [] }))
     history.value = res.history || []
   } catch {}
+})
+
+onUnmounted(() => {
+  disconnectWs()
 })
 </script>
 

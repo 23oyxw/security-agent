@@ -1,4 +1,13 @@
-/** API 基址：生产与同源用 /api；开发由 vite proxy 转发 */
+/**
+ * @module api/base
+ * API 基址与 WebSocket URL 配置
+ */
+
+/**
+ * 获取 API 基址
+ * 优先级: window.__SECURITY_AGENT_API__ > VITE_API_BASE > /api
+ * @returns {string} API 基址 (无末尾斜杠)
+ */
 export function getApiBase() {
   if (typeof window !== 'undefined' && window.__SECURITY_AGENT_API__) {
     return String(window.__SECURITY_AGENT_API__).replace(/\/$/, '')
@@ -8,6 +17,11 @@ export function getApiBase() {
   return '/api'
 }
 
+/**
+ * 获取 Agent WebSocket 对话 URL
+ * 自动检测 http/https 并切换 ws/wss
+ * @returns {string} WebSocket URL (ws:// 或 wss://)
+ */
 export function getWsChatUrl() {
   const base = getApiBase()
   if (base.startsWith('http')) {
