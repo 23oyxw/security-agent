@@ -321,7 +321,7 @@ onUnmounted(() => { clearInterval(pollTimer); window.removeEventListener('resize
 
 /* 左侧抽屉 */
 .ops-drawer {
-  background: #fff; border-right: 1px solid var(--color-neutral-200);
+  background: var(--color-neutral-50); border-right: 1px solid var(--color-neutral-200);
   transition: width var(--duration-slow) var(--ease-out), opacity var(--duration-normal) var(--ease-out);
   flex-shrink: 0; overflow: hidden;
   width: 260px; display: flex; flex-direction: column;
@@ -356,6 +356,7 @@ onUnmounted(() => { clearInterval(pollTimer); window.removeEventListener('resize
   border-radius: var(--radius-lg); padding: 12px 14px; text-align: center;
   transition: all var(--duration-normal) var(--ease-out);
   cursor: default; position: relative; overflow: hidden;
+  box-shadow: var(--shadow-sm);
   animation: slide-up var(--duration-normal) var(--ease-out) both;
 }
 .metric-card:nth-child(1) { animation-delay: 0ms; }
@@ -367,7 +368,7 @@ onUnmounted(() => { clearInterval(pollTimer); window.removeEventListener('resize
 .metric-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
-  border-color: var(--color-primary-200);
+  border-color: var(--color-primary-300);
 }
 /* 顶部色条 */
 .metric-card::before {
@@ -377,10 +378,15 @@ onUnmounted(() => { clearInterval(pollTimer); window.removeEventListener('resize
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--color-primary-500);
-  opacity: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   transition: opacity var(--duration-fast) var(--ease-out);
 }
+.metric-card:nth-child(1)::before { background: var(--color-primary-500); opacity: 0.7; }
+.metric-card:nth-child(2)::before { background: var(--color-success); opacity: 0.7; }
+.metric-card:nth-child(3)::before { background: var(--color-warning); opacity: 0.7; }
+.metric-card:nth-child(4)::before { background: #8b5cf6; opacity: 0.7; }
+.metric-card:nth-child(5)::before { background: var(--color-warning); opacity: 0.7; }
+.metric-card:nth-child(6)::before { background: #06b6d4; opacity: 0.7; }
 .metric-card:hover::before {
   opacity: 1;
 }
@@ -389,7 +395,7 @@ onUnmounted(() => { clearInterval(pollTimer); window.removeEventListener('resize
 .metric-card-sub { font-size: 10px; color: var(--color-neutral-400); }
 
 /* 面板卡片 */
-.panel-card { border: 1px solid var(--color-neutral-200); border-radius: var(--radius-lg); background: #fff; }
+.panel-card { border: 1px solid var(--color-neutral-200); border-radius: var(--radius-lg); background: #fff; box-shadow: var(--shadow-sm); }
 
 /* 评估面板 */
 .eval-panel { text-align: center; padding: 12px 0; animation: fade-in var(--duration-slow) var(--ease-out); }

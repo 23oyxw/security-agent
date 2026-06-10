@@ -104,7 +104,10 @@ function logout() {
   flex: 1;
   padding: var(--space-6);
   overflow-y: auto;
-  background: var(--color-neutral-50);
+  background:
+    radial-gradient(circle at 20% 80%, rgba(79, 110, 247, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.03) 0%, transparent 50%),
+    var(--color-neutral-50);
   min-height: 0;
 }
 
