@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "vite --mode mock",
     "build": "vite build",
+    "build:mock": "vite build --mode mock",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -15,6 +17,7 @@
     "@vue-flow/core": "^1.48.2",
     "@vue-flow/minimap": "^1.5.4",
     "axios": "^1.7.0",
+    "axios-mock-adapter": "^2.1.0",
     "echarts": "^5.5.0",
     "element-plus": "^2.7.0",
     "pinia": "^2.1.0",

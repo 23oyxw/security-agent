@@ -7,6 +7,8 @@ import './styles/global-overrides.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
+// Mock 模式：VITE_MOCK=true 时自动拦截 API 请求
+import './api/mock'
 
 const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)

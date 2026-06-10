@@ -24,6 +24,8 @@ const routes = [
   { path: '/flows', name: 'SkillFlows', component: () => import('../views/SkillFlows.vue'), meta: { hidden: true } },
   { path: '/workflow', name: 'Workflow', component: () => import('../views/WorkflowView.vue'), meta: { hidden: true } },
   { path: '/blue-team', name: 'BlueTeam', component: () => import('../views/BlueTeam.vue'), meta: { hidden: true } },
+  // 404 兜底 — 所有未匹配路由重定向到首页
+  { path: '/:pathMatch(.*)*', name: 'NotFound', redirect: '/' },
 ]
 
 const router = createRouter({ history: createWebHistory(), routes })
