@@ -18,11 +18,13 @@ app.use(ElementPlus, { locale: { el: { pagination: { total: '共 {total} 条' } 
 
 // P1 优化：仅注册实际使用的图标组件，避免 200+ 全量注册
 const usedIcons = [
-  'ArrowLeft', 'ArrowRight', 'Bell', 'CaretRight', 'CircleCheck',
-  'CircleCheckFilled', 'CircleCloseFilled', 'Clock', 'Coin', 'Connection',
-  'CopyDocument', 'Cpu', 'DataAnalysis', 'DataLine', 'Delete', 'FullScreen',
-  'Grid', 'Loading', 'Lock', 'MagicStick', 'Promotion', 'Reading', 'Refresh',
-  'Search', 'SetUp', 'SwitchButton', 'Terminal', 'User', 'WarningFilled',
+  'ArrowLeft', 'ArrowRight', 'Bell', 'CaretRight', 'ChatDotRound',
+  'CircleCheck', 'CircleCheckFilled', 'CircleCloseFilled', 'Clock',
+  'Coin', 'Connection', 'CopyDocument', 'Cpu', 'DataAnalysis',
+  'DataLine', 'Delete', 'Document', 'Expand', 'Fold', 'FullScreen',
+  'Grid', 'Loading', 'Lock', 'MagicStick', 'Odometer', 'Promotion',
+  'Reading', 'Refresh', 'Search', 'SetUp', 'Share', 'SwitchButton',
+  'Terminal', 'User', 'WarningFilled',
 ]
 usedIcons.forEach(name => {
   if (ElementPlusIconsVue[name]) {
