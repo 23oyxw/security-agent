@@ -110,6 +110,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
+import { chartTooltip, categoryAxis, valueAxis } from '../utils/chartTheme'
 import { useAlertsStore } from '../stores/alerts'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatBeijingTime, formatRelativeBeijing } from '../utils/formatTime'
@@ -189,15 +190,15 @@ function renderTrendChart() {
     if (idx >= 0 && idx < intervals) data[idx]++
   })
   chartInstance.setOption({
-    tooltip: { trigger: 'axis' },
+    tooltip: chartTooltip(),
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-    xAxis: { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
-    yAxis: { type: 'value', name: '告警数' },
+    xAxis: categoryAxis(labels, { axisLabel: { fontSize: 10 } }),
+    yAxis: valueAxis({ name: '告警数', nameTextStyle: { color: '#64748b' } }),
     series: [{
       type: 'line', data, smooth: true, areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(239, 68, 68, 0.3)' },
-          { offset: 1, color: 'rgba(239, 68, 68, 0.02)' },
+          { offset: 0, color: 'rgba(239, 68, 68, 0.35)' },
+          { offset: 1, color: 'rgba(239, 68, 68, 0.04)' },
         ])
       },
       lineStyle: { color: '#ef4444', width: 2 },
@@ -390,7 +391,7 @@ onUnmounted(() => {
 }
 
 .stat-card {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
@@ -441,7 +442,7 @@ onUnmounted(() => {
 
 /* 图表 */
 .section-card {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);

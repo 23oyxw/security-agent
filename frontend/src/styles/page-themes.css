@@ -1,0 +1,477 @@
+/* ============================================================
+   PAGE THEMES — 背景有差异，组件层统一中性玻璃
+   原则：氛围在背景，面板跟 design tokens / Element Plus 协调
+   ============================================================ */
+
+/* ---- 全主题共享：实色 UI 基底（component-surfaces 会再强化） ---- */
+:is(html, .app-shell)[class*='page-theme-'] {
+  --glass-surface: #ffffff;
+  --glass-header: #f8fafc;
+  --glass-topbar: rgba(255, 255, 255, 0.96);
+  --glass-chip: #f1f5f9;
+  --glass-highlight: rgba(255, 255, 255, 0.98);
+  --glass-spotlight: rgba(255, 255, 255, 0.6);
+  --glass-stripe: #f8fafc;
+  --glass-border: rgba(15, 23, 42, 0.10);
+  --glass-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 4px 16px rgba(15, 23, 42, 0.08);
+}
+
+/* 无限画布：内容区铺满，不要 padding 灰边 */
+.app-shell.page-theme-canvas .content {
+  padding: 0 !important;
+}
+
+.app-shell[class*='page-theme-'] {
+  background: var(--gradient-page-bg) !important;
+  background-attachment: fixed;
+}
+
+/* 内容区顶栏：主题色带（切换页面一眼可辨） */
+.app-shell[class*='page-theme-'] .main-area {
+  box-shadow: inset 0 4px 0 0 var(--page-accent);
+}
+
+.app-shell[class*='page-theme-'] .content::before {
+  content: '';
+  display: block;
+  height: 4px;
+  margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-6)) var(--space-5);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: linear-gradient(90deg, var(--page-accent) 0%, var(--page-secondary) 55%, transparent 100%);
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.app-shell.page-theme-canvas .content::before {
+  display: none;
+}
+
+.app-shell[class*='page-theme-'] .main-area {
+  background: transparent;
+}
+
+.app-shell[class*='page-theme-'] .main-area::before {
+  background-image:
+    var(--pattern-dot),
+    radial-gradient(ellipse 90% 55% at 50% 108%, rgba(15, 23, 42, 0.10) 0%, transparent 58%);
+  opacity: 0.85;
+}
+
+.app-shell[class*='page-theme-'] .main-area::after {
+  background: var(--gradient-page-light);
+  mix-blend-mode: soft-light;
+  opacity: 0.85;
+}
+
+/* ---- 顶栏：毛玻璃白，仅底边带主题色 ---- */
+.app-shell[class*='page-theme-'] .topbar {
+  background: var(--glass-topbar) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+  box-shadow: 0 1px 0 var(--page-accent-glow, transparent), var(--shadow-sm);
+  backdrop-filter: blur(12px);
+}
+
+.app-shell[class*='page-theme-'] .metrics-pill {
+  background: var(--glass-chip) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--shadow-sm);
+}
+
+.app-shell[class*='page-theme-'] .nav-item.active {
+  background: linear-gradient(90deg, var(--page-nav-active-bg) 0%, transparent 100%);
+}
+
+.app-shell[class*='page-theme-'] .nav-item.active::after {
+  background: linear-gradient(180deg, var(--page-accent-light) 0%, var(--page-accent) 100%);
+  box-shadow: 0 0 10px var(--page-accent-glow);
+}
+
+.app-shell[class*='page-theme-'] .sidebar-accent {
+  background: linear-gradient(90deg, var(--page-accent) 0%, var(--page-accent-light) 50%, var(--page-secondary) 100%);
+}
+
+/* ---- 中性玻璃卡片（指标卡除外，保留语义色） ---- */
+.app-shell[class*='page-theme-'] .el-card,
+.app-shell[class*='page-theme-'] .panel-card,
+.app-shell[class*='page-theme-'] .section-card,
+.app-shell[class*='page-theme-'] .stat-card,
+.app-shell[class*='page-theme-'] .flow-card,
+.app-shell[class*='page-theme-'] .chat-main,
+.app-shell[class*='page-theme-'] .chat-sidebar,
+.app-shell[class*='page-theme-'] .sidebar-section,
+.app-shell[class*='page-theme-'] .result-card,
+.app-shell[class*='page-theme-'] .ops-drawer .drawer-body {
+  background: var(--glass-surface) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    var(--glass-shadow) !important;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+.app-shell[class*='page-theme-'] .ops-drawer {
+  background: var(--glass-topbar) !important;
+  border-right-color: var(--glass-border) !important;
+}
+
+.app-shell[class*='page-theme-'] .el-card__header,
+.app-shell[class*='page-theme-'] .panel-header {
+  background: var(--glass-header) !important;
+  border-bottom-color: var(--glass-border) !important;
+  color: var(--color-text-primary);
+  box-shadow: inset 3px 0 0 var(--page-accent);
+}
+
+.app-shell[class*='page-theme-'] .stat-card {
+  border-top: 3px solid var(--page-accent) !important;
+}
+
+.app-shell[class*='page-theme-'] .page-header {
+  background: var(--glass-surface) !important;
+  border: 1px solid var(--glass-border);
+  border-left: 4px solid var(--page-accent);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+}
+
+.app-shell[class*='page-theme-'] .el-card::before,
+.app-shell[class*='page-theme-'] .panel-card::before,
+.app-shell[class*='page-theme-'] .section-card::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--glass-highlight) 40%,
+    var(--glass-highlight) 60%,
+    transparent 100%
+  ) !important;
+}
+
+.app-shell[class*='page-theme-'] .el-card::after,
+.app-shell[class*='page-theme-'] .panel-card::after {
+  background: radial-gradient(
+    circle at center,
+    var(--glass-spotlight) 0%,
+    transparent 68%
+  ) !important;
+}
+
+.app-shell[class*='page-theme-'] .message.agent .message-content {
+  background: var(--glass-chip) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.app-shell[class*='page-theme-'] .message.user .message-content {
+  background: var(--gradient-primary) !important;
+  border-color: var(--color-primary-600) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.22) !important;
+}
+
+.app-shell[class*='page-theme-'] .chat-input {
+  background: var(--glass-header) !important;
+  border-top-color: var(--glass-border) !important;
+}
+
+.app-shell[class*='page-theme-'] .el-table th.el-table__cell {
+  background: var(--glass-header) !important;
+}
+
+.app-shell[class*='page-theme-'] .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: var(--glass-stripe) !important;
+}
+
+.app-shell[class*='page-theme-'] .el-collapse {
+  background: var(--glass-surface) !important;
+  border-color: var(--glass-border) !important;
+  box-shadow: var(--glass-shadow);
+}
+
+.app-shell[class*='page-theme-'] .el-collapse-item__header {
+  background: var(--glass-header) !important;
+  border-bottom-color: var(--glass-border) !important;
+}
+
+.app-shell[class*='page-theme-'] .el-collapse-item__wrap {
+  background: transparent !important;
+}
+
+.app-shell[class*='page-theme-'] .el-input__wrapper,
+.app-shell[class*='page-theme-'] .el-textarea__inner {
+  background: var(--color-surface) !important;
+  box-shadow: 0 0 0 1px var(--glass-border) inset !important;
+}
+
+.app-shell[class*='page-theme-'] .el-select-dropdown,
+.app-shell[class*='page-theme-'] .el-dropdown-menu,
+.app-shell[class*='page-theme-'] .el-popper.is-light,
+html[class*='page-theme-'] .el-select-dropdown,
+html[class*='page-theme-'] .el-dropdown-menu,
+html[class*='page-theme-'] .el-popper.is-light {
+  background: var(--glass-surface) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.app-shell[class*='page-theme-'] .el-descriptions__cell {
+  background: var(--glass-chip) !important;
+}
+
+/* ============================================================ */
+/* 各页：独立色相 + 图表色 + 面板轻 tint（组件语义色不变）        */
+/* ============================================================ */
+
+/* 仪表盘 — 运维蓝 */
+:is(html, .app-shell).page-theme-ops {
+  --page-tint: #eff6ff;
+  --page-accent: #2563eb;
+  --page-accent-light: #60a5fa;
+  --page-secondary: #06b6d4;
+  --page-chart-primary: #3b82f6;
+  --page-chart-secondary: #06b6d4;
+  --page-accent-glow: rgba(37, 99, 235, 0.30);
+  --page-nav-active-bg: rgba(37, 99, 235, 0.16);
+  --glass-surface: linear-gradient(145deg, #ffffff 0%, var(--page-tint, #f8fafc) 100%);
+  --glass-header: linear-gradient(180deg, #ffffff 0%, var(--page-tint, #f8fafc) 100%);
+  --gradient-page-bg:
+    radial-gradient(ellipse 90% 70% at 0% 100%, rgba(37, 99, 235, 0.50) 0%, transparent 55%),
+    radial-gradient(ellipse 75% 55% at 100% 0%, rgba(6, 182, 212, 0.35) 0%, transparent 50%),
+    linear-gradient(155deg, #93c5fd 0%, #60a5fa 50%, #3b82f6 100%);
+  --gradient-page-light:
+    radial-gradient(ellipse 50% 40% at 8% 5%, rgba(255, 255, 255, 0.55) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 92% 90%, rgba(6, 182, 212, 0.20) 0%, transparent 50%);
+}
+
+/* 智能助手 — 紫粉星云 */
+:is(html, .app-shell).page-theme-intel {
+  --page-tint: #faf5ff;
+  --page-accent: #9333ea;
+  --page-accent-light: #d8b4fe;
+  --page-secondary: #ec4899;
+  --page-chart-primary: #a855f7;
+  --page-chart-secondary: #ec4899;
+  --page-accent-glow: rgba(147, 51, 234, 0.28);
+  --page-nav-active-bg: rgba(147, 51, 234, 0.15);
+  --glass-surface: linear-gradient(145deg, #ffffff 0%, var(--page-tint) 100%);
+  --glass-header: linear-gradient(180deg, #ffffff 0%, var(--page-tint) 100%);
+  --gradient-page-bg:
+    radial-gradient(ellipse 85% 65% at 12% 92%, rgba(147, 51, 234, 0.48) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 55% at 92% 8%, rgba(236, 72, 153, 0.38) 0%, transparent 50%),
+    linear-gradient(155deg, #e9d5ff 0%, #c084fc 50%, #9333ea 100%);
+  --gradient-page-light:
+    radial-gradient(ellipse 50% 40% at 10% 8%, rgba(250, 245, 255, 0.55) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 88% 88%, rgba(236, 72, 153, 0.18) 0%, transparent 50%);
+}
+
+/* 安全执行 — 翡翠绿 + 琥珀点缀 */
+:is(html, .app-shell).page-theme-guard {
+  --page-tint: #ecfdf5;
+  --page-accent: #059669;
+  --page-accent-light: #34d399;
+  --page-secondary: #d97706;
+  --page-chart-primary: #10b981;
+  --page-chart-secondary: #f59e0b;
+  --page-accent-glow: rgba(5, 150, 105, 0.26);
+  --page-nav-active-bg: rgba(5, 150, 105, 0.15);
+  --glass-surface: linear-gradient(145deg, #ffffff 0%, var(--page-tint) 100%);
+  --glass-header: linear-gradient(180deg, #ffffff 0%, var(--page-tint) 100%);
+  --gradient-page-bg:
+    radial-gradient(ellipse 85% 65% at 0% 100%, rgba(5, 150, 105, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, rgba(217, 119, 6, 0.32) 0%, transparent 50%),
+    linear-gradient(155deg, #6ee7b7 0%, #34d399 50%, #059669 100%);
+  --gradient-page-light:
+    radial-gradient(ellipse 50% 40% at 8% 6%, rgba(209, 250, 229, 0.48) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 92% 88%, rgba(217, 119, 6, 0.16) 0%, transparent 50%);
+}
+
+/* 告警 — 熔岩橙红 */
+:is(html, .app-shell).page-theme-alert {
+  --page-tint: #fff7ed;
+  --page-accent: #ea580c;
+  --page-accent-light: #fdba74;
+  --page-secondary: #dc2626;
+  --page-chart-primary: #ef4444;
+  --page-chart-secondary: #f97316;
+  --page-accent-glow: rgba(234, 88, 12, 0.28);
+  --page-nav-active-bg: rgba(234, 88, 12, 0.15);
+  --glass-surface: linear-gradient(145deg, #ffffff 0%, var(--page-tint) 100%);
+  --glass-header: linear-gradient(180deg, #ffffff 0%, var(--page-tint) 100%);
+  --gradient-page-bg:
+    radial-gradient(ellipse 85% 65% at 5% 95%, rgba(239, 68, 68, 0.42) 0%, transparent 55%),
+    radial-gradient(ellipse 75% 55% at 100% 0%, rgba(234, 88, 12, 0.42) 0%, transparent 50%),
+    linear-gradient(155deg, #fdba74 0%, #fb923c 50%, #ea580c 100%);
+  --gradient-page-light:
+    radial-gradient(ellipse 50% 40% at 10% 5%, rgba(255, 247, 237, 0.50) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 90% 90%, rgba(239, 68, 68, 0.18) 0%, transparent 50%);
+}
+
+/* MCP — 电光靛紫（偏紫，与运维蓝区分） */
+:is(html, .app-shell).page-theme-mesh {
+  --page-tint: #f5f3ff;
+  --page-accent: #5b21b6;
+  --page-accent-light: #a78bfa;
+  --page-secondary: #0891b2;
+  --page-chart-primary: #7c3aed;
+  --page-chart-secondary: #06b6d4;
+  --page-accent-glow: rgba(91, 33, 182, 0.28);
+  --page-nav-active-bg: rgba(91, 33, 182, 0.15);
+  --glass-surface: linear-gradient(145deg, #ffffff 0%, var(--page-tint) 100%);
+  --glass-header: linear-gradient(180deg, #ffffff 0%, var(--page-tint) 100%);
+  --gradient-page-bg:
+    radial-gradient(ellipse 85% 65% at 0% 100%, rgba(91, 33, 182, 0.32) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 55% at 100% 0%, rgba(8, 145, 178, 0.22) 0%, transparent 50%),
+    linear-gradient(155deg, #ddd6fe 0%, #c4b5fd 48%, #8b5cf6 100%);
+  --gradient-page-light:
+    radial-gradient(ellipse 50% 40% at 8% 6%, rgba(237, 233, 254, 0.48) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 92% 88%, rgba(8, 145, 178, 0.14) 0%, transparent 50%);
+}
+
+/* Trace — 石板灰 + 靛青点缀（中性审计风） */
+:is(html, .app-shell).page-theme-audit {
+  --page-tint: #f8fafc;
+  --page-accent: #475569;
+  --page-accent-light: #94a3b8;
+  --page-secondary: #6366f1;
+  --page-chart-primary: #6366f1;
+  --page-chart-secondary: #475569;
+  --page-accent-glow: rgba(71, 85, 105, 0.22);
+  --page-nav-active-bg: rgba(99, 102, 241, 0.12);
+  --glass-surface: linear-gradient(145deg, #ffffff 0%, var(--page-tint) 100%);
+  --glass-header: linear-gradient(180deg, #ffffff 0%, var(--page-tint) 100%);
+  --gradient-page-bg:
+    radial-gradient(ellipse 70% 55% at 100% 0%, rgba(99, 102, 241, 0.28) 0%, transparent 52%),
+    radial-gradient(ellipse 80% 60% at 0% 100%, rgba(71, 85, 105, 0.35) 0%, transparent 55%),
+    linear-gradient(155deg, #e2e8f0 0%, #94a3b8 55%, #64748b 100%);
+  --gradient-page-light:
+    radial-gradient(ellipse 50% 40% at 8% 6%, rgba(255, 255, 255, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 92% 88%, rgba(99, 102, 241, 0.10) 0%, transparent 50%);
+}
+
+/* 知识库 — 海洋青绿 */
+:is(html, .app-shell).page-theme-archive {
+  --page-tint: #f0fdfa;
+  --page-accent: #0f766e;
+  --page-accent-light: #2dd4bf;
+  --page-secondary: #15803d;
+  --page-chart-primary: #14b8a6;
+  --page-chart-secondary: #22c55e;
+  --page-accent-glow: rgba(15, 118, 110, 0.26);
+  --page-nav-active-bg: rgba(15, 118, 110, 0.14);
+  --glass-surface: linear-gradient(145deg, #ffffff 0%, var(--page-tint) 100%);
+  --glass-header: linear-gradient(180deg, #ffffff 0%, var(--page-tint) 100%);
+  --gradient-page-bg:
+    radial-gradient(ellipse 85% 65% at 0% 100%, rgba(15, 118, 110, 0.30) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 55% at 100% 0%, rgba(21, 128, 61, 0.20) 0%, transparent 50%),
+    linear-gradient(155deg, #99f6e4 0%, #5eead4 48%, #2dd4bf 100%);
+  --gradient-page-light:
+    radial-gradient(ellipse 50% 40% at 8% 6%, rgba(204, 251, 241, 0.48) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 92% 88%, rgba(21, 128, 61, 0.12) 0%, transparent 50%);
+}
+
+/* 技术导引 — 晴空蓝 + 琥珀双分（暖冷对比） */
+:is(html, .app-shell).page-theme-learn {
+  --page-tint: #f0f9ff;
+  --page-tint-header: #fefce8;
+  --page-accent: #0284c7;
+  --page-accent-light: #38bdf8;
+  --page-secondary: #ca8a04;
+  --page-chart-primary: #0ea5e9;
+  --page-chart-secondary: #eab308;
+  --page-accent-glow: rgba(2, 132, 199, 0.24);
+  --page-nav-active-bg: rgba(2, 132, 199, 0.13);
+  --glass-surface: linear-gradient(145deg, #ffffff 0%, var(--page-tint) 100%);
+  --glass-header: linear-gradient(180deg, #ffffff 0%, var(--page-tint-header, var(--page-tint)) 100%);
+  --gradient-page-bg:
+    radial-gradient(ellipse 65% 55% at 0% 100%, rgba(234, 179, 8, 0.40) 0%, transparent 52%),
+    radial-gradient(ellipse 75% 60% at 100% 0%, rgba(14, 165, 233, 0.38) 0%, transparent 50%),
+    linear-gradient(118deg, #fde047 0%, #fde047 40%, #38bdf8 40%, #0284c7 100%);
+  --gradient-page-light:
+    radial-gradient(ellipse 50% 40% at 12% 88%, rgba(254, 240, 138, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 88% 12%, rgba(224, 242, 254, 0.45) 0%, transparent 50%);
+}
+
+/* 无限画布：仅视口深空背景，节点/顶栏保持亮色可读 */
+:is(html, .app-shell).page-theme-canvas {
+  --page-accent: #38bdf8;
+  --page-accent-light: #a78bfa;
+  --page-secondary: #22d3ee;
+  --page-accent-glow: rgba(56, 189, 248, 0.35);
+  --page-nav-active-bg: rgba(56, 189, 248, 0.18);
+  /* 外壳背景跟主布局一致，不整页染黑 */
+  --gradient-page-bg:
+    radial-gradient(ellipse 80% 60% at 20% 80%, rgba(59, 130, 246, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 85% 15%, rgba(168, 85, 247, 0.14) 0%, transparent 50%),
+    linear-gradient(155deg, #dbeafe 0%, #bfdbfe 45%, #93c5fd 100%);
+  --gradient-page-light:
+    radial-gradient(ellipse 55% 45% at 15% 10%, rgba(219, 234, 254, 0.40) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 85% 85%, rgba(167, 139, 250, 0.12) 0%, transparent 50%);
+}
+
+.app-shell.page-theme-canvas .main-area::before,
+.app-shell.page-theme-canvas .main-area::after {
+  opacity: 0;
+}
+
+.app-shell.page-theme-canvas .canvas-shell {
+  background: transparent !important;
+}
+
+.app-shell.page-theme-canvas .canvas-topbar {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-bottom: 1px solid var(--color-border-default) !important;
+  box-shadow: var(--shadow-sm) !important;
+  backdrop-filter: blur(12px);
+}
+
+.app-shell.page-theme-canvas .canvas-viewport {
+  background:
+    radial-gradient(ellipse 70% 55% at 18% 78%, rgba(59, 130, 246, 0.45) 0%, transparent 58%),
+    radial-gradient(ellipse 60% 48% at 82% 18%, rgba(168, 85, 247, 0.38) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 38% at 50% 50%, rgba(34, 211, 238, 0.18) 0%, transparent 60%),
+    linear-gradient(160deg, #1e293b 0%, #1a2744 38%, #0f172a 100%);
+}
+
+.app-shell.page-theme-canvas .canvas-viewport .vue-flow__pane {
+  background: transparent !important;
+}
+
+.app-shell.page-theme-canvas .cv-node {
+  background: #ffffff !important;
+  border: 1px solid var(--color-border-default) !important;
+  box-shadow: var(--shadow-md) !important;
+  color: var(--color-text-primary);
+}
+
+.app-shell.page-theme-canvas .canvas-title,
+.app-shell.page-theme-canvas .canvas-clock,
+.app-shell.page-theme-canvas .cv-node-label,
+.app-shell.page-theme-canvas .cv-node-value,
+.app-shell.page-theme-canvas .cv-node-sub {
+  color: var(--color-text-primary);
+}
+
+.app-shell.page-theme-canvas .cv-node-sub {
+  color: var(--color-text-muted);
+}
+
+:is(html, .app-shell).page-theme-admin {
+  --page-tint: #fff1f2;
+  --page-accent: #be123c;
+  --page-accent-light: #fb7185;
+  --page-secondary: #64748b;
+  --page-chart-primary: #e11d48;
+  --page-chart-secondary: #64748b;
+  --page-accent-glow: rgba(190, 18, 60, 0.24);
+  --page-nav-active-bg: rgba(190, 18, 60, 0.13);
+  --glass-surface: linear-gradient(145deg, #ffffff 0%, var(--page-tint) 100%);
+  --glass-header: linear-gradient(180deg, #ffffff 0%, var(--page-tint) 100%);
+  --gradient-page-bg:
+    radial-gradient(ellipse 85% 65% at 0% 100%, rgba(225, 29, 72, 0.26) 0%, transparent 55%),
+    radial-gradient(ellipse 75% 55% at 100% 0%, rgba(100, 116, 139, 0.16) 0%, transparent 50%),
+    linear-gradient(155deg, #fecdd3 0%, #fda4af 48%, #fb7185 100%);
+  --gradient-page-light:
+    radial-gradient(ellipse 50% 40% at 8% 6%, rgba(255, 241, 242, 0.48) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 92% 88%, rgba(225, 29, 72, 0.12) 0%, transparent 50%);
+}

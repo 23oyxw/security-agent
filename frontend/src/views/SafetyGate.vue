@@ -220,7 +220,7 @@ function clearAll() {
 .page-header { margin-bottom: var(--space-4); }
 .page-title { font-size: var(--text-2xl); font-weight: 700; margin: 0; }
 .page-subtitle { font-size: var(--text-sm); color: var(--color-neutral-400); margin: 4px 0 0; }
-.section-card { background: #fff; border: 1px solid var(--color-neutral-200); border-radius: var(--radius-lg); margin-bottom: 12px; }
+.section-card { background: transparent; border: 1px solid var(--page-card-border, var(--color-neutral-200)); border-radius: var(--radius-lg); margin-bottom: 12px; }
 
 /* 三步流程连接线 */
 .safety-page :deep(.el-row) {

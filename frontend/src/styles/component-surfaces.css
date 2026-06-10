@@ -1,0 +1,267 @@
+/* ============================================================
+   COMPONENT SURFACES — 组件/文字/图标（与彩色背景分层）
+   背景负责氛围；本文件负责可读 UI
+   ============================================================ */
+
+/* 强制浅色组件语义（覆盖 prefers-color-scheme: dark 对内容区的反转） */
+:is(html, .app-shell)[class*='page-theme-']:not(.page-theme-canvas) {
+  color-scheme: light;
+
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f8fafc;
+  --color-border-default: #e2e8f0;
+  --color-border-subtle: #f1f5f9;
+
+  /* 实色面板（高不透明度，从背景中「浮起」） */
+  --glass-surface: #ffffff;
+  --glass-header: #f8fafc;
+  --glass-topbar: rgba(255, 255, 255, 0.96);
+  --glass-chip: #f1f5f9;
+  --glass-stripe: #f8fafc;
+  --glass-border: rgba(15, 23, 42, 0.10);
+  --glass-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 4px 16px rgba(15, 23, 42, 0.08),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+  --ui-icon-accent: var(--page-accent);
+  --ui-icon-muted: #64748b;
+}
+
+/* ---- 卡片 / 面板内容区：白底 + 深字 ---- */
+.app-shell[class*='page-theme-'] .el-card,
+.app-shell[class*='page-theme-'] .panel-card,
+.app-shell[class*='page-theme-'] .section-card,
+.app-shell[class*='page-theme-'] .stat-card,
+.app-shell[class*='page-theme-'] .flow-card,
+.app-shell[class*='page-theme-'] .chat-main,
+.app-shell[class*='page-theme-'] .chat-sidebar,
+.app-shell[class*='page-theme-'] .result-card,
+.app-shell[class*='page-theme-'] .page-header {
+  color: var(--color-text-primary);
+}
+
+.app-shell[class*='page-theme-'] .panel-body,
+.app-shell[class*='page-theme-'] .el-card__body,
+.app-shell[class*='page-theme-'] .section-card .section-body,
+.app-shell[class*='page-theme-'] .table-wrap {
+  background: #ffffff;
+  color: var(--color-text-primary);
+}
+
+.app-shell[class*='page-theme-'] .stat-card {
+  background: #ffffff !important;
+}
+
+.app-shell[class*='page-theme-'] .stat-card .stat-label,
+.app-shell[class*='page-theme-'] .metric-label,
+.app-shell[class*='page-theme-'] .metric-sub {
+  color: var(--color-text-secondary) !important;
+}
+
+.app-shell[class*='page-theme-'] .stat-card .stat-value,
+.app-shell[class*='page-theme-'] .metric-value,
+.app-shell[class*='page-theme-'] .page-title {
+  color: var(--color-text-primary) !important;
+}
+
+.app-shell[class*='page-theme-'] .page-subtitle,
+.app-shell[class*='page-theme-'] .panel-desc,
+.app-shell[class*='page-theme-'] .chart-footer,
+.app-shell[class*='page-theme-'] .drawer-section-title {
+  color: var(--color-text-muted) !important;
+}
+
+/* ---- 面板标题 + 图标 ---- */
+.app-shell[class*='page-theme-'] .panel-title {
+  color: var(--color-text-primary) !important;
+}
+
+.app-shell[class*='page-theme-'] .panel-title .el-icon,
+.app-shell[class*='page-theme-'] .page-header .el-icon:not(.is-loading) {
+  color: var(--page-accent) !important;
+}
+
+.app-shell[class*='page-theme-'] .panel-header {
+  color: var(--color-text-primary);
+}
+
+/* ---- 顶栏：面包屑 / 图标 / 指标 ---- */
+.app-shell[class*='page-theme-'] .topbar {
+  color: var(--color-text-primary);
+}
+
+.app-shell[class*='page-theme-'] .breadcrumb-nav .el-breadcrumb__inner {
+  color: var(--color-text-secondary) !important;
+}
+
+.app-shell[class*='page-theme-'] .breadcrumb-nav .el-breadcrumb__inner.is-link {
+  color: var(--page-accent) !important;
+}
+
+.app-shell[class*='page-theme-'] .breadcrumb-nav .el-breadcrumb__item:last-child .el-breadcrumb__inner {
+  color: var(--color-text-primary) !important;
+  font-weight: 600;
+}
+
+.app-shell[class*='page-theme-'] .icon-btn {
+  color: var(--ui-icon-muted);
+}
+
+.app-shell[class*='page-theme-'] .icon-btn:hover {
+  color: var(--page-accent) !important;
+  background: color-mix(in srgb, var(--page-accent) 10%, #ffffff) !important;
+}
+
+.app-shell[class*='page-theme-'] .pill-metric .el-icon {
+  color: var(--ui-icon-muted);
+}
+
+.app-shell[class*='page-theme-'] .pill-metric:first-child .el-icon {
+  color: #3b82f6;
+}
+
+.app-shell[class*='page-theme-'] .pill-metric:last-child .el-icon {
+  color: #10b981;
+}
+
+.app-shell[class*='page-theme-'] .pill-value {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.app-shell[class*='page-theme-'] .pill-value.danger {
+  color: #dc2626 !important;
+}
+
+.app-shell[class*='page-theme-'] .pill-value.warning {
+  color: #d97706 !important;
+}
+
+.app-shell[class*='page-theme-'] .user-name {
+  color: var(--color-text-primary);
+}
+
+/* ---- 表格 ---- */
+.app-shell[class*='page-theme-'] .el-table {
+  --el-table-text-color: #334155;
+  --el-table-header-text-color: #475569;
+}
+
+.app-shell[class*='page-theme-'] .el-table td.el-table__cell,
+.app-shell[class*='page-theme-'] .el-table th.el-table__cell {
+  color: #334155;
+}
+
+.app-shell[class*='page-theme-'] .el-table th.el-table__cell {
+  color: #475569 !important;
+  font-weight: 600;
+}
+
+.app-shell[class*='page-theme-'] .alert-time {
+  color: #334155 !important;
+}
+
+.app-shell[class*='page-theme-'] .alert-time-relative {
+  color: #64748b !important;
+}
+
+/* ---- 表单 / 输入 ---- */
+.app-shell[class*='page-theme-'] .el-input__inner,
+.app-shell[class*='page-theme-'] .el-textarea__inner {
+  color: #0f172a !important;
+}
+
+.app-shell[class*='page-theme-'] .el-input__wrapper,
+.app-shell[class*='page-theme-'] .el-textarea__inner {
+  background: #ffffff !important;
+  box-shadow: 0 0 0 1px #e2e8f0 inset !important;
+}
+
+.app-shell[class*='page-theme-'] .el-input__wrapper.is-focus,
+.app-shell[class*='page-theme-'] .el-textarea__inner:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--page-accent) 35%, transparent) inset !important;
+}
+
+/* ---- 空状态 / 占位图标 ---- */
+.app-shell[class*='page-theme-'] .el-empty__description {
+  color: #64748b !important;
+}
+
+.app-shell[class*='page-theme-'] .el-empty .el-icon,
+.app-shell[class*='page-theme-'] .empty-icon .el-icon {
+  color: color-mix(in srgb, var(--page-accent) 55%, #94a3b8) !important;
+}
+
+/* ---- 折叠 / 描述列表 ---- */
+.app-shell[class*='page-theme-'] .el-collapse-item__header {
+  color: #0f172a !important;
+  font-weight: 500;
+}
+
+.app-shell[class*='page-theme-'] .el-descriptions__label {
+  color: #64748b !important;
+}
+
+.app-shell[class*='page-theme-'] .el-descriptions__content {
+  color: #0f172a !important;
+}
+
+/* ---- Agent 聊天气泡文字 ---- */
+.app-shell[class*='page-theme-'] .message.agent .message-content {
+  color: #0f172a !important;
+}
+
+.app-shell[class*='page-theme-'] .message.user .message-content {
+  color: #ffffff !important;
+}
+
+/* ---- Dashboard 指标卡（白底 + 语义色数字） ---- */
+.app-shell[class*='page-theme-'] .metric-card .metric-value {
+  color: inherit;
+}
+
+.app-shell[class*='page-theme-'] .metric-cpu .metric-value {
+  color: #2563eb !important;
+}
+
+.app-shell[class*='page-theme-'] .metric-memory .metric-value {
+  color: #059669 !important;
+}
+
+.app-shell[class*='page-theme-'] .metric-disk .metric-value {
+  color: #d97706 !important;
+}
+
+.app-shell[class*='page-theme-'] .metric-process .metric-value {
+  color: #7c3aed !important;
+}
+
+.app-shell[class*='page-theme-'] .metric-load .metric-value {
+  color: #ea580c !important;
+}
+
+.app-shell[class*='page-theme-'] .metric-uptime .metric-value {
+  color: #0891b2 !important;
+}
+
+/* ---- 知识库 / 分类图标块 ---- */
+.app-shell[class*='page-theme-'] .cat-icon,
+.app-shell[class*='page-theme-'] .rec-icon,
+.app-shell[class*='page-theme-'] .skill-icon-wrap {
+  color: var(--page-accent);
+  background: color-mix(in srgb, var(--page-accent) 12%, #ffffff);
+}

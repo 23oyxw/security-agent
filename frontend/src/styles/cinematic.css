@@ -1,0 +1,291 @@
+/* ============================================================
+   CINEMATIC UI — 全站影视级光影面板
+   玻璃质感 + 顶部高光 + 多层 tinted 阴影
+   ============================================================ */
+
+/* ---- 影视面板：渐变底 + 多层阴影（全站卡片通用） ---- */
+.cinema-panel,
+.panel-card,
+.section-card,
+.chat-main,
+.chat-sidebar,
+.flow-card,
+.swimlane,
+.skill-card,
+.sidebar-section,
+.result-card,
+.stat-card,
+.history-dropdown {
+  position: relative;
+  background: var(--glass-surface, var(--gradient-panel-surface)) !important;
+  border: 1px solid var(--border-glass-outer) !important;
+  box-shadow: var(--shadow-cinematic) !important;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  overflow: hidden;
+  transition:
+    box-shadow var(--duration-normal) var(--ease-out),
+    transform var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out);
+}
+
+/* 指标卡背景由各页语义 class 控制，不在此统一染色 */
+.metric-card {
+  position: relative;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  overflow: hidden;
+  transition:
+    box-shadow var(--duration-normal) var(--ease-out),
+    transform var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out);
+}
+
+/* 带顶光/侧光的面板（不使用 ::before 的卡片） */
+.cinema-panel,
+.panel-card,
+.section-card,
+.chat-main,
+.chat-sidebar,
+.flow-card,
+.swimlane,
+.skill-card,
+.sidebar-section,
+.result-card,
+.el-card {
+  isolation: isolate;
+}
+
+.cinema-panel::before,
+.panel-card::before,
+.section-card::before,
+.chat-main::before,
+.chat-sidebar::before,
+.flow-card::before,
+.swimlane::before,
+.skill-card::before,
+.sidebar-section::before,
+.result-card::before,
+.el-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--glass-highlight, rgba(255, 255, 255, 0.95)) 35%,
+    var(--glass-highlight, rgba(255, 255, 255, 0.95)) 65%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cinema-panel::after,
+.panel-card::after,
+.section-card::after,
+.chat-main::after,
+.chat-sidebar::after,
+.flow-card::after,
+.swimlane::after,
+.skill-card::after,
+.sidebar-section::after,
+.result-card::after,
+.el-card::after {
+  content: '';
+  position: absolute;
+  top: -35%;
+  right: -18%;
+  width: 60%;
+  height: 75%;
+  background: radial-gradient(
+    circle at center,
+    var(--glass-spotlight, rgba(255, 255, 255, 0.35)) 0%,
+    transparent 68%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.panel-card:hover,
+.section-card:hover,
+.flow-card:hover,
+.skill-card:hover,
+.stat-card:hover,
+.metric-card:hover,
+.swimlane:hover {
+  box-shadow: var(--shadow-cinematic-hover) !important;
+  border-color: var(--color-primary-200) !important;
+}
+
+/* ---- Element Plus 卡片 ---- */
+.el-card {
+  --el-card-bg-color: transparent;
+  background: var(--glass-surface, var(--gradient-panel-surface)) !important;
+  border: 1px solid var(--border-glass-outer) !important;
+  box-shadow: var(--shadow-cinematic) !important;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+.el-card:hover {
+  box-shadow: var(--shadow-cinematic-hover) !important;
+  transform: translateY(-2px);
+}
+
+.el-card__header {
+  background: var(--glass-header, var(--gradient-panel-header));
+  border-bottom: 1px solid var(--border-glass-outer);
+  position: relative;
+  z-index: 1;
+}
+
+.el-card__body {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- 对话框 / 抽屉 ---- */
+.el-dialog {
+  background: var(--glass-surface, var(--gradient-panel-surface)) !important;
+  border: 1px solid var(--page-card-border, var(--border-glass-outer));
+  box-shadow: inset 0 1px 0 var(--page-glass-highlight), var(--shadow-cinematic-lg) !important;
+  backdrop-filter: blur(16px);
+}
+
+.el-drawer {
+  background: var(--glass-surface, var(--gradient-panel-surface)) !important;
+  box-shadow: var(--shadow-cinematic-lg) !important;
+}
+
+/* ---- 表格 ---- */
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  background: transparent !important;
+}
+
+.el-table__inner-wrapper::before {
+  display: none;
+}
+
+/* ---- 页面标题区 ---- */
+.page-header {
+  position: relative;
+  margin-bottom: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--glass-surface, var(--gradient-panel-surface));
+  border: 1px solid var(--glass-border, var(--border-glass-outer));
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow, var(--shadow-cinematic));
+  backdrop-filter: blur(var(--glass-blur));
+  overflow: hidden;
+}
+
+.page-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-highlight, rgba(255, 255, 255, 0.9)), transparent);
+  z-index: 1;
+}
+
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+  letter-spacing: var(--tracking-tight);
+  position: relative;
+  z-index: 1;
+}
+
+.page-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: var(--space-1) 0 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- 无限画布：样式由 page-themes + InfiniteCanvas 控制 ---- */
+
+/* ---- 登录页 ---- */
+.login-page {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 80%, rgba(37, 99, 235, 0.35) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 85% 15%, rgba(6, 182, 212, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(139, 92, 246, 0.12) 0%, transparent 60%),
+    linear-gradient(145deg, #0f172a 0%, #1a2744 35%, #152238 70%, #0d1524 100%) !important;
+}
+
+.login-card {
+  background: var(--gradient-panel-surface) !important;
+  border: 1px solid var(--border-glass-outer) !important;
+  box-shadow: var(--shadow-cinematic-lg) !important;
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 5%;
+  right: 5%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.65), transparent);
+  z-index: 2;
+}
+
+.login-card::after {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 50%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+/* ---- Agent 消息气泡 ---- */
+.message-content {
+  background: var(--gradient-panel-surface) !important;
+  border: 1px solid var(--border-glass-outer) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.message.user .message-content {
+  background: linear-gradient(
+    145deg,
+    rgba(37, 99, 235, 0.95) 0%,
+    rgba(59, 130, 246, 0.88) 100%
+  ) !important;
+  border-color: rgba(37, 99, 235, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+  color: #fff;
+}
+
+.chat-input-bar,
+.chat-input {
+  background: var(--gradient-panel-header) !important;
+  border-top: 1px solid var(--border-glass-outer) !important;
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+/* ---- ArchitectureLayers 折叠面板 ---- */
+.arch-layers.el-collapse {
+  background: var(--gradient-panel-surface);
+  border: 1px solid var(--border-glass-outer);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-cinematic);
+  overflow: hidden;
+}

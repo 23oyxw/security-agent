@@ -226,6 +226,10 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { Monitor, DataAnalysis, BellFilled } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import {
+  chartGrid, chartTooltip, categoryAxis, valueAxis,
+  metricBarData,
+} from '../utils/chartTheme'
 import api from '../api'
 import { useAlertsStore } from '../stores/alerts'
 
@@ -381,19 +385,19 @@ function renderChart() {
   if (!resourceBar.value) return
   if (!chartInstance) chartInstance = echarts.init(resourceBar.value)
   chartInstance.setOption({
-    tooltip: { trigger: 'axis' },
-    grid: { top: 8, bottom: 24, left: 40, right: 12 },
-    xAxis: { type: 'category', data: ['CPU', '内存', '磁盘'], axisLabel: { fontSize: 11 } },
-    yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%', fontSize: 11 } },
+    tooltip: chartTooltip(),
+    grid: chartGrid(),
+    xAxis: categoryAxis(['CPU', '内存', '磁盘']),
+    yAxis: valueAxis({ max: 100, axisLabel: { formatter: '{value}%', color: '#475569', fontSize: 11 } }),
     series: [{
       type: 'bar',
       barWidth: 50,
-      label: { show: true, position: 'top', formatter: '{c}%', fontSize: 11 },
-      data: [
-        { value: parseFloat(statCards[0].value) || 0, itemStyle: { color: progressColor(parseFloat(statCards[0].value) || 0), borderRadius: [4, 4, 0, 0] } },
-        { value: parseFloat(statCards[1].value) || 0, itemStyle: { color: progressColor(parseFloat(statCards[1].value) || 0), borderRadius: [4, 4, 0, 0] } },
-        { value: parseFloat(statCards[2].value) || 0, itemStyle: { color: progressColor(parseFloat(statCards[2].value) || 0), borderRadius: [4, 4, 0, 0] } },
-      ],
+      label: { show: true, position: 'top', formatter: '{c}%', fontSize: 11, color: '#334155' },
+      data: metricBarData([
+        parseFloat(statCards[0].value) || 0,
+        parseFloat(statCards[1].value) || 0,
+        parseFloat(statCards[2].value) || 0,
+      ]),
     }],
   }, true)
 }
@@ -433,7 +437,9 @@ onUnmounted(() => {
 /* 左侧操作面板                    */
 /* ============================== */
 .ops-drawer {
-  background: var(--color-surface);
+  background: var(--glass-topbar, var(--color-surface-overlay));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-right: 1px solid var(--color-border-default);
   transition: width var(--duration-slow) var(--ease-out), opacity var(--duration-normal) var(--ease-out);
   flex-shrink: 0;
@@ -557,12 +563,12 @@ onUnmounted(() => {
 }
 
 .metric-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-default);
+  border: 1px solid var(--border-glass-outer);
   border-radius: var(--radius-lg);
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   cursor: default;
   transition:
     transform var(--duration-normal) var(--ease-out),
@@ -575,6 +581,32 @@ onUnmounted(() => {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
   border-color: var(--color-primary-200);
+}
+
+/* 指标卡 — 白底 + 语义色轻 tint（与 el-tag / 图表色一致） */
+.metric-cpu {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(239, 246, 255, 0.92) 100%) !important;
+  border-color: rgba(59, 130, 246, 0.22) !important;
+}
+.metric-memory {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(236, 253, 245, 0.92) 100%) !important;
+  border-color: rgba(16, 185, 129, 0.22) !important;
+}
+.metric-disk {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 251, 235, 0.92) 100%) !important;
+  border-color: rgba(245, 158, 11, 0.22) !important;
+}
+.metric-process {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 243, 255, 0.92) 100%) !important;
+  border-color: rgba(139, 92, 246, 0.22) !important;
+}
+.metric-load {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 247, 237, 0.92) 100%) !important;
+  border-color: rgba(249, 115, 22, 0.22) !important;
+}
+.metric-uptime {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(236, 254, 255, 0.92) 100%) !important;
+  border-color: rgba(6, 182, 212, 0.22) !important;
 }
 
 /* 顶部色条 — 使用 token 颜色变量 */
@@ -631,22 +663,19 @@ onUnmounted(() => {
 /* 统一面板卡片                     */
 /* ============================== */
 .panel-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
   overflow: hidden;
-  transition: box-shadow var(--duration-normal) var(--ease-out);
 }
-.panel-card:hover { box-shadow: var(--shadow-md); }
-
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--gradient-panel-header);
   min-height: 48px;
+  position: relative;
+  z-index: 1;
 }
 
 .panel-title {
@@ -658,7 +687,7 @@ onUnmounted(() => {
   color: var(--color-text-primary);
 }
 
-.panel-body { padding: var(--space-5); }
+.panel-body { padding: var(--space-5); position: relative; z-index: 1; }
 
 /* ============================== */
 /* 图表面板                        */

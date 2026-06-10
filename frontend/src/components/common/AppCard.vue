@@ -45,10 +45,12 @@ defineProps({
 
 <style scoped>
 .app-card {
-  background: var(--color-surface);
+  background: var(--gradient-panel-surface);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-default);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-glass-outer);
+  box-shadow: var(--shadow-cinematic);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   overflow: hidden;
   /* 仅对 GPU 友好属性做过渡，避免触发 layout/paint */
   transition:
@@ -63,8 +65,8 @@ defineProps({
 
 .app-card.hoverable:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--color-primary-300);
+  box-shadow: var(--shadow-cinematic-hover);
+  border-color: rgba(37, 99, 235, 0.18);
 }
 
 .app-card.elevated {

@@ -87,11 +87,23 @@
   /* 表面 & 文字 & 边框 (语义 Token)  */
   /* ============================== */
 
-  /* ---- 表面层级 ---- */
+  /* ---- 表面层级（中性底 + 组件语义色协调） ---- */
+  --color-surface-canvas: #dce6f2;
   --color-surface: #ffffff;
-  --color-surface-raised: #ffffff;
-  --color-surface-overlay: rgba(255, 255, 255, 0.92);
+  --color-surface-raised: #f8fafc;
+  --color-surface-overlay: rgba(255, 255, 255, 0.82);
   --color-surface-sidebar: #111827;
+
+  /* 中性玻璃（全站组件默认，page-theme 不覆盖） */
+  --glass-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.86) 100%);
+  --glass-header: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.88) 100%);
+  --glass-topbar: rgba(255, 255, 255, 0.78);
+  --glass-chip: rgba(241, 245, 249, 0.92);
+  --glass-highlight: rgba(255, 255, 255, 0.95);
+  --glass-spotlight: rgba(255, 255, 255, 0.42);
+  --glass-stripe: rgba(248, 250, 252, 0.85);
+  --glass-border: var(--color-border-default);
+  --glass-shadow: var(--shadow-md);
 
   /* ---- 文字层级 ---- */
   --color-text-primary: #0f172a;
@@ -188,6 +200,17 @@
   --gradient-sidebar: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
   --gradient-brand-mark: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
 
+  /* 主内容区 — 多层 mesh（蓝 / 青 / 绿微光 + 斜向底色） */
+  /* 主内容区 — 多层 mesh（加强对比，一眼可辨） */
+  --gradient-content-bg:
+    radial-gradient(ellipse 100% 80% at 0% 100%, rgba(37, 99, 235, 0.22) 0%, transparent 58%),
+    radial-gradient(ellipse 90% 65% at 100% 0%, rgba(6, 182, 212, 0.16) 0%, transparent 52%),
+    radial-gradient(ellipse 55% 45% at 68% 55%, rgba(16, 185, 129, 0.08) 0%, transparent 55%),
+    linear-gradient(155deg, #dbeafe 0%, #bfdbfe 38%, #93c5fd 72%, #7cb3f0 100%);
+
+  --pattern-dot: radial-gradient(rgba(15, 23, 42, 0.09) 1px, transparent 1px);
+  --pattern-dot-size: 22px 22px;
+
   /* ============================== */
   /* 动效体系                        */
   /* ============================== */
@@ -213,6 +236,46 @@
   --shadow-glow-success: 0 0 12px rgba(16, 185, 129, 0.25);
   --shadow-glow-danger: 0 0 12px rgba(239, 68, 68, 0.25);
   --shadow-glow-warning: 0 0 12px rgba(245, 158, 11, 0.25);
+
+  /* ============================== */
+  /* 影视级光影 (Cinematic)          */
+  /* ============================== */
+
+  --glass-blur: 20px;
+
+  /* 中性玻璃面板（与 Element Plus 语义色协调） */
+  --gradient-panel-surface: var(--glass-surface);
+
+  --gradient-panel-header: var(--glass-header);
+
+  --border-glass-outer: var(--color-border-default);
+  --border-glass-inner: rgba(255, 255, 255, 0.85);
+
+  --shadow-cinematic:
+    0 1px 0 var(--border-glass-inner) inset,
+    0 1px 3px rgba(15, 23, 42, 0.06),
+    0 8px 24px -8px rgba(15, 23, 42, 0.10);
+
+  --shadow-cinematic-hover:
+    0 1px 0 var(--glass-highlight) inset,
+    0 4px 12px rgba(15, 23, 42, 0.08),
+    0 16px 32px -10px rgba(15, 23, 42, 0.12);
+
+  --shadow-cinematic-lg:
+    0 1px 0 var(--glass-highlight) inset,
+    0 12px 28px -8px rgba(15, 23, 42, 0.14),
+    0 24px 48px -16px rgba(15, 23, 42, 0.10);
+
+  --gradient-cinema-light:
+    radial-gradient(ellipse 50% 40% at 10% 6%, rgba(255, 255, 255, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 94% 88%, rgba(59, 130, 246, 0.08) 0%, transparent 52%),
+    radial-gradient(ellipse 35% 30% at 75% 15%, rgba(6, 182, 212, 0.06) 0%, transparent 50%);
+
+  /* 页面主题背景（page-themes 按路由覆盖） */
+  --gradient-page-bg: var(--gradient-content-bg);
+  --gradient-page-light: var(--gradient-cinema-light);
+  --page-accent: #2563eb;
+  --page-secondary: #06b6d4;
 
   /* ============================== */
   /* 布局                            */
@@ -334,10 +397,19 @@
     --color-neutral-900: #f8fafc;
 
     /* 表面反转 */
+    --color-surface-canvas: #0f172a;
     --color-surface: #1e293b;
     --color-surface-raised: #232d3f;
-    --color-surface-overlay: rgba(30, 41, 59, 0.92);
+    --color-surface-overlay: rgba(30, 41, 59, 0.88);
     --color-surface-sidebar: #0a0f1a;
+
+    --gradient-content-bg:
+      radial-gradient(ellipse 90% 70% at 0% 100%, rgba(37, 99, 235, 0.18) 0%, transparent 58%),
+      radial-gradient(ellipse 75% 55% at 100% 0%, rgba(6, 182, 212, 0.14) 0%, transparent 52%),
+      radial-gradient(ellipse 55% 45% at 72% 68%, rgba(16, 185, 129, 0.08) 0%, transparent 55%),
+      linear-gradient(160deg, #0f172a 0%, #131c2e 45%, #0d1524 100%);
+
+    --pattern-dot: radial-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px);
 
     /* 文字反转 */
     --color-text-primary: #f1f5f9;
@@ -361,5 +433,28 @@
     --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
     --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+    --gradient-panel-surface: linear-gradient(
+      155deg,
+      rgba(35, 45, 63, 0.95) 0%,
+      rgba(30, 41, 59, 0.88) 50%,
+      rgba(22, 32, 50, 0.92) 100%
+    );
+    --gradient-panel-header: linear-gradient(180deg, rgba(45, 55, 72, 0.6) 0%, transparent 100%);
+    --border-glass-outer: rgba(148, 163, 184, 0.12);
+    --border-glass-inner: rgba(255, 255, 255, 0.08);
+    --shadow-cinematic:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 0 0 1px rgba(0, 0, 0, 0.2),
+      0 8px 24px rgba(0, 0, 0, 0.35),
+      0 20px 40px -12px rgba(37, 99, 235, 0.15);
+    --shadow-cinematic-hover:
+      0 1px 0 rgba(255, 255, 255, 0.1) inset,
+      0 0 0 1px rgba(59, 130, 246, 0.25),
+      0 12px 32px rgba(0, 0, 0, 0.4);
+    --shadow-cinematic-lg:
+      0 1px 0 rgba(255, 255, 255, 0.08) inset,
+      0 16px 48px rgba(0, 0, 0, 0.5),
+      0 32px 64px -16px rgba(37, 99, 235, 0.2);
   }
 }

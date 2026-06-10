@@ -141,8 +141,8 @@ function handleAlert(cmd) {
   align-items: center;
   height: var(--topbar-height);
   padding: 0 var(--space-6);
-  /* 毛玻璃 + 纯色降级 */
-  background: var(--color-surface-overlay);
+  /* 毛玻璃顶栏 — 跟随页面主题色，非白底 */
+  background: var(--glass-topbar, rgba(255, 255, 255, 0.78));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border-subtle);
@@ -154,7 +154,7 @@ function handleAlert(cmd) {
 
 @supports not (backdrop-filter: blur(12px)) {
   .topbar {
-    background: var(--color-surface);
+    background: var(--glass-topbar, rgba(255, 255, 255, 0.92));
   }
 }
 
@@ -198,6 +198,7 @@ function handleAlert(cmd) {
   background: var(--color-neutral-100);
   color: var(--color-primary-500);
 }
+
 .icon-btn:focus-visible {
   outline: 2px solid var(--color-primary-500);
   outline-offset: 2px;
@@ -216,8 +217,8 @@ function handleAlert(cmd) {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-default);
+  background: var(--glass-chip, var(--color-surface));
+  border: 1px solid var(--glass-border, var(--color-border-default));
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
   box-shadow: var(--shadow-sm);

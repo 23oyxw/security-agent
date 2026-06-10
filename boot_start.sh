@@ -192,11 +192,25 @@ if [[ "${DEV_MODE}" == true ]]; then
     log "✅ Vue dev server → http://localhost:5173"
   fi
 else
-  # 生产模式：构建前端
-  if [[ -f "${SEC_ROOT}/frontend/package.json" && ! -d "${SEC_ROOT}/frontend/dist" ]]; then
-    log "构建 Vue 前端..."
+  # 生产模式：dist 缺失 / 资源不完整 / src 比 dist 新 → 必须重新 build
+  _frontend_needs_build() {
+    local dist="${SEC_ROOT}/frontend/dist"
+    local idx="${dist}/index.html"
+    [[ ! -f "${idx}" ]] && return 0
+    local asset missing=0
+    while IFS= read -r asset; do
+      [[ -n "${asset}" && -f "${dist}/${asset}" ]] || missing=1
+    done < <(grep -oE 'assets/[^"'"'"' ]+' "${idx}" 2>/dev/null || true)
+    [[ "${missing}" -eq 1 ]] && return 0
+    find "${SEC_ROOT}/frontend/src" -newer "${idx}" -print -quit 2>/dev/null | grep -q . && return 0
+    return 1
+  }
+  if [[ -f "${SEC_ROOT}/frontend/package.json" ]] && _frontend_needs_build; then
+    log "构建 Vue 前端（dist 缺失、不完整或源码已更新）..."
     cd "${SEC_ROOT}/frontend"
-    npm install --prefer-offline >>"${LOG_DIR}/frontend-install.log" 2>&1
+    if [[ ! -d node_modules ]]; then
+      npm install --prefer-offline >>"${LOG_DIR}/frontend-install.log" 2>&1
+    fi
     npm run build >>"${LOG_DIR}/frontend-build.log" 2>&1
     cd "${SEC_ROOT}"
     if [[ -d "${SEC_ROOT}/frontend/dist" ]]; then
@@ -205,7 +219,7 @@ else
       log "⚠️ 前端构建失败，请查看: ${LOG_DIR}/frontend-build.log"
     fi
   elif [[ -d "${SEC_ROOT}/frontend/dist" ]]; then
-    log "前端已构建，跳过"
+    log "前端 dist 已是最新，跳过构建"
   fi
 fi
 

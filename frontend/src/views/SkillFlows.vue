@@ -199,7 +199,7 @@ onMounted(loadFlows)
 }
 
 .flow-card {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);

@@ -155,6 +155,10 @@
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
+import {
+  chartTooltip, categoryAxis, valueAxis,
+  pageChartGradient,
+} from '../utils/chartTheme'
 import api from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatBeijingTime, formatRelativeBeijing } from '../utils/formatTime'
@@ -349,16 +353,14 @@ function renderChart() {
     if (view === 'timeline') {
       const data = traces.value.slice(0, 20).reverse()
       chartInstance.setOption({
-        tooltip: { trigger: 'axis' },
+        tooltip: chartTooltip(),
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'category', data: data.map(t => formatTimeShort(t.timestamp)), axisLabel: { rotate: 45, fontSize: 10 } },
-        yAxis: { type: 'value', name: '阶段数' },
+        xAxis: categoryAxis(data.map(t => formatTimeShort(t.timestamp)), { axisLabel: { rotate: 45, fontSize: 10 } }),
+        yAxis: valueAxis({ name: '阶段数', nameTextStyle: { color: '#64748b' } }),
         series: [{
           type: 'bar', data: data.map(t => t.stage_count || 0),
           itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#3b82f6' }, { offset: 1, color: '#93c5fd' }
-            ]),
+            color: pageChartGradient(echarts),
             borderRadius: [4, 4, 0, 0],
           },
         }],
@@ -398,7 +400,8 @@ function renderChart() {
         xAxis: { type: 'category', data: hours, splitArea: { show: true } },
         yAxis: { type: 'category', data: days, splitArea: { show: true } },
         visualMap: { min: 0, max: 5, calculable: true, orient: 'horizontal', left: 'center', bottom: '0%',
-          inRange: { color: ['#f0f9ff', '#bae6fd', '#7dd3fc', '#38bdf8', '#0ea5e9', '#f59e0b'] }
+          textStyle: { color: '#475569' },
+          inRange: { color: ['#f8fafc', '#c7d2fe', '#818cf8', '#6366f1', '#4f46e5', '#f59e0b'] }
         },
         series: [{ type: 'heatmap', data, label: { show: false }, emphasis: { itemStyle: { shadowBlur: 10 } } }],
       })
@@ -495,7 +498,7 @@ async function cleanupOld() {
 }
 
 .stat-card {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
@@ -559,7 +562,7 @@ async function cleanupOld() {
 
 /* 图表区域 */
 .section-card {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);

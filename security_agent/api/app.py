@@ -198,7 +198,10 @@ if _frontend_dist.is_dir():
 
     @app.get("/")
     async def spa_index():
-        return FileResponse(_frontend_dist / "index.html")
+        return FileResponse(
+            _frontend_dist / "index.html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
 
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str):
@@ -207,7 +210,10 @@ if _frontend_dist.is_dir():
         file_path = _frontend_dist / full_path
         if file_path.is_file():
             return FileResponse(file_path)
-        return FileResponse(_frontend_dist / "index.html")
+        return FileResponse(
+            _frontend_dist / "index.html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
 else:
     @app.get("/")
     async def root():

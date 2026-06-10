@@ -308,7 +308,7 @@ onMounted(() => {})
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-5);
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -365,7 +365,7 @@ onMounted(() => {})
 }
 
 .section-card {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);

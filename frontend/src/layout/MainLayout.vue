@@ -1,5 +1,5 @@
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="pageThemeClass">
     <!-- 侧边栏（独立组件） -->
     <Sidebar :collapsed="collapsed" @toggle="collapsed = !collapsed" @navigate="navigate" />
 
@@ -34,7 +34,7 @@
  * - 渐变使用 primary/accent 色系，透明度 6%（专业 B2B 克制风格）
  * - Dashboard 自身管理内部 max-width 和栅格，Layout 不做过度约束
  */
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { useSystemPolling } from '../composables/useSystemPolling'
@@ -49,6 +49,26 @@ const userStore = useUserStore()
 useSystemPolling(30000)
 
 const collapsed = ref(false)
+
+const pageThemeClass = computed(() => {
+  const theme = route.meta.theme || 'ops'
+  return `page-theme-${theme}`
+})
+
+const THEME_CLASSES = [
+  'page-theme-ops', 'page-theme-intel', 'page-theme-guard', 'page-theme-alert',
+  'page-theme-mesh', 'page-theme-audit', 'page-theme-archive', 'page-theme-learn',
+  'page-theme-canvas', 'page-theme-admin',
+]
+
+watch(
+  pageThemeClass,
+  (cls) => {
+    document.documentElement.classList.remove(...THEME_CLASSES)
+    document.documentElement.classList.add(cls)
+  },
+  { immediate: true }
+)
 
 // 路由层级动效
 const transitionName = ref('slide-fade')
@@ -93,7 +113,9 @@ function logout() {
 .app-shell {
   display: flex;
   height: 100vh;
-  background: var(--color-surface);
+  /* 必须读 page-theme 变量；勿写死 gradient-content-bg */
+  background: var(--gradient-page-bg, var(--gradient-content-bg));
+  background-attachment: fixed;
 }
 
 /* ---- 主区域 ---- */
@@ -102,6 +124,29 @@ function logout() {
   display: flex;
   flex-direction: column;
   min-width: 0; /* 防止 flex 子项溢出 */
+  position: relative;
+}
+
+/* 内容区底层纹理 + 影视顶光 */
+.main-area::before {
+  content: '';
+  position: absolute;
+  inset: var(--topbar-height) 0 0 0;
+  pointer-events: none;
+  background-image: var(--pattern-dot);
+  background-size: var(--pattern-dot-size);
+  opacity: 0.85;
+  z-index: 0;
+}
+
+.main-area::after {
+  content: '';
+  position: absolute;
+  inset: var(--topbar-height) 0 0 0;
+  pointer-events: none;
+  background: var(--gradient-page-light, var(--gradient-cinema-light));
+  z-index: 0;
+  mix-blend-mode: soft-light;
 }
 
 /* ---- 内容区 ---- */
@@ -109,16 +154,9 @@ function logout() {
   flex: 1;
   padding: var(--space-6);
   overflow-y: auto;
-  /*
-   * 微妙的径向渐变 — 增加空间层次感而不喧宾夺主
-   * 左下角：primary 蓝调   6%
-   * 右上角：accent  青调   6%
-   * 底色：surface 基础色
-   */
-  background:
-    radial-gradient(circle at 15% 85%, rgba(37, 99, 235, 0.06) 0%, transparent 50%),
-    radial-gradient(circle at 85% 15%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
-    var(--color-surface);
+  position: relative;
+  z-index: 1;
+  background: transparent;
   min-height: 0;
 
   /* 统一滚动条样式（与 Dashboard 协同） */

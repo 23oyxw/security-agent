@@ -158,7 +158,7 @@ const quickStart = [
 .page-header { margin-bottom: 16px; }
 .page-title { font-size: var(--text-2xl); font-weight: 700; margin: 0; }
 .page-subtitle { font-size: var(--text-sm); color: var(--color-neutral-400); margin: 4px 0 0; }
-.section-card { border: 1px solid var(--color-neutral-200); border-radius: var(--radius-lg); background: #fff; }
+.section-card { border: 1px solid var(--page-card-border, var(--color-neutral-200)); border-radius: var(--radius-lg); background: transparent; }
 
 /* 架构流程图 */
 .arch-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 16px 0; position: relative; }

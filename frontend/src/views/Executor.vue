@@ -312,7 +312,7 @@ async function copyOutput() {
 
 /* ---- 卡片 ---- */
 .section-card {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -359,7 +359,7 @@ async function copyOutput() {
   left: 0;
   right: 0;
   z-index: 100;
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
@@ -485,7 +485,7 @@ async function copyOutput() {
 }
 
 .sidebar-section {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);

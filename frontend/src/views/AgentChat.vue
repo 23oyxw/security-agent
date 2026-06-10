@@ -376,7 +376,7 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -455,25 +455,22 @@ onUnmounted(() => {
 .message-content {
   font-size: var(--text-sm);
   line-height: var(--leading-relaxed);
-  color: var(--color-neutral-800);
   padding: var(--space-3);
   border-radius: var(--radius-lg);
-  background: var(--color-neutral-50);
   position: relative;
 }
 
-/* Agent 消息左侧色条 */
+/* Agent 消息 — 影视气泡（背景由 cinematic.css 统一） */
 .message.agent .message-content {
   border-left: 3px solid var(--color-primary-400);
   border-top-left-radius: 0;
+  color: var(--color-neutral-800);
 }
 
-/* 用户消息右侧色条 */
 .message.user .message-content {
-  background: var(--color-primary-50);
-  color: var(--color-primary-900);
-  border-right: 3px solid var(--color-primary-400);
+  border-right: 3px solid rgba(255, 255, 255, 0.35);
   border-top-right-radius: 0;
+  color: #fff;
 }
 
 .message-content :deep(.code-block) {
@@ -626,7 +623,7 @@ onUnmounted(() => {
 }
 
 .sidebar-section {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);

@@ -396,7 +396,7 @@ onMounted(() => { loadKnowledgeStats() })
 }
 
 .result-card {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
@@ -492,7 +492,7 @@ onMounted(() => { loadKnowledgeStats() })
 }
 
 .section-card {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);

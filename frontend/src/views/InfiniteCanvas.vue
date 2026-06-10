@@ -28,7 +28,7 @@
         @node-double-click="onNodeDblClick"
         @pane-click="selectedNode = null"
       >
-        <Background :gap="30" :size="1" pattern-color="rgba(148,163,184,0.06)" />
+        <Background :gap="30" :size="1" pattern-color="rgba(148,163,184,0.18)" />
 
         <!-- 监控节点 (Monitor) -->
         <template #node-monitor="props">
@@ -323,20 +323,20 @@ onUnmounted(() => {
   height: calc(100vh - var(--topbar-height, 56px));
   display: flex;
   flex-direction: column;
-  background: var(--color-surface);
+  background: transparent;
 }
 
-/* ---- 画布顶栏 ---- */
 .canvas-topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 var(--space-4);
   height: 44px;
-  background: var(--color-surface);
+  background: rgba(255, 255, 255, 0.92);
   border-bottom: 1px solid var(--color-border-default);
   flex-shrink: 0;
   z-index: 10;
+  backdrop-filter: blur(12px);
 }
 
 .canvas-topbar-left,
@@ -349,13 +349,13 @@ onUnmounted(() => {
 .canvas-title {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  color: var(--color-text-primary);
+  color: #0f172a;
 }
 
 .canvas-clock {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--color-text-muted);
+  color: #64748b;
   min-width: 70px;
   text-align: right;
 }
@@ -365,16 +365,19 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   position: relative;
+  background:
+    radial-gradient(ellipse 70% 55% at 18% 78%, rgba(59, 130, 246, 0.45) 0%, transparent 58%),
+    radial-gradient(ellipse 60% 48% at 82% 18%, rgba(168, 85, 247, 0.38) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 38% at 50% 50%, rgba(34, 211, 238, 0.18) 0%, transparent 60%),
+    linear-gradient(160deg, #1e293b 0%, #1a2744 38%, #0f172a 100%);
 }
 
-/* ============================================================
-   Canvas Nodes — 统一节点设计系统
-   与 AppCard / Dashboard .metric-card 保持一致的视觉语言
-   ============================================================ */
+.canvas-viewport :deep(.vue-flow) {
+  background: transparent !important;
+}
 
-/* ---- 基础节点 ---- */
 .cv-node {
-  background: var(--color-surface);
+  background: #ffffff;
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg);
   min-width: 160px;
@@ -444,7 +447,7 @@ onUnmounted(() => {
 .cv-node-label {
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
-  color: var(--color-text-primary);
+  color: #0f172a;
 }
 
 /* 指标数值 — 使用 --text-metric (22px) */
@@ -452,7 +455,7 @@ onUnmounted(() => {
   font-family: var(--font-mono);
   font-size: var(--text-metric);
   font-weight: var(--weight-bold);
-  color: var(--color-text-primary);
+  color: #0f172a;
   line-height: var(--leading-tight);
 }
 
@@ -463,7 +466,7 @@ onUnmounted(() => {
 /* 辅助说明文字 — 使用 --text-2xs (11px) 替代原来的 10px */
 .cv-node-sub {
   font-size: var(--text-2xs);
-  color: var(--color-text-muted);
+  color: #64748b;
 }
 
 /* 进度条 */

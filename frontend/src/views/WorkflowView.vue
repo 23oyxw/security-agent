@@ -406,7 +406,7 @@ watch(pollInterval, (v) => {
 
 /* ---- 单条泳道 ---- */
 .swimlane {
-  background: #fff;
+  background: transparent;
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
@@ -575,7 +575,7 @@ watch(pollInterval, (v) => {
 .template-panel { margin-top: 0; }
 
 .section-card {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -602,7 +602,7 @@ watch(pollInterval, (v) => {
 }
 
 .skill-card {
-  background: #fff;
+  background: transparent;
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-md);
   padding: var(--space-4);
