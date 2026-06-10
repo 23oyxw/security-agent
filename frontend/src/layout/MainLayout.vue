@@ -669,6 +669,7 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
   padding: var(--space-6);
   overflow-y: auto;
   background: var(--color-neutral-50);
+  min-height: 0;
 }
 
 /* ---- 过渡动画 ---- */
