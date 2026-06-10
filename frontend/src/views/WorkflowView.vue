@@ -198,7 +198,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
-import { Refresh } from '@element-plus/icons-vue'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import api from '../api'
 
 const loading = ref(false)
@@ -278,14 +278,14 @@ async function fetchWorkflow() {
 
 async function rollbackSnapshot(snapId) {
   try {
-    await this.$confirm(`确认回滚到快照 ${snapId}？`, '回滚确认', { type: 'warning' })
+    await ElMessageBox.confirm(`确认回滚到快照 ${snapId}？`, '回滚确认', { type: 'warning' })
   } catch { return }
   try {
     await api.post(`/executor/rollback`, { rollback_id: snapId })
-    this.$message.success('回滚成功')
+    ElMessage.success('回滚成功')
     fetchAll()
   } catch (e) {
-    this.$message.error('回滚失败: ' + (e.response?.data?.detail || e.message))
+    ElMessage.error('回滚失败: ' + (e.response?.data?.detail || e.message))
   }
 }
 

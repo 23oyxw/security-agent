@@ -279,7 +279,7 @@ onUnmounted(() => { clearInterval(pollTimer); clearInterval(clockTimer) })
 </script>
 
 <style scoped>
-.canvas-shell { height:100%; display:flex; flex-direction:column; background:#f8fafc; }
+.canvas-shell { height: calc(100vh - var(--topbar-height, 56px)); display: flex; flex-direction: column; background: #f8fafc; }
 .canvas-topbar { display:flex; justify-content:space-between; align-items:center; padding:0 var(--space-4); height:44px; background:#fff; border-bottom:1px solid var(--color-neutral-200); flex-shrink:0; z-index:10; }
 .canvas-topbar-left,.canvas-topbar-right { display:flex; align-items:center; gap:var(--space-2); }
 .canvas-title { font-size:var(--text-sm); font-weight:600; color:var(--color-neutral-700); }

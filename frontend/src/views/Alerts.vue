@@ -109,6 +109,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import * as echarts from 'echarts'
 import { useAlertsStore } from '../stores/alerts'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatBeijingTime, formatRelativeBeijing } from '../utils/formatTime'
@@ -122,6 +123,7 @@ const trendRange = ref('6h')
 const trendChart = ref(null)
 let pollTimer = null
 let chartInstance = null
+const resizeHandler = () => chartInstance?.resize()
 
 const alerts = computed(() => alertsStore.items)
 const loading = computed(() => alertsStore.loading)
@@ -264,7 +266,7 @@ async function ackAll() {
   try {
     await api.post('/alerts/acknowledge-batch', { alert_ids: null })
     ElMessage.success('已全部确认')
-    await alertsStore.fetchAlerts(params.value)
+    await alertsStore.fetchAlerts()
     await alertsStore.fetchUnreadCount()
   } catch (e) {
     const msg = e.response?.data?.detail || e.message || '操作失败'
@@ -292,12 +294,14 @@ onMounted(() => {
   fetchAlerts()
   pollTimer = setInterval(fetchAlerts, POLL_MS)
   document.addEventListener('visibilitychange', onVisibility)
-  window.addEventListener('resize', () => chartInstance?.resize())
+  window.addEventListener('resize', resizeHandler)
 })
 
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
   document.removeEventListener('visibilitychange', onVisibility)
+  window.removeEventListener('resize', resizeHandler)
+  if (chartInstance) { chartInstance.dispose(); chartInstance = null }
 })
 </script>
 

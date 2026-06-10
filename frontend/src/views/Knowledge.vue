@@ -42,7 +42,7 @@
       </div>
     </div>
 
-    <div v-if="results.length" class="results-section">
+    <div v-if="results.length" class="results-section" v-loading="searching">
       <div class="results-meta">
         <span class="results-count">共 {{ results.length }} 条结果</span>
         <span class="results-time">{{ searchTime }}ms</span>

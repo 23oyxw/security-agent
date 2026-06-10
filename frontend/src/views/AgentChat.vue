@@ -67,7 +67,7 @@
               type="textarea"
               :rows="2"
               placeholder="输入你的问题或指令..."
-              @keydown.enter.prevent="sendMessage"
+              @keydown.enter.exact.prevent="sendMessage"
               :disabled="thinking"
             />
           </div>

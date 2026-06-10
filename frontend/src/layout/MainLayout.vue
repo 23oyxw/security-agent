@@ -471,11 +471,6 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 .sys-info-value.warning { color: var(--color-warning); }
 .sys-info-value.danger { color: var(--color-danger); }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
 /* ---- 主区域 ---- */
 .main-area {
   flex: 1;

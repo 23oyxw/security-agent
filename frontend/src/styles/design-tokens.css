@@ -13,6 +13,7 @@
    ============================================================ */
 
 :root {
+  color-scheme: light;
   /* ---- 色彩系统 (OKLCH 校准) ---- */
   /* 主色: Trust Blue (#2563EB) — 符合 UI-UX-ProMax SaaS Dashboard 规范 */
   --color-primary-50: #eff6ff;

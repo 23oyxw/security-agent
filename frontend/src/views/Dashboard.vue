@@ -308,8 +308,12 @@ function renderChart() {
   })
 }
 
-onMounted(() => { fetchAll(); refreshProc(); pollTimer = setInterval(fetchAll, pollSec.value*1000) })
-onUnmounted(() => { clearInterval(pollTimer); if (chartInstance) { chartInstance.dispose(); chartInstance = null } })
+const resizeHandler = () => chartInstance?.resize()
+
+watch(pollSec, (v) => { if (pollTimer) { clearInterval(pollTimer); pollTimer = setInterval(fetchAll, v*1000) } })
+
+onMounted(() => { fetchAll(); refreshProc(); pollTimer = setInterval(fetchAll, pollSec.value*1000); window.addEventListener('resize', resizeHandler) })
+onUnmounted(() => { clearInterval(pollTimer); window.removeEventListener('resize', resizeHandler); if (chartInstance) { chartInstance.dispose(); chartInstance = null } })
 </script>
 
 <style scoped>

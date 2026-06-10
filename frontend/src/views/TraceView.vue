@@ -152,7 +152,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import api from '../api'
@@ -171,6 +171,8 @@ const chartView = ref('timeline')
 const chartLoading = ref(false)
 const traceChart = ref(null)
 let chartInstance = null
+let pollTimer = null
+const resizeHandler = () => chartInstance?.resize()
 
 const detailOpen = ref(false)
 const detailRow = ref(null)
@@ -416,7 +418,13 @@ onMounted(async () => {
     const row = traces.value.find(t => t.trace_id === qid) || { trace_id: qid }
     openDetail(row)
   }
-  window.addEventListener('resize', () => chartInstance?.resize())
+  window.addEventListener('resize', resizeHandler)
+})
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+  window.removeEventListener('resize', resizeHandler)
+  if (chartInstance) { chartInstance.dispose(); chartInstance = null }
 })
 
 // --- 批量操作 ---
