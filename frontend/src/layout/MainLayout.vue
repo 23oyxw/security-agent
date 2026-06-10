@@ -272,7 +272,7 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
   overflow: hidden;
   flex-shrink: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
-  transition: none;
+  transition: width var(--duration-slow) var(--ease-out);
 }
 
 .sidebar.collapsed {
@@ -295,6 +295,11 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform var(--duration-normal) var(--ease-spring);
+}
+
+.sidebar-header:hover .brand-mark {
+  transform: rotate(-5deg) scale(1.05);
 }
 
 .brand-text {
@@ -347,6 +352,28 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
   height: 20px;
   background: var(--color-primary-500);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  animation: scale-in var(--duration-normal) var(--ease-spring);
+}
+
+.nav-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: var(--space-4);
+  right: var(--space-4);
+  height: 1px;
+  background: var(--color-primary-500);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.nav-item:hover::after {
+  transform: scaleX(0.4);
+}
+
+.nav-item.active::after {
+  transform: scaleX(0.6);
 }
 
 .nav-group-label {
@@ -409,12 +436,13 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 .status-indicator.healthy .status-dot {
   background: var(--color-success);
   box-shadow: 0 0 4px var(--color-success);
+  animation: pulse-dot var(--duration-pulse) ease-in-out infinite;
 }
 
 .status-indicator.warning .status-dot {
   background: var(--color-warning);
   box-shadow: 0 0 4px var(--color-warning);
-  animation: pulse 2s infinite;
+  animation: pulse-dot 1.2s ease-in-out infinite;
 }
 
 .sys-info {
@@ -508,6 +536,7 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
   background: var(--color-neutral-50);
   border-radius: var(--radius-md);
   font-size: var(--text-xs);
+  animation: fade-in var(--duration-slow) var(--ease-out);
 }
 
 .metric {
@@ -521,6 +550,7 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--color-neutral-700);
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
 .metric-value.warning { color: var(--color-warning); }
@@ -552,6 +582,11 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
   color: var(--color-primary-500);
 }
 
+/* 铃铛摇晃动画 */
+.icon-btn:hover .el-icon {
+  animation: swing var(--duration-normal) var(--ease-out);
+}
+
 /* ---- 用户触发器 ---- */
 .user-trigger {
   display: flex;
@@ -580,6 +615,11 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
   justify-content: center;
   font-size: var(--text-xs);
   font-weight: 600;
+  transition: box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.user-trigger:hover .user-avatar {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 .user-name {
@@ -641,16 +681,23 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
   opacity: 0;
 }
 
-.slide-up-enter-active,
+.slide-up-enter-active {
+  transition: all 350ms var(--ease-out);
+}
 .slide-up-leave-active {
-  transition: all var(--duration-normal) var(--ease-out);
+  transition: all 200ms var(--ease-out);
 }
 .slide-up-enter-from {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(12px);
 }
 .slide-up-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-6px);
+}
+
+/* 侧边栏 footer 入场 */
+.sidebar-footer {
+  animation: slide-up var(--duration-slow) var(--ease-out);
 }
 </style>

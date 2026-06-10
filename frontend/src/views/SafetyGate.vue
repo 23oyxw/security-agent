@@ -222,24 +222,83 @@ function clearAll() {
 .page-subtitle { font-size: var(--text-sm); color: var(--color-neutral-400); margin: 4px 0 0; }
 .section-card { background: #fff; border: 1px solid var(--color-neutral-200); border-radius: var(--radius-lg); margin-bottom: 12px; }
 
+/* 三步流程连接线 */
+.safety-page :deep(.el-row) {
+  position: relative;
+}
+.safety-page :deep(.el-col:first-child) .section-card::after {
+  content: '';
+  position: absolute;
+  right: -16px;
+  top: 50%;
+  width: 12px;
+  height: 2px;
+  background: var(--color-neutral-300);
+}
+
 .verdict-banner {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   border-radius: var(--radius-md); margin-bottom: 8px; font-weight: 600;
+  animation: slide-down var(--duration-normal) var(--ease-out) both,
+             scale-in var(--duration-normal) var(--ease-spring) both;
 }
 .verdict-banner.allow { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
-.verdict-banner.deny { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+.verdict-banner.deny {
+  background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b;
+  animation: border-pulse 2s ease-in-out infinite;
+}
 .verdict-banner.confirm { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
 .verdict-icon { font-size: 24px; }
 .verdict-text { font-size: 16px; flex: 1; }
 .verdict-score { font-size: 14px; opacity: .7; }
 .verdict-msg { font-size: 12px; color: var(--color-neutral-500); margin-bottom: 8px; }
 
-.layer-bar { display: flex; align-items: center; padding: 4px 0; }
+.layer-bar {
+  display: flex; align-items: center; padding: 4px 0;
+  animation: slide-right var(--duration-normal) var(--ease-out) both;
+}
+.layer-bar:nth-child(2) { animation-delay: 80ms; }
+.layer-bar:nth-child(3) { animation-delay: 160ms; }
 .layer-name { font-size: 11px; font-weight: 600; color: var(--color-neutral-600); min-width: 30px; }
 
-.suggestions { margin-top: 8px; }
+.suggestions { margin-top: 8px; animation: fade-in var(--duration-slow) var(--ease-out) 300ms both; }
 .sug-item { font-size: 12px; color: var(--color-neutral-500); padding: 2px 0; }
+
+/* 执行按钮增强 */
+.safety-page :deep(.el-button--success) {
+  transition: all var(--duration-normal) var(--ease-out);
+}
+.safety-page :deep(.el-button--success):hover {
+  box-shadow: var(--shadow-glow-success);
+  transform: translateY(-2px);
+}
 
 .is-loading { animation: spin 1s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+
+/* 沙箱开关过渡 */
+.safety-page :deep(.el-switch) {
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+/* 执行结果代码块 */
+.safety-page pre {
+  position: relative;
+}
+.safety-page pre::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  background: linear-gradient(transparent, rgba(30, 41, 59, 0.8));
+  pointer-events: none;
+  border-radius: 0 0 6px 6px;
+}
+
+@keyframes border-pulse {
+  0%, 100% { border-color: #fca5a5; }
+  50% { border-color: #ef4444; }
+}
 </style>

@@ -379,11 +379,17 @@ onMounted(async () => {
   display: flex;
   gap: var(--space-3);
   max-width: 85%;
+  animation: slide-up var(--duration-normal) var(--ease-out) both;
 }
 
 .message.user {
   align-self: flex-end;
   flex-direction: row-reverse;
+  animation-name: slide-left;
+}
+
+.message.agent {
+  animation-name: slide-right;
 }
 
 .avatar {
@@ -435,11 +441,21 @@ onMounted(async () => {
   padding: var(--space-3);
   border-radius: var(--radius-lg);
   background: var(--color-neutral-50);
+  position: relative;
 }
 
+/* Agent 消息左侧色条 */
+.message.agent .message-content {
+  border-left: 3px solid var(--color-primary-400);
+  border-top-left-radius: 0;
+}
+
+/* 用户消息右侧色条 */
 .message.user .message-content {
   background: var(--color-primary-50);
   color: var(--color-primary-900);
+  border-right: 3px solid var(--color-primary-400);
+  border-top-right-radius: 0;
 }
 
 .message-content :deep(.code-block) {
@@ -467,6 +483,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  animation: slide-down var(--duration-normal) var(--ease-out) both;
 }
 
 .tool-call, .tool-result {
@@ -521,25 +538,30 @@ onMounted(async () => {
 }
 
 .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-neutral-300);
-  animation: typing-pulse 1.4s infinite cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  width: 4px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-400);
+  animation: wave 1.2s ease-in-out infinite;
 }
 
-.dot:nth-child(2) { animation-delay: 0.2s; }
-.dot:nth-child(3) { animation-delay: 0.4s; }
+.dot:nth-child(2) { animation-delay: 0.15s; }
+.dot:nth-child(3) { animation-delay: 0.3s; }
 
-@keyframes typing-pulse {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-  40% { transform: scale(1); opacity: 1; }
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.4; }
+  50% { transform: scaleY(1); opacity: 1; }
 }
 
 /* ---- 输入区 ---- */
 .chat-input {
   padding: var(--space-4);
   border-top: 1px solid var(--color-neutral-200);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.chat-input:focus-within {
+  border-top-color: var(--color-primary-300);
 }
 
 .input-wrap {
@@ -624,11 +646,31 @@ onMounted(async () => {
   font-size: var(--text-xs);
   color: var(--color-neutral-600);
   transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 左侧色条展开动画 */
+.quick-command::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-primary-500);
+  transform: scaleY(0);
+  transition: transform var(--duration-fast) var(--ease-out);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 .quick-command:hover {
   background: var(--color-primary-50);
   color: var(--color-primary-600);
+}
+
+.quick-command:hover::before {
+  transform: scaleY(1);
 }
 
 .history-list {
@@ -678,9 +720,9 @@ onMounted(async () => {
   background: linear-gradient(135deg, #4f6ef7, #6366f1);
   color: #fff; border: none; border-radius: var(--radius-full);
   font-size: 11px; font-family: var(--font-mono); cursor: pointer;
-  transition: all .15s; white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis;
+  transition: all var(--duration-fast) var(--ease-out); white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis;
 }
-.cmd-chip:hover { background: linear-gradient(135deg, #4338ca, #4f46e5); transform: scale(1.03); box-shadow: 0 2px 8px rgba(79,110,247,.3); }
+.cmd-chip:hover { background: linear-gradient(135deg, #4338ca, #4f46e5); transform: scale(1.05); box-shadow: 0 2px 8px rgba(79,110,247,.3); }
 
 .cmd-chip-inline {
   display: inline-flex; align-items: center; gap: 2px;

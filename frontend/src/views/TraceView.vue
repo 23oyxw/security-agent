@@ -494,6 +494,18 @@ async function cleanupOld() {
   box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
+  animation: slide-up var(--duration-normal) var(--ease-out) both;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+.stat-card:nth-child(1) { animation-delay: 0ms; }
+.stat-card:nth-child(2) { animation-delay: 60ms; }
+.stat-card:nth-child(3) { animation-delay: 120ms; }
+.stat-card:nth-child(4) { animation-delay: 180ms; }
+.stat-card:nth-child(5) { animation-delay: 240ms; }
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .stat-card::before {
@@ -682,8 +694,8 @@ async function cleanupOld() {
 .stage-node {
   position: relative;
   margin-bottom: var(--space-4);
-  animation: slide-up 300ms var(--ease-out) both;
-  animation-delay: calc(var(--node-index, 0) * 60ms);
+  animation: slide-up var(--duration-normal) var(--ease-out) both;
+  animation-delay: calc(var(--node-index, 0) * 80ms);
 }
 
 .stage-node-marker {
@@ -697,6 +709,8 @@ async function cleanupOld() {
   align-items: center;
   justify-content: center;
   z-index: 1;
+  animation: scale-in var(--duration-normal) var(--ease-spring) both;
+  animation-delay: calc(var(--node-index, 0) * 80ms);
 }
 
 .stage-node-marker.success { background: var(--color-success-bg); color: var(--color-success); }
@@ -749,11 +763,6 @@ async function cleanupOld() {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
-}
-
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 900px) {

@@ -364,6 +364,18 @@ onUnmounted(() => {
 .auto-refresh-badge.active .pulse-dot {
   background: var(--color-success);
   animation: pulse-dot var(--duration-pulse) ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+}
+
+/* 双环脉冲增强 */
+@keyframes pulse-dot-double {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.auto-refresh-badge.active .pulse-dot {
+  animation: pulse-dot-double 1.8s ease-in-out infinite;
 }
 
 /* 统计卡片 */
@@ -381,6 +393,22 @@ onUnmounted(() => {
   box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
+  animation: slide-up var(--duration-normal) var(--ease-out) both;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+.stat-card:nth-child(1) { animation-delay: 0ms; }
+.stat-card:nth-child(2) { animation-delay: 60ms; }
+.stat-card:nth-child(3) { animation-delay: 120ms; }
+.stat-card:nth-child(4) { animation-delay: 180ms; }
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* 严重告警卡脉冲 */
+.stat-card:first-child:hover {
+  box-shadow: var(--shadow-md), var(--shadow-glow-danger);
 }
 
 .stat-card::before {
@@ -477,6 +505,7 @@ onUnmounted(() => {
   font-weight: 600;
   padding: 2px 8px;
   border-radius: var(--radius-full);
+  animation: scale-in var(--duration-fast) var(--ease-spring);
 }
 
 .severity-badge.critical { background: var(--color-danger-bg); color: var(--color-danger); }

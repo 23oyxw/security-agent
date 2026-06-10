@@ -312,6 +312,11 @@ onMounted(() => { loadKnowledgeStats() })
   flex: 1;
 }
 
+/* 搜索框聚焦光晕 */
+.search-bar :deep(.el-input.is-focus .el-input__wrapper) {
+  box-shadow: 0 0 0 2px var(--color-primary-200) inset, var(--shadow-glow-primary) !important;
+}
+
 .search-tags {
   display: flex;
   align-items: center;
@@ -367,6 +372,7 @@ onMounted(() => { loadKnowledgeStats() })
 .blue-team-tag:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-glow-primary);
 }
 
 /* ---- 搜索结果 ---- */
@@ -395,8 +401,14 @@ onMounted(() => { loadKnowledgeStats() })
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all var(--duration-normal) var(--ease-out);
+  animation: slide-up var(--duration-normal) var(--ease-out) both;
 }
+
+.result-card:nth-child(1) { animation-delay: 0ms; }
+.result-card:nth-child(2) { animation-delay: 50ms; }
+.result-card:nth-child(3) { animation-delay: 100ms; }
+.result-card:nth-child(n+4) { animation-delay: 150ms; }
 
 .result-card:hover {
   border-color: var(--color-primary-200);
@@ -516,12 +528,17 @@ onMounted(() => { loadKnowledgeStats() })
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all var(--duration-normal) var(--ease-out);
 }
 
 .category-card:hover {
   border-color: var(--color-primary-200);
   box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+.category-card:hover .category-icon {
+  transform: rotate(-5deg) scale(1.1);
 }
 
 .category-icon {
@@ -531,6 +548,7 @@ onMounted(() => { loadKnowledgeStats() })
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform var(--duration-normal) var(--ease-spring);
 }
 
 .category-name {
@@ -560,13 +578,13 @@ onMounted(() => { loadKnowledgeStats() })
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all var(--duration-normal) var(--ease-out);
 }
 
 .recommend-card:hover {
   border-color: var(--color-primary-200);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .recommend-icon {

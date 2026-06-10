@@ -315,7 +315,8 @@ onUnmounted(() => { clearInterval(pollTimer) })
 /* 左侧抽屉 */
 .ops-drawer {
   background: #fff; border-right: 1px solid var(--color-neutral-200);
-  transition: width .25s; flex-shrink: 0; overflow: hidden;
+  transition: width var(--duration-slow) var(--ease-out), opacity var(--duration-normal) var(--ease-out);
+  flex-shrink: 0; overflow: hidden;
   width: 260px; display: flex; flex-direction: column;
 }
 .ops-drawer.collapsed { width: 40px; }
@@ -341,15 +342,42 @@ onUnmounted(() => { clearInterval(pollTimer) })
 
 /* 指标卡片 */
 .metric-cards {
-  display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 12px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px;
 }
 .metric-card {
   background: #fff; border: 1px solid var(--color-neutral-200);
-  border-radius: var(--radius-md); padding: 10px 12px; text-align: center;
-  transition: transform .15s; cursor: default;
+  border-radius: var(--radius-lg); padding: 12px 14px; text-align: center;
+  transition: all var(--duration-normal) var(--ease-out);
+  cursor: default; position: relative; overflow: hidden;
+  animation: slide-up var(--duration-normal) var(--ease-out) both;
 }
-.metric-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-.metric-card-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.metric-card:nth-child(1) { animation-delay: 0ms; }
+.metric-card:nth-child(2) { animation-delay: 50ms; }
+.metric-card:nth-child(3) { animation-delay: 100ms; }
+.metric-card:nth-child(4) { animation-delay: 150ms; }
+.metric-card:nth-child(5) { animation-delay: 200ms; }
+.metric-card:nth-child(6) { animation-delay: 250ms; }
+.metric-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-primary-200);
+}
+/* 顶部色条 */
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-primary-500);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+.metric-card:hover::before {
+  opacity: 1;
+}
+.metric-card-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; transition: color var(--duration-fast) var(--ease-out); }
 .metric-card-label { font-size: 11px; font-weight: 600; color: var(--color-neutral-700); margin-top: 2px; }
 .metric-card-sub { font-size: 10px; color: var(--color-neutral-400); }
 
@@ -357,11 +385,12 @@ onUnmounted(() => { clearInterval(pollTimer) })
 .panel-card { border: 1px solid var(--color-neutral-200); border-radius: var(--radius-lg); background: #fff; }
 
 /* 评估面板 */
-.eval-panel { text-align: center; padding: 12px 0; }
+.eval-panel { text-align: center; padding: 12px 0; animation: fade-in var(--duration-slow) var(--ease-out); }
 .eval-grade {
   display: inline-flex; align-items: center; justify-content: center;
   width: 48px; height: 48px; border-radius: 50%; font-size: 24px; font-weight: 800;
   color: #fff; margin-bottom: 4px;
+  animation: scale-in var(--duration-normal) var(--ease-spring);
 }
 .grade-A { background: linear-gradient(135deg, #10b981, #34d399); }
 .grade-B { background: linear-gradient(135deg, #3b82f6, #60a5fa); }
@@ -374,7 +403,7 @@ onUnmounted(() => { clearInterval(pollTimer) })
 .eval-dim-name { font-size: 9px; color: var(--color-neutral-500); }
 
 @media (max-width: 900px) {
-  .metric-cards { grid-template-columns: repeat(3, 1fr); }
+  .metric-cards { grid-template-columns: repeat(2, 1fr); }
   .ops-drawer { width: 220px; }
 }
 </style>

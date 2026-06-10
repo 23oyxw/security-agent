@@ -71,12 +71,77 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #304156 0%, #1a2332 100%);
+  background: linear-gradient(135deg, #304156 0%, #1a2332 50%, #2a3a52 100%);
+  background-size: 200% 200%;
+  animation: gradient-shift 12s ease infinite;
+  position: relative;
+  overflow: hidden;
 }
-.login-card { width: 420px; max-width: 96vw; }
+
+/* 点阵装饰背景 */
+.login-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+/* 浮动光斑 */
+.login-page::after {
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(79, 110, 247, 0.12), transparent 70%);
+  top: 20%;
+  right: 10%;
+  animation: pulse-ring 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.login-card {
+  width: 420px;
+  max-width: 96vw;
+  position: relative;
+  z-index: 1;
+  animation: slide-up 600ms var(--ease-out) 200ms both;
+  overflow: hidden;
+}
+
+/* 微光扫过效果 */
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
+  animation: shimmer 4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .login-header { text-align: center; }
 .login-header h2 { margin: 0 0 8px; }
 .sub { color: #999; font-size: 13px; margin: 0 0 12px; }
-.demo-hint { text-align: left; font-size: 12px; }
+.demo-hint {
+  text-align: left;
+  font-size: 12px;
+  animation: fade-in var(--duration-slow) var(--ease-out) 600ms both;
+}
 .demo-hint :deep(.el-alert__title) { font-size: 13px; }
+
+/* 登录按钮增强 */
+.login-card :deep(.el-button--primary) {
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.login-card :deep(.el-button--primary):hover {
+  box-shadow: var(--shadow-glow-primary);
+  transform: translateY(-1px);
+}
 </style>

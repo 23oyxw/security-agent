@@ -45,6 +45,10 @@ body {
   --el-button-active-bg-color: var(--color-primary-700);
 }
 
+.el-button--primary:hover {
+  box-shadow: var(--shadow-glow-primary);
+}
+
 .el-button--small {
   font-size: var(--text-sm);
   padding: 6px 12px;
@@ -54,6 +58,14 @@ body {
   transform: scale(0.97);
 }
 
+.el-button:not(.is-disabled):hover {
+  transform: translateY(-1px);
+}
+
+.el-button:not(.is-disabled):active {
+  transform: translateY(0) scale(0.97);
+}
+
 /* 卡片 — impeccable: 无卡片嵌套，使用 tinted 阴影 */
 .el-card {
   --el-card-border-color: var(--color-neutral-200);
@@ -61,11 +73,13 @@ body {
   --el-card-padding: var(--space-5);
   border: 1px solid var(--color-neutral-200);
   box-shadow: var(--shadow-sm);
-  transition: box-shadow var(--duration-normal) var(--ease-out);
+  transition: box-shadow var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
 }
 
 .el-card:hover {
   box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .el-card__header {
@@ -94,6 +108,23 @@ body {
   color: var(--color-neutral-500);
 }
 
+/* 表格行交错入场 */
+.el-table__body tr {
+  animation: row-fade-in var(--duration-normal) var(--ease-out) both;
+}
+
+.el-table__body tr:nth-child(1) { animation-delay: 0ms; }
+.el-table__body tr:nth-child(2) { animation-delay: 30ms; }
+.el-table__body tr:nth-child(3) { animation-delay: 60ms; }
+.el-table__body tr:nth-child(4) { animation-delay: 90ms; }
+.el-table__body tr:nth-child(5) { animation-delay: 120ms; }
+.el-table__body tr:nth-child(n+6) { animation-delay: 150ms; }
+
+@keyframes row-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
   background: var(--color-neutral-50);
 }
@@ -103,6 +134,11 @@ body {
   --el-tag-border-radius: var(--radius-sm);
   font-weight: 500;
   border: none;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.el-tag:hover {
+  transform: scale(1.05);
 }
 
 .el-tag--small {
@@ -226,11 +262,27 @@ body {
   font-size: var(--text-sm);
 }
 
-/* 弹窗 — impeccable: 使用 tinted 阴影 */
+/* 弹窗 — impeccable: 使用 tinted 阴影 + 入场动画 */
+.el-dialog {
+  border-radius: var(--radius-xl) !important;
+  box-shadow: var(--shadow-xl) !important;
+  animation: scale-in var(--duration-normal) var(--ease-spring);
+}
+
+@keyframes dialog-fade-in {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.el-overlay {
+  animation: fade-in var(--duration-normal) var(--ease-out);
+}
+
 .el-message {
   border-radius: var(--radius-lg);
   border: none;
   box-shadow: var(--shadow-lg);
+  animation: slide-down var(--duration-normal) var(--ease-spring);
 }
 
 .el-message--success {
@@ -254,6 +306,8 @@ body {
   border: 1px solid var(--color-neutral-200);
   box-shadow: var(--shadow-lg);
   padding: var(--space-2);
+  animation: scale-in var(--duration-fast) var(--ease-spring);
+  transform-origin: top center;
 }
 
 .el-dropdown-menu__item {
