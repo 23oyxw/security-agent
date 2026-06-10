@@ -49,7 +49,7 @@ def _collect_metrics() -> dict[str, Any]:
 async def prometheus_metrics():
     """Prometheus text 格式指标端点."""
     m = _collect_metrics()
-    dt = get_dynamic_threshold()
+    dt = get_dynamic_threshold().compute()
 
     lines = [
         "# HELP security_agent_cpu_percent Current CPU usage percentage",
@@ -89,7 +89,7 @@ async def prometheus_metrics():
 async def metrics_json():
     """JSON 格式指标（Dashboard 消费）."""
     m = _collect_metrics()
-    dt = get_dynamic_threshold()
+    dt = get_dynamic_threshold().compute()
     return {
         **m,
         "dynamic_thresholds": dt,
@@ -100,7 +100,7 @@ async def metrics_json():
 @router.get("/api/metrics/thresholds")
 async def metrics_thresholds():
     """动态阈值详情."""
-    dt = get_dynamic_threshold()
+    dt = get_dynamic_threshold().compute()
     return {
         **dt,
         "history_size": dt.get("history_size", 0),
