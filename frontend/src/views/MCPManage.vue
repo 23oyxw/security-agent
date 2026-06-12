@@ -1,10 +1,15 @@
 <template>
   <div>
-    <ArchitectureLayers highlight="L1" :default-expanded="true" />
+    <PageHeader
+      :title="pageMeta.label"
+      :subtitle="pageMeta.subtitle"
+      :layer="pageMeta.layer"
+    />
+    <ArchitectureLayers highlight="L3" :default-expanded="true" />
     <el-card>
       <template #header>
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span>🔌 MCP 服务管理 <el-tag size="small" type="info">L1 原子能力</el-tag></span>
+          <span>MCP 服务注册 · 四工具簇</span>
           <div style="display:flex;gap:8px">
             <el-tag type="info">服务: {{ servers.length }}</el-tag>
             <el-tag type="success">工具: {{ totalTools }}</el-tag>
@@ -17,7 +22,7 @@
       </template>
 
       <el-alert type="info" :closable="false" show-icon style="margin-bottom:12px"
-        title="L1 = 可插拔单工具（MCP 进程 + 内置 Skill）。L3 助手与 L2 流程在运行时调用这些工具，本页负责注册与健康检查。" />
+        title="L3 execute 阶段调用 MCP/Skill。本页负责 L3 工具簇注册、健康检查与热插拔 — L1/L2 禁止直接调工具。" />
 
       <el-table :data="servers" v-loading="mcpStore.loading" stripe empty-text="暂无 MCP 服务">
         <el-table-column prop="name" label="服务名" width="180">
@@ -74,7 +79,11 @@ import { ref, computed, onMounted } from 'vue'
 import api from '../api'
 import { useMcpStore } from '../stores/mcp'
 import ArchitectureLayers from '../components/ArchitectureLayers.vue'
+import PageHeader from '../components/common/PageHeader.vue'
+import { NAV_PAGES } from '../constants/navigation'
 import { ElMessage } from 'element-plus'
+
+const pageMeta = NAV_PAGES.mcp
 
 const mcpStore = useMcpStore()
 const toolDialog = ref(false)

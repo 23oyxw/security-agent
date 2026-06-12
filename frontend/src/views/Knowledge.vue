@@ -1,14 +1,28 @@
 <template>
   <div class="knowledge">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">知识库</h1>
-        <p class="page-subtitle">安全运维知识检索 · 蓝队防御 · 入侵排查 · 应急响应</p>
+    <PageHeader
+      :title="pageMeta.label"
+      :subtitle="pageMeta.subtitle"
+      :layer="pageMeta.layer"
+    >
+      <template #actions>
+        <PipelineBtn action="refresh" size="small" @click="refreshKnowledge" />
+      </template>
+    </PageHeader>
+
+    <div class="l1-knowledge-banner reveal-item">
+      <div class="l1-banner-head">
+        <div>
+          <span class="l1-badge">L1 · 灵敏检索 Sensitive RAG</span>
+          <p class="l1-desc">规范 · 流程 · 故障 · 调度 · 工具 — 意图扩展 + hybrid 检索 · 零执行</p>
+        </div>
+        <div v-if="l1Meta.sensitivity" class="l1-sensitivity" :class="'sens-' + l1Meta.sensitivity">
+          灵敏度 {{ l1Meta.sensitivity }}
+        </div>
       </div>
-      <div class="page-actions">
-        <el-button size="small" plain @click="refreshKnowledge">
-          <el-icon style="margin-right:4px"><Refresh /></el-icon> 刷新
-        </el-button>
+      <div v-if="l1Meta.intent_tags?.length" class="intent-row">
+        <span class="intent-label">意图 Intent:</span>
+        <el-tag v-for="t in l1Meta.intent_tags" :key="t" size="small" effect="plain">{{ t }}</el-tag>
       </div>
     </div>
 
@@ -32,6 +46,7 @@
         <div class="search-tags">
         <span class="search-tag-label">热门搜索:</span>
         <span v-for="tag in hotTags" :key="tag" class="search-tag" @click="query = tag; doSearch()">{{ tag }}</span>
+        <span v-for="t in intentFilters" :key="'intent-' + t" class="search-tag intent-tag" @click="query = t; doSearch()">{{ t }}</span>
       </div>
       <div class="blue-team-tags">
         <span class="blue-team-tag-label">蓝队知识:</span>
@@ -154,6 +169,11 @@
 import { ref, onMounted } from 'vue'
 import api from '../api'
 import { ElMessage } from 'element-plus'
+import PageHeader from '../components/common/PageHeader.vue'
+import PipelineBtn from '../components/common/PipelineBtn.vue'
+import { NAV_PAGES } from '../constants/navigation'
+
+const pageMeta = NAV_PAGES.knowledge
 
 const query = ref('')
 const results = ref([])
@@ -162,6 +182,9 @@ const initial = ref(true)
 const searchTime = ref(0)
 const detailVisible = ref(false)
 const detailItem = ref(null)
+const l1Meta = ref({ sensitivity: '', intent_tags: [], expanded_query: '' })
+
+const intentFilters = ['规范', '流程', '故障', '调度', '工具', '边界', '入侵', '加固']
 
 const hotTags = ['后门排查', '日志分析', 'SSH 加固', '入侵检测', '应急响应', '文件完整性', '网络监控', '权限提升']
 
@@ -210,8 +233,33 @@ async function doSearch() {
   initial.value = false
   const t0 = Date.now()
   try {
-    const res = await api.get('/knowledge/search', { params: { q: query.value } })
-    results.value = res.results || []
+    const [l1Res, legacyRes] = await Promise.allSettled([
+      api.post('/l1/knowledge/retrieve', { message: query.value, top_k: 10 }),
+      api.get('/knowledge/search', { params: { q: query.value } }),
+    ])
+    if (l1Res.status === 'fulfilled' && l1Res.value?.refs?.length) {
+      l1Meta.value = {
+        sensitivity: l1Res.value.sensitivity || 'normal',
+        intent_tags: l1Res.value.intent_tags || [],
+        expanded_query: l1Res.value.expanded_query || '',
+      }
+      results.value = l1Res.value.refs.map(r => ({
+        id: r.id,
+        title: r.title,
+        content: r.snippet,
+        score: r.score,
+        source: r.source,
+        tags: r.category ? [r.category] : [],
+        severity: r.severity,
+        suggested_actions: r.suggested_actions,
+        do_not: r.do_not,
+      }))
+    } else if (legacyRes.status === 'fulfilled') {
+      l1Meta.value = { sensitivity: 'normal', intent_tags: [], expanded_query: '' }
+      results.value = legacyRes.value.results || []
+    } else {
+      results.value = []
+    }
     searchTime.value = Date.now() - t0
   } catch (e) {
     ElMessage.error('搜索失败: ' + (e.message || '未知'))
@@ -269,6 +317,56 @@ onMounted(() => { loadKnowledgeStats() })
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+}
+
+.l1-knowledge-banner {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-primary-200);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(14, 165, 233, 0.05));
+}
+
+.l1-banner-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.l1-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-primary-600);
+}
+
+.l1-desc {
+  margin: 4px 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.l1-sensitivity {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+.sens-high { background: var(--color-success-bg); color: var(--color-success); }
+.sens-medium { background: var(--color-warning-bg); color: var(--color-warning); }
+.sens-normal { background: var(--color-neutral-100); color: var(--color-neutral-500); }
+
+.intent-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: var(--space-3);
+}
+.intent-label { font-size: 10px; color: var(--color-text-muted); }
+
+.search-tag.intent-tag {
+  border: 1px dashed var(--color-primary-300);
+  background: rgba(59, 130, 246, 0.06);
 }
 
 .page-header {

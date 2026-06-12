@@ -1,10 +1,9 @@
-# 架构 v0.7.0
+# 架构 v0.8.0
 
 > **非技术人员**请先读 [PLAIN_GUIDE.md](../user/PLAIN_GUIDE.md)  
-> **完整技术架构（完成度 / 解耦 / 三交付线）** → [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)  
-> **技术栈清单**见 [TECH_STACK.md](TECH_STACK.md)  
-> **Vue 前端**见 [../../frontend/ARCHITECTURE.md](../../frontend/ARCHITECTURE.md)  
-> **开发与提交流程**见 [DEVELOPMENT.md](DEVELOPMENT.md)
+> **五层智能体流水线（权威）** → [FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md)  
+> **完整技术架构** → [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)  
+> **Vue 前端**见 [../../frontend/ARCHITECTURE.md](../../frontend/ARCHITECTURE.md)
 
 ## 部署入口
 
@@ -15,32 +14,21 @@
 | `uv run uvicorn security_agent.api.app:app --port 8000` | FastAPI 后端（Vue 对接） |
 | `cd frontend && npm run dev` | Vue 开发服务器 `:5173` |
 
-## 应用分层
+## 应用分层（五层流水线摘要）
 
 ```text
-┌─ 表现层 ─────────────────────────────────────────────┐
-│  Streamlit (ui/)  │  Vue3 (frontend/)  │  MCP Client │
-└────────────┬─────────────────────────────────────────┘
-             │ REST /api/*  或  Streamlit 直连
-┌────────────▼─────────────────────────────────────────┐
-│  FastAPI (security_agent/api/)                        │
-│  认证 │ 五大支柱路由 │ 静态 frontend/dist              │
-└────────────┬─────────────────────────────────────────┘
-             │
-Streamlit 直连路径（开发期）:
-    自主运维 → AutonomousAgent → WorkflowEngine
-    智能助手 → AgentBrain → tools（多轮）
-    扫描 / 进程 / 监控 / 报告 / 审计 / 风险演练
+用户输入 → L1 感知计划 → L2 安全管控(+沙箱) → L3 推理分发 → L4 审计回流 → L5 数学分析
+           不执行           不执行              MCP+Flow        trace+Wiki      指标+绘图
 
-安全链（所有写操作）:
-    ThreeLayerDefense / SafetyGate → terminal/executor → sandbox|privilege
-
-rules/engine ──► ALLOW | CONFIRM | DENY
-tools/registry ──► 23 原始工具 + 26 Skill 工具
-skills/ ──► 5 个 MCP Skill
-agent/escalation ──► 告警升级
-audit/reasoning_trace ──► 推理全链路 JSONL
+表现层: Streamlit | Vue3(计划/执行双模式) | MCP Client
+API层:  FastAPI — L1–L5 分路由 + 执行闸门
+L3:     MCP 工具 + 封装流程（metrics/logs/repair/schedule · 单一职责）
+知识:   Gitee Wiki（边界对抗 · 规范库 · 回流案例）
 ```
+
+详见 [FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md)。
+
+## 应用分层（模块细节 · 历史）
 
 ## Skill 架构（v0.6.0 新增）
 

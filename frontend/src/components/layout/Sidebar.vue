@@ -1,9 +1,7 @@
 <template>
-  <aside class="sidebar" :class="{ collapsed }">
-    <!-- 顶部装饰线 -->
+  <aside class="sidebar" :class="{ collapsed }" :style="sidebarStyle">
     <div class="sidebar-accent"></div>
 
-    <!-- 品牌头部 -->
     <div class="sidebar-header" @click="$emit('toggle')">
       <div class="brand-mark">
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -22,33 +20,26 @@
       </transition>
     </div>
 
-    <!-- 导航 -->
-    <nav class="sidebar-nav">
-      <template v-for="group in menuGroups" :key="group.label">
-        <div v-if="!collapsed" class="nav-group-label">{{ group.label }}</div>
-        <div
-          v-for="item in group.items"
-          :key="item.path"
-          class="nav-item"
-          :class="{ active: current === item.path }"
-          @click="$emit('navigate', item.path)"
-          @mousemove="trackMouse"
-        >
-          <span class="nav-icon">
-            <el-icon :size="18"><component :is="item.icon" /></el-icon>
-          </span>
-          <transition name="fade">
-            <span v-if="!collapsed" class="nav-label">{{ item.label }}</span>
-          </transition>
-          <transition name="fade">
-            <span v-if="!collapsed && item.badge && item.badge() > 0" class="nav-badge">{{ item.badge() }}</span>
-          </transition>
-        </div>
-      </template>
-    </nav>
+    <!-- 唯一导航：五层流程 + 三 Agent 色带（旧分组菜单已移除） -->
+    <PipelineArchitectureRail
+      :collapsed="collapsed"
+      :alert-count="alertsStore.unreadCount"
+      @expand="$emit('toggle')"
+    />
 
-    <!-- 底部状态 -->
     <div v-if="!collapsed" class="sidebar-footer">
+      <div class="footer-links">
+        <button
+          v-for="link in footerLinks"
+          :key="link.path"
+          type="button"
+          class="footer-link"
+          @click="$emit('navigate', link.path)"
+        >
+          <el-icon :size="14"><component :is="link.icon" /></el-icon>
+          {{ link.label }}
+        </button>
+      </div>
       <div class="status-row" :class="statusClass">
         <span class="status-dot"></span>
         <span class="status-label">{{ statusText }}</span>
@@ -59,58 +50,42 @@
         <span class="status-dot"></span>
       </div>
     </div>
+
+    <div
+      v-if="!collapsed"
+      class="sidebar-resize-handle"
+      title="拖动调整侧栏宽度"
+      @pointerdown="$emit('resize-start', $event)"
+    />
   </aside>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMetricsStore } from '../../stores/metrics'
 import { useAlertsStore } from '../../stores/alerts'
+import { useUserStore } from '../../stores/user'
+import { buildSidebarFooterLinks } from '../../constants/navigation'
+import PipelineArchitectureRail from './PipelineArchitectureRail.vue'
 
-defineProps({ collapsed: Boolean })
-defineEmits(['toggle', 'navigate'])
+defineProps({
+  collapsed: Boolean,
+  width: { type: Number, default: 360 },
+})
+defineEmits(['toggle', 'navigate', 'resize-start'])
 
 const route = useRoute()
 const metricsStore = useMetricsStore()
 const alertsStore = useAlertsStore()
+const userStore = useUserStore()
 
-const menuGroups = [
-  {
-    label: '总览',
-    items: [
-      { path: '/', icon: 'Odometer', label: '仪表盘' },
-      { path: '/agent', icon: 'ChatDotRound', label: '智能助手' },
-      { path: '/canvas', icon: 'Grid', label: '无限画布' },
-    ],
-  },
-  {
-    label: '安全管控',
-    items: [
-      { path: '/safety', icon: 'Lock', label: '安全执行' },
-      { path: '/alerts', icon: 'Bell', label: '告警管理', badge: () => alertsStore.unreadCount },
-    ],
-  },
-  {
-    label: '能力与审计',
-    items: [
-      { path: '/mcp', icon: 'Connection', label: 'MCP 能力中心' },
-      { path: '/trace', icon: 'Share', label: 'Trace 溯源' },
-    ],
-  },
-  {
-    label: '知识',
-    items: [
-      { path: '/knowledge', icon: 'Reading', label: '知识库' },
-      { path: '/guide', icon: 'Document', label: '技术导引' },
-    ],
-  },
-]
+const footerLinks = computed(() => buildSidebarFooterLinks(userStore.role))
 
-const allItems = computed(() => menuGroups.flatMap(g => g.items))
-const current = computed(() => (route.path === '/dashboard' ? '/' : route.path))
+const sidebarStyle = computed(() => ({
+  width: 'var(--sidebar-width)',
+}))
 
-/* 状态指示 */
 const statusClass = computed(() => {
   const cpu = metricsStore.cpuPercent || 0
   const mem = metricsStore.memoryPercent || 0
@@ -125,27 +100,13 @@ const statusText = computed(() => {
   if (statusClass.value === 'warning') return '高负载'
   return '严重告警'
 })
-
-/* 鼠标追踪光效 */
-const mouseX = ref('50%')
-const mouseY = ref('50%')
-function trackMouse(e) {
-  const rect = e.currentTarget.getBoundingClientRect()
-  const x = ((e.clientX - rect.left) / rect.width) * 100
-  const y = ((e.clientY - rect.top) / rect.height) * 100
-  e.currentTarget.style.setProperty('--mouse-x', `${x}%`)
-  e.currentTarget.style.setProperty('--mouse-y', `${y}%`)
-}
 </script>
 
 <style scoped>
-/* ============================================================
-   Sidebar — 侧边栏 (Professional Refinement)
-   使用 design tokens，深色主题，专业 B2B 风格
-   ============================================================ */
-
 .sidebar {
   width: var(--sidebar-width);
+  min-width: var(--sidebar-min-width, 300px);
+  max-width: var(--sidebar-max-width, 520px);
   background: var(--gradient-sidebar);
   display: flex;
   flex-direction: column;
@@ -153,169 +114,93 @@ function trackMouse(e) {
   flex-shrink: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: var(--shadow-lg);
-  transition: width var(--duration-slow) var(--ease-out);
   position: relative;
+  z-index: 2;
 }
 
-.sidebar.collapsed { width: var(--sidebar-collapsed-width); }
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+  min-width: var(--sidebar-collapsed-width);
+  max-width: var(--sidebar-collapsed-width);
+}
 
-/* ---- 自定义滚动条 ---- */
-.sidebar-nav::-webkit-scrollbar { width: 3px; }
-.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-.sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: var(--radius-full); }
-.sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
-
-/* ---- 顶部装饰线 ---- */
 .sidebar-accent {
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--color-primary-600) 0%, var(--color-primary-500) 50%, var(--color-primary-400) 100%);
-  opacity: 0.85;
+  background: linear-gradient(90deg, #3b82f6 0%, #10b981 50%, #8b5cf6 100%);
+  opacity: 0.9;
   z-index: 1;
 }
 
-/* ---- Header ---- */
 .sidebar-header {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4);
-  height: 60px;
+  height: 56px;
   cursor: pointer;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   user-select: none;
-  position: relative;
-  z-index: 1;
-}
-
-.brand-mark {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform var(--duration-normal) var(--ease-standard);
 }
 
-/* 移除过于活泼的旋转动画 — B2B 专业风格 */
-.sidebar-header:hover .brand-mark {
-  transform: scale(1.06);
-}
-
+.brand-mark { flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .brand-text {
   color: var(--color-text-inverse);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-tight);
   white-space: nowrap;
 }
 
-/* ---- 导航区 ---- */
-.sidebar-nav {
-  flex: 1;
-  padding: var(--space-2) 0;
-  overflow-y: auto;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  margin: 2px var(--space-3);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: var(--text-sm);
-  transition:
-    color var(--duration-fast) var(--ease-out),
-    background var(--duration-fast) var(--ease-out);
-  position: relative;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-/* 鼠标追踪径向光效 */
-.nav-item::before {
-  content: '';
+.sidebar-resize-handle {
   position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(255, 255, 255, 0.07) 0%,
-    transparent 60%
-  );
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  border-radius: inherit;
-  pointer-events: none;
-}
-.nav-item:hover::before { opacity: 1; }
-
-.nav-item:hover {
-  color: rgba(255, 255, 255, 0.88);
-  background: rgba(255, 255, 255, 0.05);
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+  background: transparent;
+  transition: background 0.15s;
 }
 
-/* 激活状态 */
-.nav-item.active {
-  color: #fff;
-  background: linear-gradient(90deg, rgba(37, 99, 235, 0.22) 0%, transparent 100%);
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle:active {
+  background: rgba(96, 165, 250, 0.35);
 }
 
-/* 左侧激活指示条 — GPU 加速 scaleY */
-.nav-item.active::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 15%;
-  bottom: 15%;
-  width: 3px;
-  background: linear-gradient(180deg, var(--color-primary-400) 0%, var(--color-primary-600) 100%);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  transform-origin: center;
-  animation: nav-indicator-in 0.25s var(--ease-out);
-}
-
-/* 分组标签 — 使用 token */
-.nav-group-label {
-  font-size: var(--text-2xs);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: rgba(255, 255, 255, 0.28);
-  padding: var(--space-3) var(--space-5) var(--space-1);
-}
-
-.nav-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-}
-.nav-label { flex: 1; }
-
-/* 徽章 */
-.nav-badge {
-  background: var(--color-danger);
-  color: #fff;
-  font-size: 10px;
-  font-weight: var(--weight-semibold);
-  padding: 0 5px;
-  height: 16px;
-  line-height: 16px;
-  border-radius: var(--radius-full);
-  min-width: 16px;
-  text-align: center;
-}
-
-/* ---- Footer 状态栏 ---- */
 .sidebar-footer {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--space-2);
+}
+
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.footer-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .sidebar-footer--mini {
   padding: var(--space-2);
   display: flex;
@@ -329,73 +214,25 @@ function trackMouse(e) {
   font-size: var(--text-xs);
   color: rgba(255, 255, 255, 0.45);
 }
-.status-row--mini { gap: 0; }
 
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  position: relative;
 }
 
-.status-label { line-height: 1; }
-
-/* 健康态 */
 .status-row.healthy .status-dot {
   background: var(--color-success);
   box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
 }
-.status-row.healthy .status-dot::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: var(--color-success);
-  opacity: 0;
-  animation: pulse-ring 2s ease-in-out infinite;
-}
-
-/* 警告态 */
 .status-row.warning .status-dot {
   background: var(--color-warning);
-  box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
 }
-.status-row.warning .status-dot::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: var(--color-warning);
-  opacity: 0;
-  animation: pulse-ring 1.2s ease-in-out infinite;
-}
-
-/* 危险态 */
 .status-row.danger .status-dot {
   background: var(--color-danger);
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
-}
-.status-row.danger .status-dot::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: var(--color-danger);
-  opacity: 0;
-  animation: pulse-ring 0.8s ease-in-out infinite;
 }
 
-@keyframes pulse-ring {
-  0%, 100% { transform: scale(1); opacity: 0.35; }
-  50% { transform: scale(1.7); opacity: 0; }
-}
-
-/* ---- 过渡动画 ---- */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity var(--duration-normal) var(--ease-out);
-}
-.fade-enter-from,
-.fade-leave-to { opacity: 0; }
+.fade-enter-active, .fade-leave-active { transition: opacity var(--duration-normal) var(--ease-out); }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

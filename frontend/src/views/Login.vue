@@ -14,13 +14,13 @@
       </template>
       <el-form :model="form" @submit.prevent="handleLogin" label-position="top">
         <el-form-item label="用户名">
-          <el-input v-model="form.username" prefix-icon="User" placeholder="admin" autocomplete="username" />
+          <el-input v-model="form.username" :prefix-icon="User" placeholder="admin" autocomplete="username" />
         </el-form-item>
         <el-form-item label="密码">
           <el-input
             v-model="form.password"
             type="password"
-            prefix-icon="Lock"
+            :prefix-icon="Lock"
             placeholder="admin123"
             show-password
             autocomplete="current-password"
@@ -35,8 +35,9 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { User, Lock } from '@element-plus/icons-vue'
 import { useUserStore } from '../stores/user'
 import { ElMessage } from 'element-plus'
 
@@ -56,13 +57,21 @@ async function handleLogin() {
   try {
     await userStore.login(form.username, form.password)
     ElMessage.success('登录成功')
-    router.push('/')
+    router.push('/agent')
   } catch (e) {
-    ElMessage.error(e.response?.data?.detail || e.message || '登录失败，请确认 API 已启动 (bash boot_start.sh)')
+    ElMessage.error(
+      e.response?.data?.detail
+      || e.message
+      || '登录失败：请用 admin / admin123，并重启前端 (npm run dev 或 npm run dev:mock)'
+    )
   } finally {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  if (import.meta.env.DEV && !form.username) fillDemo()
+})
 </script>
 
 <style scoped>

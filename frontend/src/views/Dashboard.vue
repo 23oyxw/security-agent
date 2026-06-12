@@ -7,7 +7,10 @@
       </div>
       <div v-if="!drawerClosed" class="drawer-body">
         <el-collapse v-model="activeDrawerGroups">
-          <el-collapse-item title="⚡ 快捷操作" name="ops">
+          <el-collapse-item name="ops">
+            <template #title>
+              <span class="collapse-title"><el-icon :size="14"><MagicStick /></el-icon> 快捷操作</span>
+            </template>
             <div class="drawer-section">
               <span class="drawer-section-title">CPU 压测</span>
               <div class="drawer-actions">
@@ -27,7 +30,10 @@
             </div>
           </el-collapse-item>
 
-          <el-collapse-item title="📊 数据筛选" name="filter">
+          <el-collapse-item name="filter">
+            <template #title>
+              <span class="collapse-title"><el-icon :size="14"><DataAnalysis /></el-icon> 数据筛选</span>
+            </template>
             <div class="drawer-section">
               <span class="drawer-section-title">告警级别</span>
               <el-select v-model="alertFilter" size="small" class="drawer-select">
@@ -50,7 +56,10 @@
             </div>
           </el-collapse-item>
 
-          <el-collapse-item title="📁 辅助明细" name="detail">
+          <el-collapse-item name="detail">
+            <template #title>
+              <span class="collapse-title"><el-icon :size="14"><Document /></el-icon> 辅助明细</span>
+            </template>
             <div class="drawer-section">
               <span class="drawer-section-title">监听端口 (Top 10)</span>
               <div class="port-list">
@@ -77,50 +86,83 @@
 
     <!-- 主内容 -->
     <main class="main-content">
-      <!-- ====== SECTION 1: 核心指标 (Hero) ====== -->
-      <section class="metrics-section">
+      <PageHeader
+        title="运维概览"
+        subtitle="系统健康 · 资源监控 · 快捷运维入口"
+        layer=""
+        layer-label="运维总览"
+      >
+        <template #actions>
+          <el-button size="small" type="primary" @click="$router.push('/l5')">L5 链路分析</el-button>
+          <el-button size="small" @click="$router.push('/canvas')">架构画布</el-button>
+          <el-button size="small" @click="$router.push('/agent')">L1 对话</el-button>
+          <el-button size="small" @click="$router.push('/trace')">L4 Trace</el-button>
+        </template>
+      </PageHeader>
+
+      <!-- 五层快捷轨 -->
+      <section class="l5-pipeline-strip reveal-item">
+        <div
+          v-for="step in pipelineSteps"
+          :key="step.id"
+          class="l5-pipeline-step motion-lift"
+          @click="$router.push(step.path)"
+        >
+          <span class="l5-step-badge">{{ step.id }}</span>
+          <span class="l5-step-label">{{ step.label }}</span>
+        </div>
+      </section>
+
+      <!-- L5 六维指标 -->
+      <section class="metrics-section reveal-item reveal-delay-1">
+        <header class="section-head">
+          <h2 class="section-title">L5 量化指标</h2>
+          <span class="section-hint">意图准确率 · 边界召回 · 修复成功率 · 调度利用率 · 批量合规 · 工具命中</span>
+        </header>
         <div class="metric-cards">
           <div
-            v-for="(s, idx) in statCards"
+            v-for="(s, idx) in l5MetricCards"
             :key="s.key"
-            class="metric-card"
-            :class="[`metric-${s.key}`, `stagger-${idx + 1}`]"
+            class="metric-card motion-lift"
+            :class="`stagger-${idx + 1}`"
           >
-            <div class="metric-accent"></div>
+            <div class="metric-accent" :style="{ background: s.color }"></div>
             <div class="metric-body">
-              <span class="metric-value" :style="{ color: s.color }">{{ s.value }}</span>
+              <span class="metric-value" :style="{ color: s.color }">{{ s.displayValue }}</span>
               <span class="metric-label">{{ s.label }}</span>
-              <span class="metric-sub">{{ s.sub }}</span>
+              <span class="metric-sub">{{ s.sourceLayer }} · {{ s.desc }}</span>
             </div>
           </div>
         </div>
       </section>
 
       <!-- ====== SECTION 2: 图表 & 评估 ====== -->
-      <section class="charts-row">
-        <!-- 系统资源柱状图 -->
+      <section class="charts-row reveal-item reveal-delay-2">
+        <!-- L1 静态感知绘图（L5 子场景） -->
         <div class="panel-card chart-panel">
           <header class="panel-header">
             <span class="panel-title">
               <el-icon :size="16"><Monitor /></el-icon>
-              系统资源
+              L1 静态感知绘图
             </span>
+            <el-tag size="small" type="info" effect="plain">数学模型 · L5 复盘</el-tag>
           </header>
           <div class="panel-body">
             <div ref="resourceBar" class="chart-container"></div>
             <div class="chart-footer">
-              {{ loadStr }} — {{ loadTip }}
+              {{ loadStr }} — {{ loadTip }} · 数据来自 L1 静态之眼快照
             </div>
           </div>
         </div>
 
-        <!-- Agent 评估 -->
+        <!-- L5 Agent 评估 -->
         <div class="panel-card eval-panel-card">
           <header class="panel-header">
             <span class="panel-title">
               <el-icon :size="16"><DataAnalysis /></el-icon>
-              Agent 评估
+              L5 综合评估
             </span>
+            <el-tag size="small" effect="plain">audit_iteration</el-tag>
           </header>
           <div class="panel-body">
             <div v-if="evalScore" class="eval-content">
@@ -129,16 +171,16 @@
               <span class="eval-meta">综合评估 · {{ evalScore.total_evaluations || '—' }} 次</span>
 
               <div class="eval-dims">
-                <div v-for="(v, k) in evalDims" :key="k" class="eval-dim">
-                  <span class="eval-dim-name">{{ dimLabel(k) }}</span>
+                <div v-for="m in l5MetricCards.filter(x => x.value != null)" :key="m.key" class="eval-dim">
+                  <span class="eval-dim-name">{{ m.label }}</span>
                   <el-progress
-                    :percentage="v"
+                    :percentage="m.value"
                     :stroke-width="4"
                     :show-text="false"
-                    :color="progressColor(v)"
+                    :color="progressColor(m.value)"
                     class="eval-dim-bar"
                   />
-                  <span class="eval-dim-val">{{ v }}</span>
+                  <span class="eval-dim-val">{{ m.value }}%</span>
                 </div>
               </div>
 
@@ -161,7 +203,34 @@
               </div>
               <span class="trend-hint">最近 10 次评分趋势</span>
             </div>
-            <el-empty v-else description="Agent 对话后自动评估" :image-size="48" />
+            <el-empty v-else description="完成 L1→L5 全流程后自动生成 L5 指标" :image-size="48" />
+          </div>
+        </div>
+      </section>
+
+      <!-- 各层对照 + 策略自进化 -->
+      <section class="l5-cross-row reveal-item reveal-delay-3">
+        <div class="panel-card">
+          <header class="panel-header">
+            <span class="panel-title">各层数据对照</span>
+          </header>
+          <div class="panel-body">
+            <el-table :data="layerCross" size="small" stripe class="cross-table">
+              <el-table-column prop="layer" label="层" width="56" />
+              <el-table-column prop="agent" label="Agent" width="140" />
+              <el-table-column prop="data" label="共享数据" min-width="160" />
+              <el-table-column prop="feeds" label="馈入 L5" min-width="160" />
+            </el-table>
+          </div>
+        </div>
+        <div class="panel-card">
+          <header class="panel-header">
+            <span class="panel-title">策略自进化建议</span>
+          </header>
+          <div class="panel-body">
+            <ul class="evolution-list">
+              <li v-for="(hint, i) in evolutionHints" :key="i">{{ hint }}</li>
+            </ul>
           </div>
         </div>
       </section>
@@ -173,10 +242,10 @@
         </el-alert>
       </section>
 
-      <!-- ====== SECTION 4: Skill Flow 测试 ====== -->
+      <!-- ====== SECTION 4: Skill Flow 测试（运维辅助） ====== -->
       <section class="test-section">
         <el-collapse>
-          <el-collapse-item title="⚡ Skill Flow 一键测试" name="test">
+          <el-collapse-item title="⚡ L3 封装流程抽测（运维辅助）" name="test">
             <div class="test-grid">
               <div v-for="tc in testCases" :key="tc.key" class="test-case">
                 <span class="test-name">{{ tc.label }}</span>
@@ -224,7 +293,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { Monitor, DataAnalysis, BellFilled } from '@element-plus/icons-vue'
+import { Monitor, DataAnalysis, BellFilled, MagicStick, Document } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import {
   chartGrid, chartTooltip, categoryAxis, valueAxis,
@@ -232,6 +301,13 @@ import {
 } from '../utils/chartTheme'
 import api from '../api'
 import { useAlertsStore } from '../stores/alerts'
+import PageHeader from '../components/common/PageHeader.vue'
+import { SIDEBAR_LAYERS } from '../constants/pipeline-architecture'
+import {
+  L5_LAYER_CROSS,
+  buildL5MetricValues,
+  buildEvolutionHints,
+} from '../constants/l5-metrics'
 
 const alertsStore = useAlertsStore()
 
@@ -261,7 +337,25 @@ let pollTimer = null
 const loadStr = ref('—')
 const loadTip = ref('')
 
-/* ---- 指标卡片数据（使用 token 色板） ---- */
+const layerCross = L5_LAYER_CROSS
+
+const pipelineSteps = SIDEBAR_LAYERS.map(l => ({
+  id: l.id,
+  label: l.name,
+  path: l.id === 'L1' || l.id === 'L3' ? '/agent' : l.id === 'L2' ? '/safety' : l.id === 'L4' ? '/trace' : '/',
+}))
+
+const l5MetricCards = computed(() => {
+  const items = buildL5MetricValues(evalDims.value)
+  return items.map(m => ({
+    ...m,
+    displayValue: m.value != null ? `${m.value}%` : '—',
+  }))
+})
+
+const evolutionHints = computed(() => buildEvolutionHints(l5MetricCards.value))
+
+/* 系统快照（供 L1 静态绘图图表，非 L5 主指标） */
 const statCards = reactive([
   { key: 'cpu',    label: 'CPU',     value: '--%',   sub: '使用率', color: 'var(--color-metric-cpu)' },
   { key: 'memory', label: '内存',     value: '--%',   sub: '已用',   color: 'var(--color-metric-memory)' },
@@ -292,16 +386,6 @@ function sevColor(s) {
   return { critical: 'danger', high: 'warning', medium: '', low: 'info' }[lvl] || 'info'
 }
 
-function dimLabel(k) {
-  return {
-    success_rate: '成功率',
-    safety_compliance: '安全合规',
-    efficiency_ratio: '效率比',
-    step_efficiency: '步骤效率',
-    stability: '稳定性',
-  }[k] || k
-}
-
 function trendBarHeight(score) {
   return `${Math.max(4, (score / 100) * 28)}px`
 }
@@ -309,11 +393,12 @@ function trendBarHeight(score) {
 /* ---- 数据获取 ---- */
 async function fetchAll() {
   try {
-    const [flow, health, mcpRes, evalRes] = await Promise.allSettled([
+    const [flow, health, mcpRes, evalRes, perception] = await Promise.allSettled([
       api.get('/workflow/flow-status'),
       api.get('/health'),
       api.get('/mcp/servers'),
       api.get('/eval/score'),
+      api.get('/perception/metrics'),
     ])
     if (health?.value?.modules) modules.value = health.value.modules
     if (evalRes?.value?.latest) {
@@ -322,6 +407,12 @@ async function fetchAll() {
       evalDims.value = evalRes.value.dimension_scores || {}
       traceMetrics.value = evalRes.value.trace_metrics || {}
       trendPoints.value = evalRes.value.trend_points || []
+    }
+    const perc = perception?.value
+    if (perc) {
+      statCards[0].value = `${perc.cpu_percent ?? 0}%`
+      statCards[1].value = `${perc.memory_percent ?? 0}%`
+      statCards[2].value = `${perc.disk_percent ?? 0}%`
     }
     if (flow?.value?.layers?.collection) {
       const ns = flow.value.layers.collection.nodes || []
@@ -475,6 +566,12 @@ onUnmounted(() => {
 
 .drawer-section { margin-bottom: var(--space-4); }
 
+.collapse-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .drawer-section-title {
   font-size: var(--text-2xs);
   font-weight: var(--weight-semibold);
@@ -536,6 +633,74 @@ onUnmounted(() => {
   max-width: 1280px;
   margin: 0 auto;
   width: 100%;
+}
+
+.l5-pipeline-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.l5-pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border, var(--color-border-default));
+  background: var(--glass-surface, #fff);
+  cursor: pointer;
+  font-size: var(--text-xs);
+}
+
+.l5-step-badge {
+  font-weight: 800;
+  color: var(--page-accent, var(--color-primary-600));
+}
+
+.l5-step-label {
+  color: var(--color-text-secondary);
+}
+
+.section-head {
+  margin-bottom: var(--space-3);
+}
+
+.section-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.section-hint {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.l5-cross-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.evolution-list {
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+}
+
+.evolution-list li + li {
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 960px) {
+  .l5-cross-row { grid-template-columns: 1fr; }
 }
 
 /* 主内容滚动条 */

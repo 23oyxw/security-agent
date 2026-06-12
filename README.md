@@ -1,9 +1,10 @@
 
 > 智能安全运维代理系统 · 中国软件设计 A2 赛题
 
-**总控计划**：[docs/architecture/MASTER_PLAN.md](docs/architecture/MASTER_PLAN.md)（阶段路线 / 完成度矩阵 / 验收清单）  
-**优化执行**：[docs/OPTIMIZATION_PLAN.md](docs/OPTIMIZATION_PLAN.md) · P0 浏览器签字：[docs/P0_FRONTEND_WALKTHROUGH.md](docs/P0_FRONTEND_WALKTHROUGH.md)  
-**架构文档**：[docs/architecture/TECHNICAL_ARCHITECTURE.md](docs/architecture/TECHNICAL_ARCHITECTURE.md) · [docs/architecture/MASTER_PLAN.md](docs/architecture/MASTER_PLAN.md)  
+**总控计划**：[docs/architecture/MASTER_PLAN.md](docs/architecture/MASTER_PLAN.md)  
+**终版架构（权威）**：[docs/architecture/FINAL_ARCHITECTURE.md](docs/architecture/FINAL_ARCHITECTURE.md)  
+**五层流水线**：[docs/architecture/FIVE_LAYER_PIPELINE.md](docs/architecture/FIVE_LAYER_PIPELINE.md)  
+**技术架构**：[docs/architecture/TECHNICAL_ARCHITECTURE.md](docs/architecture/TECHNICAL_ARCHITECTURE.md) · [docs/architecture/MASTER_PLAN.md](docs/architecture/MASTER_PLAN.md)  
 **答辩演示**：[docs/competitions/DEMO_SCRIPT.md](docs/competitions/DEMO_SCRIPT.md)  
 **启动**：`bash boot_start.sh` → http://127.0.0.1:**8900**（Vue 控制台 + API；文档若写 8000 请 `export SEC_API_PORT=8000`）  
 **回归**：`bash scripts/run_regression.sh` · **P0 联调**：`bash scripts/p0_frontend_checklist.sh`（需 API 已启动）
@@ -48,7 +49,7 @@ security-agent/
 │   │   ├── log.py / trace.py
 │   │   └── reasoning_trace.py   #     推理全链路
 │   │
-│   ├── 📁 api/                  #   FastAPI REST（五大支柱）
+│   ├── 📁 api/                  #   FastAPI REST（L1–L5 分路由）
 │   ├── 📁 monitor/              #   监控服务
 │   │   ├── service.py           #     MonitorService（巡检引擎）
 │   │   ├── risk_monitor.py      #     风险监控

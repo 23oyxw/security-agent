@@ -1,8 +1,9 @@
 # 银河麒麟智能安全运维 Agent — 总控计划
 
-> **定位**：A2 赛题唯一权威路线图，统领三条交付线、Skill 分层与分阶段验收。  
-> **更新**：2026-05-30  
-> **关联**：[TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md) · [TECH_STACK.md](TECH_STACK.md) · [../competitions/GAP_ANALYSIS.md](../competitions/GAP_ANALYSIS.md) · **[../OPTIMIZATION_PLAN.md](../OPTIMIZATION_PLAN.md)**（分步执行清单）
+> **定位**：A2 赛题唯一权威路线图，统领三条交付线、**五层智能体流水线**与分阶段验收。  
+> **更新**：2026-06-11  
+> **Agent 编排权威**：[FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md)  
+> **关联**：[TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md) · [TECH_STACK.md](TECH_STACK.md) · [../OPTIMIZATION_PLAN.md](../OPTIMIZATION_PLAN.md)
 
 ---
 
@@ -15,6 +16,35 @@
 | ❌ | 未开始 |
 | 📦 | 仅在 qt01 参考库，不并入主干 |
 | 🔴 | 答辩风险 / 需决策 |
+
+---
+
+## 0. 五层智能体流水线（重构主线）
+
+> **完整规格**：[FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md)
+
+### 0.1 核心约束
+
+- 智能体主界面：**计划模式 / 执行模式** 双切换
+- **先分析后执行**：批量指令亦须先 L1 分析计划
+- **L1/L2 不决策**：有工具接口也不得立即执行写操作
+- **L1 与 L3 共用 Agent**（`mode=plan|execute`）
+- **MCP 工具 + 封装流程** 同一模块；工具分 metrics/logs/repair/schedule，单一职责
+- **知识数据**（边界对抗、规范库、回流案例）→ **Gitee Wiki**
+
+### 0.2 五层一览
+
+| 层 | 名称 | 关键能力 | 当前状态 |
+|----|------|----------|----------|
+| L1 | 感知与计划 | 分析计划 · 边界感知 · 知识检索 · 静态感知 · 意图识别 | ⚠️ |
+| L2 | 安全管控 | 护栏/熔断/确认/CPU弹窗 ∥ 沙箱试跑 | ✅ 部分 |
+| L3 | 推理分发执行 | MCP+Flow · 四类工具 | ⚠️ |
+| L4 | 审计与回流 | trace · 卷宗 · Wiki 回流 | ✅ 审计 / ❌ 回流 |
+| L5 | 数学模型 | Agent 指标 · 感知/链路绘图 | ❌ |
+
+### 0.3 与赛题五大支柱
+
+支柱是**能力域**，五层是**运行时阶段**——见 [FIVE_LAYER_PIPELINE.md §6](FIVE_LAYER_PIPELINE.md#6-与-a2-五大支柱对照)。
 
 ---
 

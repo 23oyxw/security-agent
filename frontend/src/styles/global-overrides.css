@@ -19,6 +19,15 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body.sidebar-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+body.sidebar-resizing * {
+  cursor: col-resize !important;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);

@@ -141,13 +141,17 @@ async def call_tool_local(
 # ---------------------------------------------------------------------------
 
 def list_all_tools() -> list[dict[str, Any]]:
-    """列出所有已注册工具的摘要."""
+    """列出所有已注册工具的摘要（含工具簇）."""
+    from security_agent.tools.cluster_map import cluster_for_tool, CLUSTER_LABELS
+
     _ensure_skills_loaded()
     return [
         {
             "name": name,
             "description": desc,
             "source": "skill",
+            "cluster": cluster_for_tool(name),
+            "cluster_label": CLUSTER_LABELS.get(cluster_for_tool(name), "通用"),
         }
         for name, (desc, _params, _fn) in TOOL_REGISTRY.items()
     ]
