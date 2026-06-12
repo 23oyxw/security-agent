@@ -1,755 +1,467 @@
 <template>
-  <div class="agent-chat">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">智能助手</h1>
-        <p class="page-subtitle">与安全运维 Agent 对话 · 支持命令执行、知识检索、安全评估 <el-tag v-if="wsReady" size="small" type="success" effect="dark" style="margin-left:8px">● 实时</el-tag><el-tag v-else size="small" type="info" effect="plain" style="margin-left:8px">REST</el-tag></p>
+  <div class="agent-page">
+    <!-- 精简顶栏 -->
+    <header class="agent-bar">
+      <div class="agent-bar-left">
+        <span class="agent-bar-title">智能体对话</span>
+        <el-segmented v-model="agentStore.mode" :options="modeOptions" size="small" />
       </div>
-      <div class="page-actions">
-        <el-button size="small" plain @click="clearChat">
-          <el-icon style="margin-right:4px"><Delete /></el-icon> 清空对话
-        </el-button>
+      <div class="agent-bar-right">
+        <el-button size="small" plain @click="drawerOpen = true">流水线 / 分析</el-button>
+        <PipelineBtn action="clear" size="small" @click="clearChat" />
       </div>
-    </div>
+    </header>
 
-    <div class="chat-layout">
-      <div class="chat-main">
-        <div class="chat-messages" ref="messagesRef">
-          <div v-for="(msg, i) in messages" :key="i" class="message" :class="msg.role">
-            <div class="message-avatar">
-              <div class="avatar" :class="msg.role">
-                <el-icon :size="16"><component :is="msg.role === 'user' ? 'UserFilled' : 'MagicStick'" /></el-icon>
-              </div>
+    <!-- 对话主体：占满剩余高度 -->
+    <div class="chat-shell">
+      <div
+        v-if="agentStore.mode === 'execute' && agentStore.currentPlan && !agentStore.canExecute"
+        class="chat-notice"
+      >
+        执行模式未解锁：请先在计划模式完成 L1，并等待 L2 通过
+      </div>
+
+      <div class="chat-messages" ref="messagesRef">
+        <div v-for="(msg, i) in messages" :key="i" class="msg-row" :class="msg.role">
+          <div class="msg-bubble" :class="msg.role">
+            <div class="msg-meta">
+              <span class="msg-who">{{ msg.role === 'user' ? '你' : (msg.roleLabel || '助手') }}</span>
+              <span v-if="msg.meta" class="msg-layer">{{ msg.meta }}</span>
             </div>
-            <div class="message-body">
-              <div class="message-header">
-                <span class="message-role">{{ msg.role === 'user' ? '你' : 'Agent' }}</span>
-                <span class="message-time">{{ formatTime(msg.timestamp) }}</span>
-              </div>
-              <div class="message-content" v-html="renderContent(msg.content)"></div>
-              <div v-if="msg.tool_calls?.length" class="message-tools">
-                <div v-for="(tc, ti) in msg.tool_calls" :key="ti" class="tool-call">
-                  <span class="tool-call-tag">{{ tc.name }}</span>
-                  <span class="tool-call-args">{{ JSON.stringify(tc.arguments) }}</span>
-                </div>
-              </div>
-              <div v-if="msg.tool_results?.length" class="message-tools">
-                <div v-for="(tr, ti) in msg.tool_results" :key="ti" class="tool-result">
-                  <span class="tool-result-tag">{{ tr.name }}</span>
-                  <pre class="tool-result-content">{{ typeof tr.result === 'string' ? tr.result.slice(0, 500) : JSON.stringify(tr.result).slice(0, 500) }}</pre>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div v-if="thinking" class="message agent">
-            <div class="message-avatar">
-              <div class="avatar agent">
-                <el-icon :size="16"><MagicStick /></el-icon>
-              </div>
-            </div>
-            <div class="message-body">
-              <div class="message-header">
-                <span class="message-role">Agent</span>
-              </div>
-              <div class="thinking-indicator">
-                <span class="dot"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-              </div>
+            <div class="msg-text" v-html="renderContent(msg.content)"></div>
+            <div v-if="msg.plan_id" class="msg-tags">
+              <el-tag size="small" type="info">{{ msg.plan_id.slice(0, 8) }}</el-tag>
+              <el-link v-if="msg.trace_id" type="primary" @click="goTrace(msg.trace_id)">Trace</el-link>
             </div>
           </div>
         </div>
+        <div v-if="thinking" class="msg-row agent">
+          <div class="msg-bubble agent thinking">处理中… {{ thinkingLabel }}</div>
+        </div>
+      </div>
 
-        <div class="chat-input">
-          <div class="input-wrap">
-            <el-input
-              v-model="input"
-              type="textarea"
-              :rows="2"
-              placeholder="输入你的问题或指令..."
-              @keydown.enter.exact.prevent="sendMessage"
-              :disabled="thinking"
+      <div class="chat-foot">
+        <el-input
+          v-model="input"
+          type="textarea"
+          :rows="2"
+          resize="none"
+          :placeholder="inputPlaceholder"
+          @keydown.enter.exact.prevent="primaryAction"
+          :disabled="thinking"
+        />
+        <div class="chat-foot-actions">
+          <el-checkbox
+            v-if="agentStore.mode === 'execute'"
+            v-model="autoExecute"
+            size="small"
+            :disabled="thinking"
+          >
+            L2 通过后自动执行
+          </el-checkbox>
+          <div class="chat-btns">
+            <PipelineBtn
+              v-if="agentStore.mode === 'plan'"
+              action="l1Analyze"
+              :loading="thinking"
+              :disabled="!input.trim()"
+              @click="sendAnalyze"
             />
-          </div>
-          <div class="input-actions">
-            <div class="input-tools">
-              <el-tooltip content="知识检索" placement="top">
-                <button class="input-tool-btn" @click="toggleKnowledge">
-                  <el-icon :size="16"><Reading /></el-icon>
-                </button>
-              </el-tooltip>
-              <el-tooltip content="安全评估" placement="top">
-                <button class="input-tool-btn" @click="toggleSafety">
-                  <el-icon :size="16"><Lock /></el-icon>
-                </button>
-              </el-tooltip>
-            </div>
-            <el-button type="primary" :loading="thinking" @click="sendMessage" :disabled="!input.trim()">
-              <el-icon style="margin-right:4px"><Promotion /></el-icon> 发送
-            </el-button>
+            <template v-else>
+              <PipelineBtn
+                v-if="agentStore.needsConfirm"
+                action="l3ConfirmExecute"
+                :loading="thinking"
+                :disabled="!agentStore.currentPlan || agentStore.isBlocked"
+                @click="dispatchExecute(true)"
+              />
+              <PipelineBtn
+                action="l3Execute"
+                :loading="thinking"
+                :disabled="!agentStore.canExecute || agentStore.isBlocked"
+                @click="dispatchExecute(agentStore.needsConfirm)"
+              />
+            </template>
           </div>
         </div>
       </div>
-
-      <aside class="chat-sidebar">
-        <div class="sidebar-section">
-          <div class="sidebar-section-header">
-            <h3>快捷指令</h3>
-          </div>
-          <div class="quick-commands">
-            <div v-for="cmd in quickCommands" :key="cmd.label" class="quick-command" @click="insertCommand(cmd.text)">
-              <el-icon :size="14"><component :is="cmd.icon" /></el-icon>
-              <span>{{ cmd.label }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="sidebar-section">
-          <div class="sidebar-section-header">
-            <h3>对话历史</h3>
-          </div>
-          <div class="history-list">
-            <div v-for="h in history" :key="h.id" class="history-item" @click="loadHistory(h.id)">
-              <span class="history-title">{{ h.title }}</span>
-              <span class="history-time">{{ formatTime(h.timestamp) }}</span>
-            </div>
-            <div v-if="!history.length" class="history-empty">暂无历史记录</div>
-          </div>
-        </div>
-      </aside>
     </div>
+
+    <!-- 流水线/分析：按需抽屉，不阻塞对话区 -->
+    <el-drawer v-model="drawerOpen" title="流水线与分析" direction="rtl" size="380px" destroy-on-close>
+      <el-tabs v-model="sideTab">
+        <el-tab-pane label="状态" name="pipeline">
+          <OrchestratorPipeline
+            v-if="drawerOpen"
+            :agents="agentStore.agentStages"
+            :phase="agentStore.dispatchPhase"
+          />
+        </el-tab-pane>
+        <el-tab-pane label="分析" name="plan">
+          <PlanPanel
+            v-if="agentStore.currentPlan"
+            :plan="agentStore.currentPlan"
+            :l2-verdict="agentStore.l2Result?.verdict"
+          />
+          <el-empty v-else description="发送指令后显示 L1 结果" :image-size="48" />
+          <ExecutePanel v-if="agentStore.lastExecute" :result="agentStore.lastExecute" @trace="goTrace" />
+          <AuditPanel v-if="agentStore.lastAudit" :audit="agentStore.lastAudit" @trace="goTrace" />
+        </el-tab-pane>
+        <el-tab-pane label="批量" name="batch">
+          <BatchQueue
+            :queue="agentStore.batchQueue"
+            :processing="batchProcessing"
+            @enqueue="onBatchEnqueue"
+            @clear="agentStore.clearBatch()"
+            @select="onBatchSelect"
+          />
+        </el-tab-pane>
+      </el-tabs>
+    </el-drawer>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import api from '../api'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch, defineAsyncComponent } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useAgentStore } from '../stores/agent'
 import { useAgentWs } from '../composables/useAgentWs'
+import PipelineBtn from '../components/common/PipelineBtn.vue'
+import { AGENTS, ORCHESTRATOR } from '../constants/agents'
 
+const OrchestratorPipeline = defineAsyncComponent(() => import('../components/agent/OrchestratorPipeline.vue'))
+const PlanPanel = defineAsyncComponent(() => import('../components/agent/PlanPanel.vue'))
+const ExecutePanel = defineAsyncComponent(() => import('../components/agent/ExecutePanel.vue'))
+const AuditPanel = defineAsyncComponent(() => import('../components/agent/AuditPanel.vue'))
+const BatchQueue = defineAsyncComponent(() => import('../components/agent/BatchQueue.vue'))
+
+const modeOptions = ORCHESTRATOR.modes.map(m => ({ label: m.label, value: m.value }))
+
+const inputPlaceholder = computed(() =>
+  agentStore.mode === 'plan'
+    ? '输入运维指令，Enter 或点 L1 三感知分析'
+    : '执行模式：需 plan + L2 通过后点 L3 执行'
+)
+
+const route = useRoute()
 const router = useRouter()
+const agentStore = useAgentStore()
 const messages = ref([])
 const input = ref('')
 const thinking = ref(false)
+const thinkingLabel = ref('')
 const messagesRef = ref(null)
-const history = ref([])
-const streamContent = ref('')
-const showSuggestions = ref(true)
+const batchProcessing = ref(false)
+const autoExecute = ref(false)
+const drawerOpen = ref(false)
+const sideTab = ref('pipeline')
 
-// WebSocket 实时对话
-const { transport, wsReady, connect: connectWs, disconnect: disconnectWs, chatViaWs } = useAgentWs()
+const { connect: connectWs, disconnect: disconnectWs } = useAgentWs()
 
-// DeepSeek-GUI 风格：消息分组
-const messageGroups = computed(() => {
-  const groups = []
-  let currentGroup = null
-  for (const msg of messages.value) {
-    if (msg.role === 'user') {
-      if (currentGroup) groups.push(currentGroup)
-      currentGroup = { user: msg, assistant: null }
-    } else if (msg.role === 'assistant' && currentGroup) {
-      currentGroup.assistant = msg
-      groups.push(currentGroup)
-      currentGroup = null
-    } else {
-      groups.push({ user: null, assistant: msg })
-    }
-  }
-  if (currentGroup) groups.push(currentGroup)
-  return groups
-})
-
-const quickCommands = [
-  { label: '查看系统状态', icon: 'Cpu', text: '查看当前系统运行状态和资源使用情况' },
-  { label: '安全扫描', icon: 'Search', text: '执行一次安全扫描，检查异常进程和端口' },
-  { label: '日志分析', icon: 'Document', text: '分析最近的系统日志，查找异常' },
-  { label: '网络检查', icon: 'Connection', text: '检查网络连接状态和开放端口' },
-  { label: '进程管理', icon: 'SetUp', text: '列出当前运行的进程，检查异常进程' },
-  { label: '知识检索', icon: 'Reading', text: '搜索安全知识库，查找入侵排查方案' },
-]
-
-// 初始欢迎消息（DeepSeek-GUI 风格）
-const welcomeMessage = {
-  role: 'assistant',
-  content: '你好！我是 **安全运维 Agent**，可以帮你：\n\n- 🔍 执行系统安全扫描\n- 📊 分析系统运行状态\n- 🛡️ 评估命令安全性\n- 📚 检索安全知识库\n- 🔧 执行运维操作\n\n请问有什么可以帮你的？',
-  timestamp: Date.now(),
-}
-
-function formatTime(ts) {
-  if (!ts) return ''
-  if (typeof ts === 'number') return new Date(ts).toLocaleString('zh-CN')
-  return String(ts).replace('T', ' ').slice(0, 19)
-}
-
-// DeepSeek-GUI 风格：Markdown 渲染 + 代码高亮 + 命令可点击执行
 function renderContent(content) {
   if (!content) return ''
-  let html = content
-    // 代码块 — bash/sh 块内容变成可点击执行按钮
-    .replace(/```(?:bash|sh|shell)?\n([\s\S]*?)```/g, (match, code) => {
-      const commands = code.trim().split('\n').filter(c => c.trim() && !c.trim().startsWith('#'))
-      const chips = commands.map(c => {
-        const escaped = escapeHtml(c.trim().slice(0, 120))
-        return `<button class="cmd-chip" onclick="window.__execCmd &amp;&amp; window.__execCmd('${escaped.replace(/'/g, "\\\'")}')" title="点击在安全执行中运行">▶ ${escaped}</button>`
-      }).join('')
-      return `<div class="code-block-wrapper"><div class="code-block-header"><span>bash</span><button class="copy-btn" onclick="navigator.clipboard.writeText(\`${code.replace(/`/g, '\\`')}\`)">📋 复制</button></div><pre class="code-block"><code>${escapeHtml(code)}</code></pre>${chips ? `<div style="padding:6px 12px;display:flex;flex-wrap:wrap;gap:4px;background:#f8fafc;border-top:1px solid #e5e7eb">${chips}</div>` : ''}</div>`
-    })
-    // 行内代码 — 检测是否为完整命令并使其可点击
-    .replace(/`([^`]+)`/g, (match, code) => {
-      const trimmed = code.trim()
-      // 看起来像一个命令 (不是单个词)
-      if (trimmed.includes(' ') && trimmed.length > 10 && /^[a-z0-9\-/.]+/.test(trimmed)) {
-        const escaped = escapeHtml(trimmed.slice(0, 80))
-        return `<button class="cmd-chip-inline" onclick="window.__execCmd &amp;&amp; window.__execCmd('${escaped.replace(/'/g, "\\\'")}')" title="点击执行">▶ ${escaped}</button>`
-      }
-      return `<code class="inline-code">${escapeHtml(trimmed)}</code>`
-    })
-    // 加粗
+  return content
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    // 列表
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-    // 换行
+    .replace(/^- (.+)$/gm, '• $1<br>')
     .replace(/\n/g, '<br>')
-  return html
-}
-
-function setupExecBridge() {
-  window.__execCmd = (cmd) => {
-    if (!cmd) return
-    router.push({ path: '/safety', query: { cmd, intent: 'Agent 建议执行' } })
-  }
-}
-
-function escapeHtml(text) {
-  return text
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
 }
 
 function scrollToBottom() {
   nextTick(() => {
-    if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
-    }
+    if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
   })
 }
 
-// 自动滚动
-watch([messages, streamContent], scrollToBottom)
+watch(messages, scrollToBottom, { deep: true })
 
-async function sendMessage() {
+watch(
+  () => route.query.tab,
+  tab => {
+    if (tab === 'pipeline' || tab === 'plan' || tab === 'batch') {
+      sideTab.value = tab
+      drawerOpen.value = true
+    }
+  },
+  { immediate: true },
+)
+
+const autorunHandled = ref(false)
+
+watch(
+  () => [route.query.autorun, agentStore.currentPlan?.plan_id, agentStore.canExecute],
+  async ([autorun]) => {
+    if (autorun !== '1' || autorunHandled.value || thinking.value) return
+    if (!agentStore.canExecute || agentStore.isBlocked) return
+    autorunHandled.value = true
+    const goL5 = route.query.toL5 === '1'
+    router.replace({ path: '/agent', query: {} })
+    await dispatchExecute(agentStore.needsConfirm, { goL5 })
+  },
+  { immediate: true },
+)
+
+function goTrace(traceId) {
+  router.push({ path: '/trace', query: { id: traceId } })
+}
+
+function pushAgentMessage(agent, content, meta, extra = {}) {
+  const hit = AGENTS.find(a => a.agent === agent)
+  messages.value.push({
+    role: 'assistant',
+    roleLabel: hit?.displayName || '助手',
+    agent,
+    content,
+    meta,
+    timestamp: Date.now(),
+    ...extra,
+  })
+}
+
+async function sendAnalyze() {
   const text = input.value.trim()
   if (!text || thinking.value) return
-
-  showSuggestions.value = false
   messages.value.push({ role: 'user', content: text, timestamp: Date.now() })
   input.value = ''
   thinking.value = true
-  streamContent.value = ''
-  scrollToBottom()
-
-  const startTime = Date.now()
+  thinkingLabel.value = 'L1 分析中'
   try {
-    let res
-    // 优先 WebSocket 实时通道，失败回退 REST
-    if (wsReady.value) {
-      try {
-        res = await chatViaWs(text)
-      } catch (wsErr) {
-        console.warn('WS chat failed, falling back to REST:', wsErr.message)
-        res = await api.post('/agent/chat', { message: text, stream: false }, { timeout: 120000 })
+    const res = await agentStore.analyze(text, {
+      autoExecute: autoExecute.value && agentStore.mode === 'execute',
+      userConfirmed: autoExecute.value,
+    })
+    const l2 = res.l2
+    const l2Text = l2.verdict === 'pass' ? '通过' : l2.verdict === 'deny' ? '拒绝' : '需确认'
+    pushAgentMessage(
+      'core_dispatch',
+      `L1 完成 · 意图 ${res.plan.intent} · 边界 ${(res.plan.boundary_hits || []).length} · 知识 ${(res.plan.knowledge_refs || []).length}`,
+      'L1',
+      { plan_id: res.plan.plan_id, trace_id: res.plan.trace_id },
+    )
+    pushAgentMessage('safety_sandbox', `L2：${l2Text}`, 'L2')
+    drawerOpen.value = true
+    sideTab.value = 'plan'
+    if (res.execute) {
+      appendExecuteResult(res.execute)
+      if (res.audit) appendAuditSummary(res.audit)
+      if (route.query.toL5 === '1') {
+        const tid = res.execute.trace_id || res.audit?.trace_id
+        router.push({ path: '/l5', query: tid ? { trace: tid } : {} })
       }
+    } else if (l2.verdict === 'deny') {
+      ElMessage.warning('L2 拒绝')
     } else {
-      res = await api.post('/agent/chat', { message: text, stream: false }, { timeout: 120000 })
+      ElMessage.success('L1/L2 完成')
     }
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-    const reply = res.reply || res.response || res.message || res.content || ''
-    messages.value.push({
-      role: 'assistant',
-      content: reply || '（无文本回复）',
-      tool_calls: res.tool_calls || [],
-      tool_results: res.tool_results || [],
-      timestamp: Date.now(),
-      meta: reply ? `⏱ ${elapsed}s · ${res.model_used || 'LLM'}` : '—',
-    })
   } catch (e) {
-    const errMsg = e.code === 'ECONNABORTED' ? '⏰ 请求超时（LLM 推理中，可重试）'
-      : e.response?.data?.detail || e.message || '请求失败'
-    messages.value.push({
-      role: 'assistant',
-      content: `❌ ${errMsg}`,
-      timestamp: Date.now(),
-    })
+    ElMessage.error(e.response?.data?.detail || e.message)
   } finally {
     thinking.value = false
-    streamContent.value = ''
-    scrollToBottom()
   }
 }
 
-function clearChat() {
-  messages.value = []
-  showSuggestions.value = true
+function appendExecuteResult(res) {
+  pushAgentMessage('core_dispatch', res.reply || '（无回复）', 'L3', {
+    plan_id: res.plan_id,
+    trace_id: res.trace_id,
+  })
 }
 
-function insertCommand(text) {
-  input.value = text
+function appendAuditSummary(audit) {
+  pushAgentMessage('audit_iteration', `审计完成 · 工具 ${audit.tools_invoked ?? 0} 次`, 'L4', {
+    trace_id: audit.trace_id,
+  })
 }
 
-function toggleKnowledge() {
-  insertCommand('搜索安全知识库：')
+function primaryAction() {
+  if (agentStore.mode === 'plan') sendAnalyze()
+  else if (agentStore.canExecute) dispatchExecute(agentStore.needsConfirm)
 }
 
-function toggleSafety() {
-  insertCommand('安全评估：')
-}
-
-function loadHistory(id) {
-  // Placeholder for history loading
-}
-
-onMounted(async () => {
-  setupExecBridge()
-  // 显示欢迎消息
-  messages.value.push(welcomeMessage)
-  // 尝试建立 WebSocket 实时连接
-  connectWs()
+async function dispatchExecute(userConfirmed = false, { goL5 = false } = {}) {
+  thinking.value = true
+  thinkingLabel.value = 'L3 执行中'
   try {
-    const res = await api.get('/agent/history').catch(() => ({ history: [] }))
-    history.value = res.history || []
-  } catch {}
+    const res = await agentStore.runExecute({ userConfirmed })
+    appendExecuteResult(res)
+    if (agentStore.lastAudit) appendAuditSummary(agentStore.lastAudit)
+    drawerOpen.value = true
+    sideTab.value = 'plan'
+    ElMessage.success('L3/L4 完成')
+    if (goL5) {
+      const tid = res.trace_id || agentStore.lastAudit?.trace_id
+      router.push({ path: '/l5', query: tid ? { trace: tid } : {} })
+    }
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || e.message)
+  } finally {
+    thinking.value = false
+  }
+}
+
+async function onBatchEnqueue(text) {
+  agentStore.addBatchLines(text)
+  batchProcessing.value = true
+  drawerOpen.value = true
+  sideTab.value = 'batch'
+  try {
+    await agentStore.processBatchQueue(item => {
+      if (item.status === 'analyzing') {
+        messages.value.push({ role: 'user', content: `[批量] ${item.message}`, timestamp: Date.now() })
+      }
+    })
+  } finally {
+    batchProcessing.value = false
+  }
+}
+
+function onBatchSelect(item) {
+  if (item.message) input.value = item.message
+}
+
+function clearChat() {
+  messages.value = [{
+    role: 'assistant',
+    content: '对话已清空。在下方输入指令，计划模式下点 **L1 三感知分析**。',
+    timestamp: Date.now(),
+  }]
+  agentStore.resetPlan()
+}
+
+onMounted(() => {
+  messages.value.push({
+    role: 'assistant',
+    content: '你好，请在**下方输入框**输入运维需求，然后点 **L1 三感知分析**。',
+    timestamp: Date.now(),
+  })
+  connectWs()
 })
 
-onUnmounted(() => {
-  disconnectWs()
-})
+onUnmounted(() => disconnectWs())
 </script>
 
 <style scoped>
-.agent-chat {
-  max-width: var(--content-max-width);
-  margin: 0 auto;
+.agent-page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
-  height: calc(100vh - var(--topbar-height) - var(--space-6) * 2);
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-shrink: 0;
-}
-
-.page-title {
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  color: var(--color-neutral-900);
-  margin: 0;
-  letter-spacing: var(--tracking-tight);
-}
-
-.page-subtitle {
-  font-size: var(--text-sm);
-  color: var(--color-neutral-400);
-  margin: var(--space-1) 0 0;
-}
-
-.page-actions {
-  display: flex;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
   gap: var(--space-2);
 }
 
-/* ---- 对话布局 ---- */
-.chat-layout {
+.agent-bar {
   display: flex;
-  gap: var(--space-4);
-  flex: 1;
-  min-height: 0;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-default);
 }
 
-.chat-main {
+.agent-bar-left,
+.agent-bar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.agent-bar-title {
+  font-weight: 700;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+/* 对话壳：flex 子项占满剩余空间 */
+.chat-shell {
   flex: 1;
+  min-height: 320px;
   display: flex;
   flex-direction: column;
-  background: transparent;
-  border: 1px solid var(--color-neutral-200);
+  border: 2px solid var(--color-primary-400);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  background: #fff;
   overflow: hidden;
 }
 
-/* ---- 消息区 ---- */
+.chat-notice {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-muted);
+}
+
 .chat-messages {
   flex: 1;
+  min-height: 160px;
   overflow-y: auto;
-  padding: var(--space-5);
+  padding: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
+  background: var(--color-neutral-50);
 }
 
-.message {
-  display: flex;
-  gap: var(--space-3);
-  max-width: 85%;
-  animation: slide-up var(--duration-normal) var(--ease-out) both;
+.msg-row.user { align-self: flex-end; max-width: 85%; }
+.msg-row.agent { align-self: flex-start; max-width: 90%; }
+
+.msg-bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: var(--text-sm);
+  line-height: 1.5;
 }
 
-.message.user {
-  align-self: flex-end;
-  flex-direction: row-reverse;
-  animation-name: slide-left;
-}
-
-.message.agent {
-  animation-name: slide-right;
-}
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.avatar.user {
+.msg-bubble.user {
   background: var(--color-primary-500);
   color: #fff;
+  border-bottom-right-radius: 4px;
 }
 
-.avatar.agent {
-  background: var(--color-success);
-  color: #fff;
+.msg-bubble.agent {
+  background: #fff;
+  border: 1px solid var(--color-border-default);
+  border-bottom-left-radius: 4px;
 }
 
-.message-body {
-  min-width: 0;
-}
+.msg-bubble.thinking { color: var(--color-text-muted); font-style: italic; }
 
-.message-header {
+.msg-meta {
   display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.msg-layer { color: var(--color-primary-500); }
+.msg-who { font-weight: 600; }
+
+.msg-tags {
+  display: flex;
+  gap: 8px;
   align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
+  margin-top: 6px;
 }
 
-.message-role {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-neutral-600);
-}
-
-.message-time {
-  font-size: 10px;
-  color: var(--color-neutral-300);
-}
-
-.message-content {
-  font-size: var(--text-sm);
-  line-height: var(--leading-relaxed);
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
-  position: relative;
-}
-
-/* Agent 消息 — 影视气泡（背景由 cinematic.css 统一） */
-.message.agent .message-content {
-  border-left: 3px solid var(--color-primary-400);
-  border-top-left-radius: 0;
-  color: var(--color-neutral-800);
-}
-
-.message.user .message-content {
-  border-right: 3px solid rgba(255, 255, 255, 0.35);
-  border-top-right-radius: 0;
-  color: #fff;
-}
-
-.message-content :deep(.code-block) {
-  background: var(--color-neutral-900);
-  color: #e2e5ef;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  overflow-x: auto;
-  font-size: var(--text-xs);
-  font-family: var(--font-mono);
-  margin: var(--space-2) 0;
-}
-
-.message-content :deep(code) {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  background: var(--color-neutral-100);
-  padding: 1px 4px;
-  border-radius: var(--radius-sm);
-}
-
-/* ---- 工具调用 ---- */
-.message-tools {
-  margin-top: var(--space-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  animation: slide-down var(--duration-normal) var(--ease-out) both;
-}
-
-.tool-call, .tool-result {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  background: var(--color-neutral-50);
-  border-radius: var(--radius-md);
-  font-size: var(--text-xs);
-}
-
-.tool-call-tag, .tool-result-tag {
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
+.chat-foot {
   flex-shrink: 0;
-}
-
-.tool-call-tag {
-  background: var(--color-info-bg);
-  color: var(--color-info);
-}
-
-.tool-result-tag {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-}
-
-.tool-call-args {
-  font-family: var(--font-mono);
-  color: var(--color-neutral-500);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tool-result-content {
-  font-family: var(--font-mono);
-  color: var(--color-neutral-600);
-  margin: 0;
-  overflow-x: auto;
-  max-height: 100px;
-}
-
-/* ---- 思考指示器 ---- */
-.thinking-indicator {
-  display: flex;
-  gap: var(--space-1);
   padding: var(--space-3);
-  align-items: center;
+  border-top: 1px solid var(--color-border-default);
+  background: #fff;
 }
 
-.dot {
-  width: 4px;
-  height: 16px;
-  border-radius: var(--radius-full);
-  background: var(--color-primary-400);
-  animation: wave 1.2s ease-in-out infinite;
-}
-
-.dot:nth-child(2) { animation-delay: 0.15s; }
-.dot:nth-child(3) { animation-delay: 0.3s; }
-
-@keyframes wave {
-  0%, 100% { transform: scaleY(0.4); opacity: 0.4; }
-  50% { transform: scaleY(1); opacity: 1; }
-}
-
-/* ---- 输入区 ---- */
-.chat-input {
-  padding: var(--space-4);
-  border-top: 1px solid var(--color-neutral-200);
-  transition: border-color var(--duration-fast) var(--ease-out);
-}
-
-.chat-input:focus-within {
-  border-top-color: var(--color-primary-300);
-}
-
-.input-wrap {
-  margin-bottom: var(--space-2);
-}
-
-.input-actions {
+.chat-foot-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.input-tools {
-  display: flex;
-  gap: var(--space-1);
-}
-
-.input-tool-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  color: var(--color-neutral-400);
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.input-tool-btn:hover {
-  background: var(--color-neutral-100);
-  color: var(--color-primary-500);
-}
-
-/* ---- 侧边栏 ---- */
-.chat-sidebar {
-  width: 240px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  flex-shrink: 0;
-}
-
-.sidebar-section {
-  background: transparent;
-  border: 1px solid var(--color-neutral-200);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.sidebar-section-header {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-neutral-100);
-}
-
-.sidebar-section-header h3 {
-  margin: 0;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-neutral-500);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-}
-
-.quick-commands {
-  padding: var(--space-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.quick-command {
-  display: flex;
-  align-items: center;
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-2);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: var(--text-xs);
-  color: var(--color-neutral-600);
-  transition: all var(--duration-fast) var(--ease-out);
-  position: relative;
-  overflow: hidden;
 }
 
-/* 左侧色条展开动画 */
-.quick-command::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--color-primary-500);
-  transform: scaleY(0);
-  transition: transform var(--duration-fast) var(--ease-out);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.quick-command:hover {
-  background: var(--color-primary-50);
-  color: var(--color-primary-600);
-}
-
-.quick-command:hover::before {
-  transform: scaleY(1);
-}
-
-.history-list {
-  padding: var(--space-2);
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.history-item {
-  padding: var(--space-2);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-out);
-}
-
-.history-item:hover {
-  background: var(--color-neutral-50);
-}
-
-.history-title {
-  display: block;
-  font-size: var(--text-xs);
-  color: var(--color-neutral-700);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.history-time {
-  display: block;
-  font-size: 10px;
-  color: var(--color-neutral-300);
-  margin-top: var(--space-1);
-}
-
-.history-empty {
-  padding: var(--space-4);
-  text-align: center;
-  font-size: var(--text-xs);
-  color: var(--color-neutral-300);
-}
-
-/* 可点击命令芯片 */
-.cmd-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 10px; margin: 2px;
-  background: linear-gradient(135deg, #4f6ef7, #6366f1);
-  color: #fff; border: none; border-radius: var(--radius-full);
-  font-size: 11px; font-family: var(--font-mono); cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out); white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis;
-}
-.cmd-chip:hover { background: linear-gradient(135deg, #4338ca, #4f46e5); transform: scale(1.05); box-shadow: 0 2px 8px rgba(79,110,247,.3); }
-
-.cmd-chip-inline {
-  display: inline-flex; align-items: center; gap: 2px;
-  padding: 1px 8px; margin: 0 2px;
-  background: var(--color-primary-50); color: var(--color-primary-600);
-  border: 1px solid var(--color-primary-200); border-radius: var(--radius-sm);
-  font-size: 11px; font-family: var(--font-mono); cursor: pointer;
-  transition: all .15s; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis;
-}
-.cmd-chip-inline:hover { background: var(--color-primary-100); border-color: var(--color-primary-400); }
-
-@media (max-width: 900px) {
-  .chat-sidebar { display: none; }
-}
+.chat-btns { display: flex; gap: var(--space-2); }
 </style>

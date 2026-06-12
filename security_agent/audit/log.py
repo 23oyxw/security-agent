@@ -35,3 +35,8 @@ def read_audit_tail(limit: int = 200) -> list[dict[str, Any]]:
         except json.JSONDecodeError:
             continue
     return [redact_dict(r) for r in reversed(records)]
+
+
+def get_audit_logs(limit: int = 200) -> list[dict[str, Any]]:
+    """运维审计 API 别名."""
+    return read_audit_tail(limit=limit)

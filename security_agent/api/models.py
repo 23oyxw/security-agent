@@ -177,6 +177,77 @@ class ChatResponse(BaseModel):
     trace_id: Optional[str] = None
     degradation_level: str = "S0"
     fallback_used: bool = False
+    plan_id: Optional[str] = None
+    mode: Optional[str] = None
+    phase: Optional[str] = None
+    agent: Optional[str] = None
+    audit: Dict[str, Any] = {}
+
+
+class PlanRequest(BaseModel):
+    message: str
+    batch_id: Optional[str] = None
+
+
+class PlanStep(BaseModel):
+    id: str
+    layer: str
+    title: str
+    status: str = "pending"
+
+
+class AnalysisPlanResponse(BaseModel):
+    plan_id: str
+    trace_id: str
+    batch_id: Optional[str] = None
+    intent: str
+    message: str
+    hint: str = ""
+    tool_chain: List[str] = []
+    skill_flow: Optional[str] = None
+    steps: List[PlanStep] = []
+    boundary_hits: List[Dict[str, Any]] = []
+    knowledge_refs: List[Dict[str, Any]] = []
+    static_snapshot: Dict[str, Any] = {}
+    triple_perception: Dict[str, Any] = {}
+    phase: Optional[str] = None
+    phase_lock: Optional[str] = None
+    requires_confirm: bool = False
+    l2_verdict: Optional[str] = None
+    status: str = "planned"
+
+
+class ExecutePlanRequest(BaseModel):
+    plan_id: str
+    session_id: Optional[str] = None
+    user_confirmed: bool = False
+
+
+class L2PrecheckRequest(BaseModel):
+    plan_id: str
+
+
+class OrchestrateRequest(BaseModel):
+    message: str
+    batch_id: Optional[str] = None
+    auto_execute: bool = False
+    user_confirmed: bool = False
+
+
+class AgentStageStatus(BaseModel):
+    agent: str
+    display_name: str
+    layer: str
+    status: str  # idle | running | done | blocked | error
+    detail: str = ""
+
+
+class OrchestrateResponse(BaseModel):
+    plan: AnalysisPlanResponse
+    l2: Dict[str, Any]
+    agents: List[AgentStageStatus] = []
+    execute: Optional[ChatResponse] = None
+    audit: Optional[Dict[str, Any]] = None
 
 
 # ========== 知识库 ==========

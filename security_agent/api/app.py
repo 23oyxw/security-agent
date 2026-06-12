@@ -38,6 +38,8 @@ from security_agent.api.routes import (
     ops_routes,
     metrics_routes,
     eval_routes,
+    l5_routes,
+    l1_routes,
 )
 
 _START_TIME = time.time()
@@ -75,6 +77,7 @@ app.include_router(safety_routes.router,    prefix="/api/safety",    tags=["③ 
 app.include_router(executor_routes.router,  prefix="/api/executor",  tags=["④ 最小权限执行"])
 app.include_router(trace_routes.router,     prefix="/api/trace",     tags=["⑤ 推理链路溯源"])
 app.include_router(agent_routes.router,     prefix="/api/agent",     tags=["Agent 对话"])
+app.include_router(l1_routes.router,        prefix="/api/l1",        tags=["L1 三感知"])
 app.include_router(knowledge_routes.router, prefix="/api/knowledge", tags=["知识库"])
 app.include_router(alert_routes.router,     prefix="/api/alerts",    tags=["告警"])
 app.include_router(cost_routes.router,      prefix="/api/cost",      tags=["成本"])
@@ -89,6 +92,7 @@ app.include_router(resilience_routes.router,  prefix="/api/resilience",   tags=[
 app.include_router(ops_routes.router,         prefix="/api/ops",          tags=["运维操作"])
 app.include_router(metrics_routes.router,     prefix="",                  tags=["监控指标"])
 app.include_router(eval_routes.router,         prefix="/api/eval",         tags=["Agent 评估"])
+app.include_router(l5_routes.router,           prefix="/api/l5",           tags=["L5 链路分析"])
 
 # 健康检查（无需认证）
 @app.get("/api/health")

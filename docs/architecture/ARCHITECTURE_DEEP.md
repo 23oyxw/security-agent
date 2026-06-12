@@ -1,7 +1,8 @@
 # 安全运维智能助手 — 技术架构深度解析
 
-> 本文档完整覆盖 security-agent（安全运维控制台）的全栈架构、核心流程与设计决策。
-> 快速入门见 [PLAIN_GUIDE.md](PLAIN_GUIDE.md)，技术栈清单见 [TECH_STACK.md](TECH_STACK.md)，开发流程见 [DEVELOPMENT.md](DEVELOPMENT.md)。
+> **v0.8 起**：Agent 运行时编排以 **[FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md)** 为准（五层流水线 · 先分析后执行）。  
+> 本文档保留 Streamlit 时代模块细节；新功能按 L1–L5 归类。  
+> 快速入门见 [PLAIN_GUIDE.md](../user/PLAIN_GUIDE.md)，Vue 前端见 [../../frontend/ARCHITECTURE.md](../../frontend/ARCHITECTURE.md)。
 
 ---
 

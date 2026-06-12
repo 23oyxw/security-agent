@@ -24,9 +24,17 @@ export function useSystemPolling(intervalMs = 30000) {
     ])
   }
 
-  onMounted(async () => {
-    await poll()
-    timer = setInterval(poll, intervalMs)
+  onMounted(() => {
+    // 延迟首屏轮询，避免与页面渲染争抢
+    const start = () => {
+      poll()
+      timer = setInterval(poll, intervalMs)
+    }
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(() => start(), { timeout: 3000 })
+    } else {
+      setTimeout(start, 1500)
+    }
   })
 
   onUnmounted(() => {

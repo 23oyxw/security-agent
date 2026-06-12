@@ -20,15 +20,24 @@ api.interceptors.response.use(
 
     const status = response?.status
 
-    // 401/403 → 清除认证状态，跳转登录
-    if (status === 401 || status === 403) {
-      const store = useUserStore()
-      store.logout()
-      if (router.currentRoute.value.path !== '/login') {
-        router.push('/login')
+    // 401 仅认证接口触发登出；业务 API 401/403 不踢（避免 Mock token 打真实后端误退出）
+    if (status === 401) {
+      const url = String(config?.url || '')
+      if (/\/auth\//.test(url)) {
+        const store = useUserStore()
+        store.logout()
+        if (router.currentRoute.value.path !== '/login') {
+          router.push('/login')
+        }
       }
       return Promise.reject(err)
     }
+
+    if (status === 403) {
+      return Promise.reject(err)
+    }
+
+    // 旧逻辑移除：任意 401/403 均登出
 
     // 4xx 客户端错误不重试
     if (status !== undefined && status < 500) {

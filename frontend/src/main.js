@@ -8,10 +8,11 @@ import './styles/cinematic.css'
 import './styles/page-themes.css'
 import './styles/component-surfaces.css'
 import './styles/chart-surfaces.css'
+import './styles/motion-system.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
-// Mock 模式：VITE_MOCK=true 时自动拦截 API 请求
+// 同步加载 mock 模块（内部按 VITE_MOCK 决定是否拦截）
 import './api/mock'
 
 const pinia = createPinia()
@@ -27,10 +28,10 @@ const usedIcons = [
   'ArrowLeft', 'ArrowRight', 'Bell', 'CaretRight', 'ChatDotRound',
   'CircleCheck', 'CircleCheckFilled', 'CircleCloseFilled', 'Clock',
   'Coin', 'Connection', 'CopyDocument', 'Cpu', 'DataAnalysis',
-  'DataLine', 'Delete', 'Document', 'Expand', 'Fold', 'FullScreen',
-  'Grid', 'Loading', 'Lock', 'MagicStick', 'Odometer', 'Promotion',
-  'Reading', 'Refresh', 'Search', 'SetUp', 'Share', 'SwitchButton',
-  'Terminal', 'User', 'WarningFilled',
+  'DataLine', 'Delete', 'Document', 'EditPen', 'Expand', 'Fold', 'FullScreen',
+  'Grid', 'InfoFilled', 'List', 'Loading', 'Lock', 'MagicStick', 'Monitor',
+  'Odometer', 'Promotion', 'Reading', 'Refresh', 'Search', 'SetUp', 'Share',
+  'SwitchButton', 'Terminal', 'TrendCharts', 'User', 'UserFilled', 'View', 'WarningFilled',
 ]
 usedIcons.forEach(name => {
   if (ElementPlusIconsVue[name]) {

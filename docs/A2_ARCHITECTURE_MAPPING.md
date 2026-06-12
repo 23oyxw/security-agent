@@ -1,9 +1,22 @@
 # A2赛题架构对照文档
 
-> **完整技术架构（完成度 / 解耦 / Vue 前端）** → [architecture/TECHNICAL_ARCHITECTURE.md](architecture/TECHNICAL_ARCHITECTURE.md)
+> **五层流水线权威** → [architecture/FIVE_LAYER_PIPELINE.md](architecture/FIVE_LAYER_PIPELINE.md)  
+> **完整技术架构** → [architecture/TECHNICAL_ARCHITECTURE.md](architecture/TECHNICAL_ARCHITECTURE.md)
 
 ## 赛题名称
 面向麒麟操作系统的安全智能运维Agent设计与实现
+
+## 五层流水线 vs 赛题五大支柱
+
+| 赛题支柱 | 五层主落点 | 说明 |
+|----------|------------|------|
+| ① OS 深度感知 | **L1** 静态感知 + **L5** 绘图 | 网络/端口/内存磁盘/链路/权限 |
+| ② MCP 插件化 | **L3**（**L2** 热插拔） | MCP+Flow 一体模块 |
+| ③ 安全意图校验 | **L2** 安全控制 | 护栏/熔断/高危截断/确认 |
+| ④ 最小权限执行 | **L2** 沙箱 + **L3** executor | 先沙箱试跑再正式执行 |
+| ⑤ 推理链路溯源 | **L4** | trace_id + 审计 + Wiki 知识回流 |
+
+**重构约束**：L1/L2 **不参与决策执行**；**先分析后执行**；L1 分析计划与 L3 推理分发 **共用 Agent**。
 
 ## 当前项目架构 vs A2赛题要求对照表
 
@@ -52,7 +65,27 @@
 
 ### 三、赛题核心场景验证
 
-#### 场景："帮我清理系统垃圾"
+#### 场景："帮我清理系统垃圾"（五层流水线）
+
+```
+用户输入: "帮我清理系统垃圾"
+    ↓
+【L1 感知与计划】POST /api/agent/plan
+    parallel: 边界感知(对抗样本) + 知识库检索(Wiki) + 静态感知(磁盘/端口)
+    → 意图: cleanup_disk · 分析计划 · 只读，不执行
+    ↓
+【L2 安全管控】三层防御 + 沙箱试跑
+    → rm/清理类 → NEED_CONFIRM · 高危截断检查
+    ↓
+【L3 推理分发】POST /api/agent/execute（共用 Agent · execute 模式）
+    → repair 域工具 / secure_exec flow
+    ↓
+【L4 审计回流】trace_id · 卷宗 · 案例标签 → Gitee Wiki
+    ↓
+【L5 数学模型】准确率/磁盘时序图
+```
+
+#### 场景（历史描述 · 模块级）
 
 ```
 用户输入: "帮我清理系统垃圾"

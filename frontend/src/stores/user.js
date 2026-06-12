@@ -18,10 +18,11 @@ export const useUserStore = defineStore('user', {
   actions: {
     async login(username, password) {
       const res = await api.post('/auth/login', { username, password })
-      this.token = res.access_token
-      this.username = res.username
-      this.role = res.role
-      this.isLoggedIn = true
+      this.token = res.access_token || ''
+      this.username = res.username || username
+      this.role = res.role || 'user'
+      this.isLoggedIn = Boolean(this.token)
+      if (!this.token) throw new Error('登录响应缺少 token')
       return res
     },
     logout() {
@@ -29,6 +30,9 @@ export const useUserStore = defineStore('user', {
       this.username = ''
       this.role = ''
       this.isLoggedIn = false
+      try {
+        sessionStorage.removeItem('security-agent-auth-init')
+      } catch { /* ignore */ }
     },
     async fetchMe() {
       const res = await api.get('/auth/me')

@@ -478,21 +478,37 @@ class AgentBrain:
             return fallback_reply_when_markup_only(user_message)
         return text
 
-    async def chat(self, user_message: str) -> dict[str, Any]:
+    async def chat(
+        self,
+        user_message: str,
+        *,
+        plan: dict[str, Any] | None = None,
+        trace_id: str | None = None,
+    ) -> dict[str, Any]:
         from security_agent.agent.parallel import run_security_info_gathering
+        from security_agent.pipeline.trace_id import normalize_trace_id
+
+        tid = normalize_trace_id(
+            trace_id or (plan.get("trace_id") if plan else None) or getattr(self, "session_id", "")
+        )
 
         with incident_spine(
             user_message,
-            session_id=getattr(self, "session_id", ""),
+            session_id=getattr(self, "session_id", tid),
+            trace_id=tid,
             budget_sec=config.REQUEST_BUDGET_SEC,
         ) as spine:
-            return await self._chat_inner(user_message, spine, run_security_info_gathering)
+            return await self._chat_inner(
+                user_message, spine, run_security_info_gathering, plan=plan,
+            )
 
     async def _chat_inner(
         self,
         user_message: str,
         spine: IncidentSpine,
         run_security_info_gathering,
+        *,
+        plan: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         spine.stage("receive_request", {"user_message": user_message[:500]})
         self._trim_history()
@@ -505,7 +521,14 @@ class AgentBrain:
             stats = self.token_manager.analyze_context(self._history)
             if stats.is_over_limit:
                 self._trim_history()  # 自动压缩
-        plan = build_plan(user_message, self._history)
+        if plan is None:
+            plan = build_plan(user_message, self._history)
+        else:
+            spine.stage("approved_plan_dispatch", {
+                "intent": plan.get("intent"),
+                "tool_chain": plan.get("tool_chain"),
+                "skill_flow": plan.get("skill_flow"),
+            })
         effective_message = plan.get("user_message_resolved") or user_message
         tool_trace: list[dict[str, Any]] = [{"plan": plan}]
         grounding = self._grounding_prefix(user_message)

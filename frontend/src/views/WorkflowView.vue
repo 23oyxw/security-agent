@@ -1,31 +1,40 @@
 <template>
   <div class="workflow-root">
     <!-- 顶栏 -->
-    <div class="top-bar">
-      <div>
-        <h1 class="top-title">运维流程控制台</h1>
-        <p class="top-subtitle">实时泳道 · 数据同步 · 可回滚可追溯</p>
-      </div>
-      <div class="top-actions">
-        <el-tag v-if="polling" type="success" effect="dark" size="small">● 实时同步中 ({{ pollInterval }}s)</el-tag>
+    <PageHeader
+      :title="pageMeta.label"
+      :subtitle="pageMeta.subtitle"
+      :layer="pageMeta.layer"
+    >
+      <template #actions>
+        <el-tag v-if="polling" type="success" effect="dark" size="small">● 实时同步 ({{ pollInterval }}s)</el-tag>
         <el-tag v-else type="info" size="small">已暂停</el-tag>
+        <PipelineBtn action="refresh" size="small" :loading="loading" @click="fetchAll" />
         <el-button size="small" @click="togglePolling">{{ polling ? '暂停' : '恢复' }}</el-button>
-        <el-button size="small" type="primary" @click="fetchAll" :loading="loading">立即刷新</el-button>
+        <PipelineBtn action="goAgent" size="small" @click="$router.push('/agent')" />
         <span class="top-clock">{{ currentTime }}</span>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
+
+    <el-alert
+      type="info"
+      :closable="false"
+      show-icon
+      class="workflow-banner"
+      title="指令编排请前往「智能体编排」— 本页为五层流水线实时观测台"
+    />
 
     <!-- Tab 切换 -->
     <el-tabs v-model="activeTab" class="main-tabs">
       <el-tab-pane label="实时执行流程" name="flow">
         <div class="swimlane-grid">
-          <!-- 泳道 1: 采集层 -->
-          <div class="swimlane" style="border-top: 3px solid #3b82f6">
+          <!-- 泳道 1: L1 -->
+          <div class="swimlane motion-lift reveal-item reveal-delay-1" style="border-top: 3px solid #3b82f6">
             <div class="swimlane-header" style="background: #eff6ff">
               <div class="swimlane-header-left">
                 <span class="swimlane-badge" style="background:#3b82f6">L1</span>
-                <span class="swimlane-title">采集层 · OS 深度感知</span>
-                <span class="swimlane-desc">psutil / lsof / netstat / journalctl</span>
+                <span class="swimlane-title">三感知 · 核心调度 analyze</span>
+                <span class="swimlane-desc">边界 ∥ 知识 ∥ 静态之眼 · 零工具零执行</span>
               </div>
               <el-tag size="small" :type="layers.collection.status === 'active' ? 'success' : 'warning'">
                 {{ layers.collection.status === 'active' ? '运行中' : '待命' }}
@@ -49,15 +58,15 @@
           </div>
 
           <!-- 泳道间箭头 -->
-          <div class="lane-arrow"><span>▼ 感知数据注入 LLM 上下文 ▼</span></div>
+          <div class="lane-arrow"><span>▼ L1 分析产物 → L2 安全闸门 ▼</span></div>
 
-          <!-- 泳道 2: 管控层 -->
-          <div class="swimlane" style="border-top: 3px solid #10b981">
+          <!-- 泳道 2: L2 -->
+          <div class="swimlane motion-lift reveal-item reveal-delay-2" style="border-top: 3px solid #10b981">
             <div class="swimlane-header" style="background: #ecfdf5">
               <div class="swimlane-header-left">
                 <span class="swimlane-badge" style="background:#10b981">L2</span>
-                <span class="swimlane-title">管控层 · MCP 插件化 + 三层防御</span>
-                <span class="swimlane-desc">17 Skills · 热插拔 · 安全闸门</span>
+                <span class="swimlane-title">安全防护沙箱 · safety_sandbox</span>
+                <span class="swimlane-desc">护栏 · 熔断 · 预演 · 零执行零决策</span>
               </div>
               <el-tag size="small" type="success">{{ mcpCount }} Skills 已注册</el-tag>
             </div>
@@ -75,15 +84,15 @@
             </div>
           </div>
 
-          <div class="lane-arrow"><span>▼ Skill Flow 编排 → 安全执行 ▼</span></div>
+          <div class="lane-arrow"><span>▼ L2 verdict pass → L3 execute 解锁 ▼</span></div>
 
-          <!-- 泳道 3: 执行层 -->
-          <div class="swimlane" style="border-top: 3px solid #f59e0b">
+          <!-- 泳道 3: L3 -->
+          <div class="swimlane motion-lift reveal-item reveal-delay-3" style="border-top: 3px solid #f59e0b">
             <div class="swimlane-header" style="background: #fffbeb">
               <div class="swimlane-header-left">
                 <span class="swimlane-badge" style="background:#f59e0b">L3</span>
-                <span class="swimlane-title">执行层 · 沙箱 + 快照 + 自动回滚</span>
-                <span class="swimlane-desc">PrivilegeBroker · SandboxExecutor · SnapshotManager</span>
+                <span class="swimlane-title">推理分发 execute · 四工具簇</span>
+                <span class="swimlane-desc">MCP · Skill Flow · 沙箱快照 · 自动回滚</span>
               </div>
               <el-tag size="small" :type="layers.execution.nodes.length ? 'warning' : 'info'">
                 {{ layers.execution.nodes.length }} 个快照
@@ -108,15 +117,15 @@
             </div>
           </div>
 
-          <div class="lane-arrow"><span>▼ 全链路追踪 ▼</span></div>
+          <div class="lane-arrow"><span>▼ L3 完成 → L4 审计卷宗 ▼</span></div>
 
-          <!-- 泳道 4: 审计层 -->
-          <div class="swimlane" style="border-top: 3px solid #8b5cf6">
+          <!-- 泳道 4: L4 -->
+          <div class="swimlane motion-lift reveal-item reveal-delay-4" style="border-top: 3px solid #8b5cf6">
             <div class="swimlane-header" style="background: #f5f3ff">
               <div class="swimlane-header-left">
-                <span class="swimlane-badge" style="background:#8b5cf6">Audit</span>
-                <span class="swimlane-title">审计层 · 推理链路溯源</span>
-                <span class="swimlane-desc">IncidentSpine · 六阶段 Tracing · 执行纪要导出</span>
+                <span class="swimlane-badge" style="background:#8b5cf6">L4</span>
+                <span class="swimlane-title">审计溯源 · audit_iteration</span>
+                <span class="swimlane-desc">trace_id · IncidentSpine · append-only 卷宗</span>
               </div>
               <el-tag size="small" type="info">{{ layers.audit.nodes.length }} 条 Trace</el-tag>
             </div>
@@ -200,6 +209,11 @@
 import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import api from '../api'
+import PageHeader from '../components/common/PageHeader.vue'
+import PipelineBtn from '../components/common/PipelineBtn.vue'
+import { NAV_PAGES } from '../constants/navigation'
+
+const pageMeta = NAV_PAGES.workflow
 
 const loading = ref(false)
 const polling = ref(true)
@@ -356,7 +370,11 @@ watch(pollInterval, (v) => {
   padding-bottom: var(--space-12);
 }
 
-/* ---- 顶栏 ---- */
+.workflow-banner {
+  margin-bottom: var(--space-4);
+}
+
+/* ---- 顶栏（遗留样式，PageHeader 已替代） ---- */
 .top-bar {
   display: flex;
   justify-content: space-between;

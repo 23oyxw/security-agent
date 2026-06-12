@@ -1,70 +1,67 @@
-# Vue3 前端架构
+# Vue3 前端架构 v1.0-final
 
-> 隶属 **交付线 B2**，仅通过 `/api/*` 与后端通信，不 import Python 模块。  
-> 总览见 [docs/architecture/TECHNICAL_ARCHITECTURE.md](../docs/architecture/TECHNICAL_ARCHITECTURE.md)
+> **终版权威**：[docs/architecture/FINAL_ARCHITECTURE.md](../docs/architecture/FINAL_ARCHITECTURE.md)  
+> **侧栏规范**：[docs/architecture/FRONTEND_SIDEBAR.md](../docs/architecture/FRONTEND_SIDEBAR.md)  
+> **L5 链路分析**：[docs/architecture/L5_ANALYTICS.md](../docs/architecture/L5_ANALYTICS.md)  
+> **多角色协调**：[docs/architecture/MULTI_PERSONA_COORDINATION.md](../docs/architecture/MULTI_PERSONA_COORDINATION.md)
 
-## 技术栈
+## 设计公式
 
-| 类别 | 选型 |
-|------|------|
-| 框架 | Vue 3 组合式 API |
-| 构建 | Vite 5 |
-| UI | Element Plus 2.7 |
-| 状态 | Pinia 2 |
-| 路由 | Vue Router 4 |
-| HTTP | Axios（`src/api/index.js`） |
-| 图表 | ECharts 5 |
+**1调度 + 1安全 + 1迭代** · 前端 **计划/执行双模式** · 五层刚性流程
 
-## 目录
+## 单一数据源
+
+| 模块 | 路径 | 职责 |
+|------|------|------|
+| 页面编排 | `constants/navigation.js` | 页 meta · 面包屑 · 底部链接 |
+| 侧栏五层 | `constants/pipeline-architecture.js` | 层卡片 · 主按钮 · extras |
+| 三 Agent 视觉 | `constants/agent-visual.js` | 色带 · 括号 · 状态灯 |
+| L5 指标 | `constants/l5-metrics.js` | 六维量化 · 自进化建议 |
+| 画布拓扑 | `constants/canvas-topology.js` | L1–L5 架构画布节点 |
+| 流水线动作 | `constants/actions.js` | PipelineBtn |
+| Agent 元数据 | `constants/agents.js` | 三 Agent · 工具簇 |
+
+## 布局
 
 ```text
-frontend/
-├── src/
-│   ├── api/index.js       # Axios 实例 + JWT 拦截
-│   ├── router/index.js    # 路由 + 登录守卫
-│   ├── stores/user.js     # 认证状态
-│   ├── layout/MainLayout.vue
-│   └── views/             # 按五大支柱 + 管理分页
-├── vite.config.js         # dev proxy → :8600
-└── package.json
+MainLayout
+├── Sidebar（可拖宽 300–520px）
+│   ├── PipelineArchitectureRail（五层 + 三 Agent 色带 + 状态灯）
+│   └── 底部：导引 / 用户管理
+├── Topbar
+└── router-view
 ```
 
-## 路由与后端 API 映射
+## 页面映射
 
-| 路由 | 组件 | 应对 API | 联调 |
-|------|------|----------|------|
-| `/login` | Login.vue | `POST /api/auth/login` | ⚠️ |
-| `/` | Dashboard.vue | `/api/perception/metrics` `/api/alerts` | ⚠️ |
-| `/agent` | AgentChat.vue | `WS /api/agent/ws/chat`（优先）· `POST /api/agent/chat`（回退） | ✅ |
-| `/safety` | SafetyGate.vue | `POST /api/safety/defense/evaluate` | ❌ 待改 |
-| `/executor` | Executor.vue | `POST /api/executor/execute` | ⚠️ |
-| `/trace` | TraceView.vue | `GET /api/trace/{id}` | ⚠️ |
-| `/mcp` | MCPManage.vue | `GET /api/mcp/servers` | ⚠️ |
-| `/alerts` | Alerts.vue | `GET /api/alerts` | ⚠️ |
-| `/knowledge` | Knowledge.vue | `POST /api/knowledge/search` | ⚠️ |
-| `/users` | Users.vue | `GET /api/auth/users` | ⚠️ admin |
-| `/flows` | SkillFlows.vue | `GET/POST /api/skills/flows/*` | ✅ |
+| 路径 | 名称 | 层 | Agent |
+|------|------|-----|-------|
+| `/agent` | 智能体对话 | L1+L3 | core_dispatch |
+| `/safety` | L2 防护沙箱 | L2 | safety_sandbox |
+| `/alerts` | 告警（L2 extra） | L2 | — |
+| `/mcp` | 工具中心（L3 extra） | L3 | — |
+| `/trace` | L4 审计 | L4 | audit_iteration |
+| **`/l5`** | **L5 链路分析** | L5 | audit_iteration |
+| `/` | 运维概览 | — | — |
+| `/canvas` | 五层架构画布（L5 extra） | L1–L5 | — |
+| `/guide` | 架构导引 | — | — |
+| `/knowledge` | 知识库（L1 extra） | L1 | — |
 
-## 开发
+## `/agent` 工作流
 
-```bash
-# 终端 1：后端
-uv run uvicorn security_agent.api.app:app --host 0.0.0.0 --port 8600
-
-# 终端 2：前端
-cd frontend && npm install && npm run dev
-# 浏览器 http://127.0.0.1:5173
+```text
+计划/执行 Segmented + 对话区
+侧栏 GATE/L3 → autorun 自动 L3→L4→跳转 /l5
+抽屉：OrchestratorPipeline · PlanPanel · ExecutePanel · AuditPanel
 ```
 
-## 生产构建
+## API 与模式
 
-```bash
-cd frontend && npm run build
-# 产物 frontend/dist → FastAPI 自动 mount（见 security_agent/api/app.py）
-```
+| 模式 | 行为 |
+|------|------|
+| 计划 | `orchestrate` 无 auto_execute |
+| 执行 | `execute`（需 plan + L2 pass）→ 可选自动跳转 `/l5` |
 
-## 不做（第一期）
+L5 专用 API：`/api/l5/scatter` · `/heatmap` · `/root-cause/{id}` · `/integration/*`
 
-- 可视化工作流拖拽编辑器（见总架构 V2 只读流程图）
-- Bootstrap / Webpack
-- 直连 `security_agent` Python 包
+详见终版文档 §五 · [L5_ANALYTICS.md](../docs/architecture/L5_ANALYTICS.md)

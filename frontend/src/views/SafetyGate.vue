@@ -1,9 +1,15 @@
 <template>
   <div class="safety-page">
-    <div class="page-header">
-      <h1 class="page-title">安全执行</h1>
-      <p class="page-subtitle">命令输入 → 三层防御评估 → 沙箱执行 → 结果输出 (一个流程，一页完成)</p>
-    </div>
+    <PageHeader
+      :title="pageMeta.label"
+      :subtitle="pageMeta.subtitle"
+      :layer="pageMeta.layer"
+      :agent="pageMeta.agent"
+    >
+      <template #actions>
+        <PipelineBtn action="goAgent" size="small" @click="router.push('/agent')" />
+      </template>
+    </PageHeader>
 
     <el-row :gutter="16">
       <!-- 左侧: 输入 + 评估 -->
@@ -109,9 +115,15 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { ElMessage } from 'element-plus'
+import PageHeader from '../components/common/PageHeader.vue'
+import PipelineBtn from '../components/common/PipelineBtn.vue'
+import { NAV_PAGES } from '../constants/navigation'
+
+const pageMeta = NAV_PAGES.safety
+const router = useRouter()
 
 const route = useRoute()
 

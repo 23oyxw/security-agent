@@ -3,9 +3,11 @@
     <!-- 画布顶栏 -->
     <div class="canvas-topbar">
       <div class="canvas-topbar-left">
-        <el-button size="small" text @click="$router.push('/')"><el-icon><ArrowLeft /></el-icon> 返回</el-button>
+        <el-button size="small" text @click="$router.push('/agent')"><el-icon><ArrowLeft /></el-icon> 返回对话</el-button>
         <el-divider direction="vertical" />
-        <span class="canvas-title">A2 赛题架构 · 五层闭环</span>
+        <span class="canvas-title">{{ canvasMeta.title }}</span>
+        <el-tag size="small" type="info" effect="plain">{{ canvasMeta.formula }}</el-tag>
+        <span class="canvas-hint">主线 Main · 左侧辅线 Rail · 点层标签跳转</span>
         <el-tag v-if="liveConnected" size="small" type="success" effect="dark">● 实时</el-tag>
       </div>
       <div class="canvas-topbar-right">
@@ -17,14 +19,49 @@
 
     <!-- VueFlow 视口 -->
     <div class="canvas-viewport" ref="viewportRef">
+      <!-- 五层分割带 + 跳转 -->
+      <div class="canvas-layer-bands" aria-hidden="true">
+        <div
+          v-for="band in layerBands"
+          :key="band.layer"
+          class="canvas-band"
+          :class="{ 'is-active': activeBand === band.layer }"
+          :style="{ top: band.y + 'px', height: band.h + 'px', '--band-accent': band.accent }"
+          @click="jumpToLayer(band.layer)"
+        >
+          <button type="button" class="canvas-band-btn" :title="`跳转 ${band.label}`">
+            <span class="canvas-band-id">{{ band.layer }}</span>
+            <span class="canvas-band-cn">{{ band.label }}</span>
+            <span class="canvas-band-en">{{ band.labelEn }}</span>
+          </button>
+        </div>
+        <div class="canvas-col-head canvas-col-rail">辅线 Left Rail</div>
+        <div class="canvas-col-head canvas-col-spine">主线 Main Spine</div>
+      </div>
+
+      <!-- 层快捷导航 -->
+      <nav class="canvas-layer-nav">
+        <button
+          v-for="band in layerBands"
+          :key="'nav-' + band.layer"
+          type="button"
+          class="layer-nav-btn"
+          :class="{ active: activeBand === band.layer }"
+          :style="{ '--nav-accent': band.accent }"
+          @click="jumpToLayer(band.layer)"
+        >
+          {{ band.layer }}
+        </button>
+      </nav>
       <VueFlow
         ref="vueFlowRef"
         v-model:nodes="nodes"
         v-model:edges="edges"
-        :default-viewport="{ zoom: 0.55, x: 60, y: 30 }"
+        :default-viewport="{ zoom: 0.45, x: 40, y: 20 }"
         :min-zoom="0.12" :max-zoom="4"
         :nodes-draggable="true" :nodes-connectable="false"
         fit-view-on-init
+        @node-click="onNodeClick"
         @node-double-click="onNodeDblClick"
         @pane-click="selectedNode = null"
       >
@@ -32,10 +69,15 @@
 
         <!-- 监控节点 (Monitor) -->
         <template #node-monitor="props">
-          <div class="cv-node cv-node--monitor" :class="{ 'cv-node--alert': props.data.alert, 'cv-node--pulse': props.data.alert }">
+          <div
+            class="cv-node cv-node--monitor"
+            :class="nodeTierClass(props.data)"
+            :style="{ borderColor: props.data.accent }"
+          >
             <div class="cv-node-ring" :style="{ '--pct': props.data.percent || 0 }"></div>
             <div class="cv-node-body">
               <span class="cv-node-label">{{ props.data.label }}</span>
+              <span v-if="props.data.labelEn" class="cv-node-label-en">{{ props.data.labelEn }}</span>
               <span class="cv-node-value" :class="{ 'is-danger': props.data.alert }">{{ props.data.value }}</span>
               <span class="cv-node-sub">{{ props.data.sub }}</span>
             </div>
@@ -55,10 +97,11 @@
 
         <!-- 技能节点 (Skill) -->
         <template #node-skill="props">
-          <div class="cv-node cv-node--skill">
+          <div class="cv-node cv-node--skill" :class="nodeTierClass(props.data)" :style="{ borderColor: props.data.accent }">
             <div class="cv-node-icon"><el-icon :size="16"><Connection /></el-icon></div>
             <div class="cv-node-body">
               <span class="cv-node-label">{{ props.data.label }}</span>
+              <span v-if="props.data.labelEn" class="cv-node-label-en">{{ props.data.labelEn }}</span>
               <span class="cv-node-sub">{{ props.data.toolsLabel || (props.data.tools + ' 工具') }}</span>
             </div>
             <Handle type="source" :position="Position.Right" id="out" />
@@ -68,10 +111,15 @@
 
         <!-- 快照节点 (Snapshot) -->
         <template #node-snapshot="props">
-          <div class="cv-node cv-node--snapshot" :class="{ 'cv-node--alert': props.data.alert }">
+          <div
+            class="cv-node cv-node--snapshot"
+            :class="[nodeTierClass(props.data), { 'cv-node--alert': props.data.alert }]"
+            :style="{ borderColor: props.data.accent }"
+          >
             <div class="cv-node-dot" :class="props.data.restored ? 'dot-green' : 'dot-orange'"></div>
             <div class="cv-node-body">
               <span class="cv-node-label">{{ props.data.label }}</span>
+              <span v-if="props.data.labelEn" class="cv-node-label-en">{{ props.data.labelEn }}</span>
               <span class="cv-node-sub">{{ props.data.time }}</span>
             </div>
             <el-tag v-if="props.data.restored" size="small" type="success">已回滚</el-tag>
@@ -83,8 +131,16 @@
 
         <!-- 追踪节点 (Trace) -->
         <template #node-trace="props">
-          <div class="cv-node cv-node--trace" :class="{ 'cv-node--alert': !props.data.ok }">
-            <div class="cv-node-body cv-node-body--trace-main"><span class="cv-node-label">{{ props.data.label }}</span><span class="cv-node-sub">{{ props.data.stages }}</span></div>
+          <div
+            class="cv-node cv-node--trace"
+            :class="[nodeTierClass(props.data), { 'cv-node--alert': !props.data.ok }]"
+            :style="{ borderColor: props.data.accent }"
+          >
+            <div class="cv-node-body cv-node-body--trace-main">
+              <span class="cv-node-label">{{ props.data.label }}</span>
+              <span v-if="props.data.labelEn" class="cv-node-label-en">{{ props.data.labelEn }}</span>
+              <span class="cv-node-sub">{{ props.data.stages }}</span>
+            </div>
             <div class="cv-node-trace-stages">
               <span
                 v-for="i in (props.data.stageCount || 6)"
@@ -100,10 +156,11 @@
 
         <!-- 执行器节点 (Executor) -->
         <template #node-executor="props">
-          <div class="cv-node cv-node--executor">
+          <div class="cv-node cv-node--executor" :class="nodeTierClass(props.data)" :style="{ borderColor: props.data.accent }">
             <div class="cv-node-icon cv-node-icon--warn"><el-icon :size="14"><CaretRight /></el-icon></div>
             <div class="cv-node-body">
               <span class="cv-node-label">{{ props.data.label }}</span>
+              <span v-if="props.data.labelEn" class="cv-node-label-en">{{ props.data.labelEn }}</span>
               <code class="cv-node-cmd">{{ props.data.command }}</code>
             </div>
             <span class="cv-node-status" :class="props.data.status === 'success' ? 'is-success' : 'is-danger'">{{ props.data.statusText || props.data.status }}</span>
@@ -143,6 +200,14 @@ import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import api from '../api'
+import {
+  CANVAS_META,
+  CANVAS_LAYER_BANDS,
+  CANVAS_LAYER_META,
+  buildCanvasNodes,
+  buildCanvasEdges,
+  getLayerNodeIds,
+} from '../constants/canvas-topology'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
@@ -160,98 +225,48 @@ const drawerData = ref(null)
 const drawerSections = ref([])
 const drawerActions = ref([])
 
+const canvasMeta = CANVAS_META
+const layerBands = CANVAS_LAYER_BANDS
+const layerMeta = CANVAS_LAYER_META
+const activeBand = ref('L1')
+
+function nodeTierClass(data) {
+  const tier = data?.tier || 'rail'
+  return {
+    [`cv-node--${tier}`]: true,
+    'cv-node--alert': data?.alert,
+    'cv-node--pulse': data?.alert,
+  }
+}
+
+async function jumpToLayer(layerId) {
+  activeBand.value = layerId
+  const ids = getLayerNodeIds(layerId)
+  await nextTick()
+  if (vueFlowRef.value && ids.length) {
+    vueFlowRef.value.fitView({ nodes: ids, padding: 0.35, duration: 350, maxZoom: 0.9 })
+  }
+}
+
 let pollTimer = null
 let clockTimer = null
 
-// ---- 五层架构数据定义 ----
-const LX = 100
-const LG = 260
-const NODES = {
-  intent: [
-    { id: 'intent-input', type: 'executor', y: 20,  data: { layer: 'intent', label: '自然语言输入', command: '用户: "查看系统状态"', status: 'entry', statusText: '入口' } },
-    { id: 'intent-audit', type: 'snapshot', y: 120, data: { layer: 'intent', label: '意图审计', time: 'IntentAuditor 偏离检测', risk: '安全', alert: false } },
-    { id: 'safety-gate', type: 'executor', y: 220, data: { layer: 'intent', label: '安全门禁', command: 'L1静态30%+L2意图35%+L3环境35%', status: 'active', statusText: '活跃' } },
-  ],
-  perception: [
-    { id: 'cpu', type: 'monitor', y: 20, data: { layer: 'perception', label: 'CPU', value: '— %', sub: '负载 —', percent: 0, alert: false } },
-    { id: 'mem', type: 'monitor', y: 150, data: { layer: 'perception', label: '内存', value: '— %', sub: '已用 — GB', percent: 0, alert: false } },
-    { id: 'disk', type: 'monitor', y: 280, data: { layer: 'perception', label: '磁盘', value: '— %', sub: '剩余 — GB', percent: 0, alert: false } },
-    { id: 'net', type: 'monitor', y: 410, data: { layer: 'perception', label: '网络连接', value: '—', sub: 'TCP/UDP', percent: 0, alert: false } },
-    { id: 'proc', type: 'skill', y: 540, data: { layer: 'perception', label: '进程/日志扫描', toolsLabel: 'ps / journalctl / lsof' } },
-  ],
-  control: [
-    { id: 'sk-health', type: 'skill', y: 20, data: { layer: 'control', label: '健康巡检', tools: 6 } },
-    { id: 'sk-net', type: 'skill', y: 100, data: { layer: 'control', label: '网络运维', tools: 5 } },
-    { id: 'sk-disk', type: 'skill', y: 180, data: { layer: 'control', label: '磁盘管理', tools: 6 } },
-    { id: 'sk-sec', type: 'skill', y: 260, data: { layer: 'control', label: '安全加固', tools: 5 } },
-    { id: 'sk-mcp', type: 'skill', y: 340, data: { layer: 'control', label: 'MCP 热插拔注册', tools: 17 } },
-  ],
-  execution: [
-    { id: 'exec-cmd', type: 'executor', y: 20, data: { layer: 'execution', label: '沙箱执行', command: 'PrivilegeBroker 降权 + Sandbox', status: 'ready', statusText: '就绪' } },
-    { id: 'snap', type: 'snapshot', y: 130, data: { layer: 'execution', label: '快照备份', time: '操作前自动创建', risk: '—', alert: false } },
-    { id: 'rollback', type: 'executor', y: 240, data: { layer: 'execution', label: '自动回滚', command: 'exit≠0 → restore_snapshot', status: 'standby', statusText: '待命' } },
-  ],
-  audit: [
-    { id: 'trace', type: 'trace', y: 20, data: { layer: 'audit', label: '事件脊柱 Trace', stages: '六阶段追踪', ok: true, stageCount: 6, okStages: 6 } },
-    { id: 'jsonl', type: 'trace', y: 200, data: { layer: 'audit', label: '审计 JSONL', stages: 'append-only 合规', ok: true, stageCount: 6, okStages: 6 } },
-    { id: 'export-s', type: 'snapshot', y: 380, data: { layer: 'audit', label: '纪要导出', time: 'HTML / JSON / TXT', risk: '只读', alert: false } },
-    { id: 'feedback', type: 'executor', y: 500, data: { layer: 'audit', label: '知识回流', command: '审计→规则库更新→闭环', status: 'cycle', statusText: '闭环' } },
-  ],
-}
-
-const LAYERS = ['intent', 'perception', 'control', 'execution', 'audit']
 const nodes = ref([])
 const edges = ref([])
 
 function buildNodes() {
-  const out = []
-  LAYERS.forEach((layer, li) => {
-    ;(NODES[layer] || []).forEach(n => {
-      out.push({ id: n.id, type: n.type, position: { x: LX + li * LG, y: n.y }, data: n.data })
-    })
-  })
-  return out
+  return buildCanvasNodes()
 }
 
 function buildEdges() {
-  return [
-    // intent 内部
-    { id: 'e-in-audit', source: 'intent-input', target: 'intent-audit', type: 'smoothstep', animated: true, style: { stroke: '#6366f1', strokeWidth: 2 }, label: '解析意图' },
-    { id: 'e-audit-gate', source: 'intent-audit', target: 'safety-gate', type: 'smoothstep', animated: true, style: { stroke: '#6366f1', strokeWidth: 2 }, label: '安全校验' },
-    // intent→perception
-    { id: 'e-gate-cpu', source: 'safety-gate', target: 'cpu', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-primary-500)', strokeWidth: 2.5 }, label: '触发感知' },
-    { id: 'e-gate-mem', source: 'safety-gate', target: 'mem', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-primary-500)', strokeWidth: 1.5, strokeDasharray: '4 2' } },
-    { id: 'e-gate-disk', source: 'safety-gate', target: 'disk', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-primary-500)', strokeWidth: 1.5, strokeDasharray: '4 2' } },
-    { id: 'e-gate-net', source: 'safety-gate', target: 'net', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-primary-500)', strokeWidth: 1.5, strokeDasharray: '4 2' } },
-    { id: 'e-gate-proc', source: 'intent-audit', target: 'proc', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-primary-500)', strokeWidth: 1.5, strokeDasharray: '4 2' } },
-    // perception→control
-    { id: 'e-cpu-health', source: 'cpu', target: 'sk-health', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-success)', strokeWidth: 2 } },
-    { id: 'e-mem-health', source: 'mem', target: 'sk-health', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-success)', strokeWidth: 1.5, strokeDasharray: '4 2' } },
-    { id: 'e-disk-sk', source: 'disk', target: 'sk-disk', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-success)', strokeWidth: 1.5, strokeDasharray: '4 2' } },
-    { id: 'e-net-sk', source: 'net', target: 'sk-net', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-success)', strokeWidth: 1.5, strokeDasharray: '4 2' } },
-    { id: 'e-proc-mcp', source: 'proc', target: 'sk-mcp', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-success)', strokeWidth: 1.5, strokeDasharray: '4 2' } },
-    // control→execution
-    { id: 'e-mcp-exec', source: 'sk-mcp', target: 'exec-cmd', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-warning)', strokeWidth: 2.5 }, label: '分发执行' },
-    { id: 'e-sec-exec', source: 'sk-sec', target: 'exec-cmd', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-warning)', strokeWidth: 2 }, label: '安全策略' },
-    // execution 内部
-    { id: 'e-exec-snap', source: 'exec-cmd', target: 'snap', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-danger)', strokeWidth: 2 }, label: '执行前备份' },
-    { id: 'e-snap-roll', source: 'snap', target: 'rollback', type: 'smoothstep', style: { stroke: 'var(--color-danger)', strokeWidth: 1.5, strokeDasharray: '4 2' }, label: '失败→恢复' },
-    // execution→audit
-    { id: 'e-exec-trace', source: 'exec-cmd', target: 'trace', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-metric-process)', strokeWidth: 2.5 } },
-    { id: 'e-snap-jsonl', source: 'snap', target: 'jsonl', type: 'smoothstep', style: { stroke: 'var(--color-metric-process)', strokeWidth: 1.5, strokeDasharray: '4 2' } },
-    // audit 内部
-    { id: 'e-trace-export', source: 'trace', target: 'export-s', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-metric-process)', strokeWidth: 1.5 } },
-    { id: 'e-export-fb', source: 'export-s', target: 'feedback', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-metric-process)', strokeWidth: 1.5 } },
-    // audit→intent (闭环)
-    { id: 'e-fb-intent', source: 'feedback', target: 'intent-input', type: 'smoothstep', animated: true, style: { stroke: 'var(--color-metric-process)', strokeWidth: 1.5, strokeDasharray: '8 4' }, label: '知识回流·闭环' },
-  ]
+  return buildCanvasEdges()
 }
 
 function autoLayout() {
   nodes.value = buildNodes()
   edges.value = buildEdges()
   nextTick(() => {
-    if (vueFlowRef.value) vueFlowRef.value.fitView({ padding: 0.3 })
+    if (vueFlowRef.value) vueFlowRef.value.fitView({ padding: 0.15, maxZoom: 0.85 })
   })
 }
 
@@ -262,27 +277,49 @@ function fitView() {
 // ---- 实时数据轮询 ----
 async function fetchLiveData() {
   try {
-    const [flow, mcp] = await Promise.all([
-      api.get('/workflow/flow-status').catch(() => null),
+    const [metrics, mcp, evalRes] = await Promise.all([
+      api.get('/perception/metrics').catch(() => null),
       api.get('/mcp/servers').catch(() => []),
+      api.get('/eval/score').catch(() => null),
     ])
-    if (!flow?.layers) { liveConnected.value = false; return }
-    liveConnected.value = true
-    const c = flow.layers.collection
-    if (c?.nodes) {
-      const m = {}
-      c.nodes.forEach(n => { m[n.id] = n })
-      ;['cpu', 'mem', 'disk', 'net'].forEach(id => {
-        const nd = nodes.value.find(n => n.id === id)
-        const src = m[id]
-        if (nd && src) nd.data = { ...nd.data, value: src.value, sub: src.subtitle, percent: parseFloat(src.value) || 0, alert: src.alert }
-      })
+    liveConnected.value = Boolean(metrics)
+    if (metrics) {
+      const nd = nodes.value.find(n => n.id === 'rail-l1-static')
+      if (nd) {
+        const cpu = metrics.cpu_percent ?? 0
+        nd.data = {
+          ...nd.data,
+          value: `${cpu}%`,
+          sub: `内存 ${metrics.memory_percent ?? '—'}% · 磁盘 ${metrics.disk_percent ?? '—'}%`,
+          percent: cpu,
+          alert: cpu > 85,
+        }
+      }
     }
+    if (evalRes?.dimension_scores) {
+      const vals = Object.values(evalRes.dimension_scores).filter(v => typeof v === 'number')
+      const avg = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0
+      const nd = nodes.value.find(n => n.id === 'spine-l5-analytics')
+      if (nd) {
+        nd.data = {
+          ...nd.data,
+          value: `${avg}%`,
+          sub: 'L5 六维均值',
+          percent: avg,
+          alert: avg < 70,
+        }
+      }
+    }
+    const clusterIds = ['rail-l3-metrics', 'rail-l3-logs', 'rail-l3-repair', 'rail-l3-schedule']
     if (Array.isArray(mcp)) {
-      const names = ['sk-health', 'sk-net', 'sk-disk', 'sk-sec', 'sk-mcp']
-      mcp.slice(0, 5).forEach((s, i) => {
-        const nd = nodes.value.find(n => n.id === names[i])
-        if (nd) nd.data = { ...nd.data, label: s.display_name || s.name, tools: s.tools_count || s.tool_count || 0 }
+      mcp.slice(0, 4).forEach((s, i) => {
+        const nd = nodes.value.find(n => n.id === clusterIds[i])
+        if (nd) {
+          nd.data = {
+            ...nd.data,
+            tools: s.tools_count || s.tool_count || s.tools || nd.data.tools,
+          }
+        }
       })
     }
   } catch {
@@ -290,12 +327,69 @@ async function fetchLiveData() {
   }
 }
 
-function updateClock() {
-  now.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+const NODE_ROUTES = {
+  'spine-l1-input': '/agent',
+  'spine-l1-plan': '/agent',
+  'spine-l2-verdict': '/safety',
+  'spine-gate': '/agent',
+  'spine-l3-exec': '/agent',
+  'spine-l4-trace': '/trace',
+  'spine-l5-analytics': '/l5',
+  'rail-l1-boundary': '/l1/boundary',
+  'rail-l1-knowledge': '/knowledge',
+  'rail-l1-static': '/perception',
+  'rail-l2-intent': '/safety',
+  'rail-l2-sandbox': '/safety',
+  'rail-l2-guard': '/safety',
+  'rail-l3-mcp': '/mcp',
+  'rail-l3-flow': '/flows',
+  'rail-l3-metrics': '/mcp',
+  'rail-l3-logs': '/mcp',
+  'rail-l3-repair': '/mcp',
+  'rail-l3-schedule': '/mcp',
+  'rail-l4-chart': '/trace',
+  'rail-l4-audit': '/trace',
+  'rail-l4-wiki': '/knowledge',
+  'rail-l5-scatter': '/l5',
+  'rail-l5-heatmap': '/l5',
+  'rail-l5-root': '/l5',
+  'rail-l5-test': '/l5',
 }
 
-function onNodeDblClick(/* { node } */) {
-  /* drawDetail(node) */
+function onNodeClick({ node }) {
+  if (!node) return
+  selectedNode.value = node
+  const en = node.data?.labelEn ? ` (${node.data.labelEn})` : ''
+  drawerTitle.value = `${node.data?.layer || ''} · ${node.data?.label || node.id}${en}`
+  drawerData.value = node.data
+  const meta = CANVAS_LAYER_META[node.data?.layer]
+  const rows = [
+    { label: '节点 ID', value: node.id, mono: true },
+    { label: '层级 Layer', value: `${node.data?.layer} · ${meta?.labelEn || ''}` },
+    { label: '类型 Type', value: node.data?.tier === 'spine' ? '主线 Main' : '辅线 Rail' },
+    { label: 'Agent', value: meta?.agent || '—' },
+  ]
+  if (node.data?.labelEn) rows.push({ label: 'English', value: node.data.labelEn })
+  if (node.data?.command) rows.push({ label: '说明', value: node.data.command })
+  if (node.data?.stages) rows.push({ label: '阶段', value: node.data.stages })
+  if (node.data?.time) rows.push({ label: '详情', value: node.data.time })
+  if (node.data?.value) rows.push({ label: '数值', value: node.data.value })
+  drawerSections.value = [{ title: '节点信息 Node', rows }]
+  const path = node.data?.route || NODE_ROUTES[node.id]
+  const band = layerBands.find(b => b.layer === node.data?.layer)
+  drawerActions.value = []
+  if (path) drawerActions.value.push({ label: '打开页面 Open', type: 'primary', action: () => router.push(path) })
+  if (band?.route) drawerActions.value.push({ label: `定位层 ${band.layer}`, type: 'default', action: () => jumpToLayer(band.layer) })
+  drawerOpen.value = true
+}
+
+function onNodeDblClick({ node }) {
+  const path = node?.data?.route || NODE_ROUTES[node?.id]
+  if (path) router.push(path)
+}
+
+function updateClock() {
+  now.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
 }
 
 onMounted(() => {
@@ -332,7 +426,7 @@ onUnmounted(() => {
   align-items: center;
   padding: 0 var(--space-4);
   height: 44px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(15, 23, 42, 0.88);
   border-bottom: 1px solid var(--color-border-default);
   flex-shrink: 0;
   z-index: 10;
@@ -349,13 +443,19 @@ onUnmounted(() => {
 .canvas-title {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  color: #0f172a;
+  color: var(--color-text-primary);
+}
+
+.canvas-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-left: 8px;
 }
 
 .canvas-clock {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: #64748b;
+  color: var(--color-text-muted);
   min-width: 70px;
   text-align: right;
 }
@@ -372,9 +472,130 @@ onUnmounted(() => {
     linear-gradient(160deg, #1e293b 0%, #1a2744 38%, #0f172a 100%);
 }
 
+.canvas-layer-bands {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.canvas-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0%, transparent 35%, transparent 65%, rgba(255, 255, 255, 0.03) 100%);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.canvas-band.is-active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--band-accent) 18%, transparent), transparent 40%);
+}
+
+.canvas-band-btn {
+  position: absolute;
+  right: 12px;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.canvas-band-id {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--band-accent);
+}
+
+.canvas-band-cn { font-size: 10px; color: rgba(255, 255, 255, 0.9); }
+.canvas-band-en { font-size: 9px; color: rgba(255, 255, 255, 0.45); }
+
+.canvas-col-head {
+  position: absolute;
+  top: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.canvas-col-rail { left: 72px; }
+.canvas-col-spine { left: 520px; }
+
+.canvas-layer-nav {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.layer-nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 2px solid var(--nav-accent, #64748b);
+  background: rgba(15, 23, 42, 0.85);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.layer-nav-btn.active,
+.layer-nav-btn:hover {
+  background: color-mix(in srgb, var(--nav-accent) 35%, #0f172a);
+}
+
 .canvas-viewport :deep(.vue-flow) {
   background: transparent !important;
+  z-index: 2;
 }
+
+.cv-node-label-en {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+/* 主线 Main Spine */
+.cv-node--spine {
+  min-width: 260px;
+  max-width: 320px;
+  border-width: 2.5px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+}
+
+.cv-node--spine .cv-node-label { font-size: 14px; font-weight: 700; }
+.cv-node--spine .cv-node-value { font-size: 26px; }
+
+/* 左侧辅线 Left Rail */
+.cv-node--rail {
+  min-width: 130px;
+  max-width: 168px;
+  border-style: dashed;
+  opacity: 0.94;
+}
+
+.cv-node--rail .cv-node-label { font-size: 11px; }
+.cv-node--rail .cv-node-sub,
+.cv-node--rail .cv-node-cmd { font-size: 9px; }
 
 .cv-node {
   background: #ffffff;
@@ -386,11 +607,31 @@ onUnmounted(() => {
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  /* GPU 友好：仅对 transform/box-shadow/border-color 做过渡 */
   transition:
     transform var(--duration-normal) var(--ease-out),
     box-shadow var(--duration-normal) var(--ease-out),
     border-color var(--duration-normal) var(--ease-out);
+}
+
+/* legacy tier aliases → spine/rail */
+.cv-node--primary {
+  min-width: 260px;
+  max-width: 320px;
+  border-width: 2.5px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+}
+
+.cv-node--nested {
+  min-width: 130px;
+  max-width: 168px;
+  border-style: dashed;
+  opacity: 0.94;
+}
+
+/* 辅助节点 */
+.cv-node--secondary {
+  min-width: 140px;
+  max-width: 180px;
 }
 
 .cv-node:hover {

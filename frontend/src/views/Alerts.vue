@@ -1,23 +1,21 @@
 <template>
   <div class="alerts-view">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">告警管理</h1>
-        <p class="page-subtitle">实时告警监控 · 蓝队威胁检测 · 自动刷新</p>
-      </div>
-      <div class="page-actions">
+    <PageHeader
+      :title="pageMeta.label"
+      :subtitle="pageMeta.subtitle"
+      :layer="pageMeta.layer"
+    >
+      <template #actions>
         <span class="auto-refresh-badge" :class="polling ? 'active' : ''">
           <span class="pulse-dot"></span>
           {{ polling ? '30s 自动刷新' : '已暂停' }}
         </span>
-        <el-button type="primary" size="small" :loading="loading" @click="fetchAlerts">
-          <el-icon style="margin-right:4px"><Refresh /></el-icon> 刷新
-        </el-button>
+        <PipelineBtn action="refresh" size="small" :loading="loading" @click="fetchAlerts" />
         <el-button size="small" plain @click="togglePoll">
           {{ polling ? '暂停' : '恢复' }}
         </el-button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- 告警统计卡片 -->
     <div class="stat-grid">
@@ -115,6 +113,11 @@ import { useAlertsStore } from '../stores/alerts'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatBeijingTime, formatRelativeBeijing } from '../utils/formatTime'
 import api from '../api'
+import PageHeader from '../components/common/PageHeader.vue'
+import PipelineBtn from '../components/common/PipelineBtn.vue'
+import { NAV_PAGES } from '../constants/navigation'
+
+const pageMeta = NAV_PAGES.alerts
 
 const POLL_MS = 5000
 const router = useRouter()

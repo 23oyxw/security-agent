@@ -1,26 +1,25 @@
 <template>
   <div class="trace-view">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">推理溯源 · Trace</h1>
-        <p class="page-subtitle">全链路追踪 · 事件脊柱 · 可视化分析 · 蓝队审计</p>
-      </div>
-      <div class="page-actions">
+    <PageHeader
+      :title="pageMeta.label"
+      :subtitle="pageMeta.subtitle"
+      :layer="pageMeta.layer"
+      :agent="pageMeta.agent"
+    >
+      <template #actions>
         <el-select v-model="pageSize" size="small" style="width:80px" @change="fetchTraces">
           <el-option :value="10" label="10条" />
           <el-option :value="20" label="20条" />
           <el-option :value="50" label="50条" />
         </el-select>
-        <el-button type="primary" size="small" :loading="loading" @click="fetchTraces">
-          <el-icon style="margin-right:4px"><Refresh /></el-icon> 刷新
-        </el-button>
+        <PipelineBtn action="refresh" size="small" :loading="loading" @click="fetchTraces" />
         <el-popconfirm title="清除 30 天前的旧 Trace？" @confirm="cleanupOld">
           <template #reference>
             <el-button size="small" type="warning" plain>清理旧记录</el-button>
           </template>
         </el-popconfirm>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- 统计卡片 -->
     <div class="stat-grid">
@@ -114,26 +113,55 @@
       </div>
     </div>
 
-    <!-- 详情弹窗 -->
-    <el-dialog v-model="detailOpen" :title="`Trace 详情 · ${detailRow?.trace_id || ''}`" width="800px" destroy-on-close class="trace-detail-dialog">
+    <!-- 详情弹窗 · 按五层分组 -->
+    <el-dialog v-model="detailOpen" :title="`Trace 卷宗 · ${detailRow?.trace_id || ''}`" width="860px" destroy-on-close class="trace-detail-dialog">
       <div v-loading="detailLoading" class="detail-body">
-        <el-empty v-if="!detailLoading && !detailNodes.length" description="无阶段数据，可导出「纪要」或「分析图」" />
+        <el-empty v-if="!detailLoading && !detailLayerGroups.length" description="无阶段数据，可导出「纪要」或「分析图」" />
         <template v-else>
-          <!-- 阶段链可视化 -->
-          <div class="stage-timeline" style="max-height:420px;overflow-y:auto">
-            <div v-for="(node, i) in detailNodes" :key="node.node_id || i" class="stage-node" :style="{ '--node-index': i }">
-              <div class="stage-node-marker" :class="node.status === 'success' ? 'success' : 'warning'">
-                <el-icon v-if="node.status === 'success'" :size="14"><CircleCheck /></el-icon>
-                <el-icon v-else :size="14"><WarningFilled /></el-icon>
-              </div>
-              <div class="stage-node-card">
-                <div class="stage-node-header">
-                  <span class="stage-node-name">{{ node.name || node.stage || `阶段 ${i + 1}` }}</span>
-                  <span v-if="node.duration_ms" class="stage-node-duration">{{ Number(node.duration_ms).toFixed(0) }}ms</span>
+          <div class="trace-layer-stack" style="max-height:480px;overflow-y:auto">
+            <section v-for="group in detailLayerGroups" :key="group.layer" class="trace-layer-section">
+              <header class="trace-layer-head" :style="{ '--layer-accent': group.accent }">
+                <span class="trace-layer-id">{{ group.layer }}</span>
+                <div class="trace-layer-titles">
+                  <span class="trace-layer-cn">{{ group.cn }}</span>
+                  <span class="trace-layer-en">{{ group.en }}</span>
                 </div>
-                <div class="stage-node-desc">{{ traceNodeDesc(node) }}</div>
+                <span class="trace-layer-agent">{{ group.agent }}</span>
+                <span class="trace-layer-count">{{ group.nodes.length }} 步</span>
+              </header>
+              <div class="stage-timeline stage-timeline--layer">
+                <div
+                  v-for="(node, i) in group.nodes"
+                  :key="node.node_id || `${group.layer}-${i}`"
+                  class="stage-node"
+                  :style="{ '--node-index': i, '--layer-accent': group.accent }"
+                >
+                  <div class="stage-node-marker" :class="node.statusType || (node.status === 'success' ? 'success' : 'warning')">
+                    <el-icon v-if="(node.statusType || node.status) === 'success'" :size="14"><CircleCheck /></el-icon>
+                    <el-icon v-else :size="14"><WarningFilled /></el-icon>
+                  </div>
+                  <div class="stage-node-card" :class="{ 'is-tool': node.isTool }">
+                    <div class="stage-node-header">
+                      <div class="stage-node-title-wrap">
+                        <span class="stage-node-name">{{ node.displayTitle || node.name }}</span>
+                        <span v-if="node.toolLabel" class="stage-node-tool">{{ node.toolLabel }}</span>
+                      </div>
+                      <div class="stage-node-badges">
+                        <el-tag size="small" effect="plain" :style="{ borderColor: group.accent, color: group.accent }">
+                          {{ group.layer }} · {{ node.layerCn || group.cn }}
+                        </el-tag>
+                        <span class="stage-node-status" :class="'is-' + (node.statusType || 'success')">
+                          {{ node.statusCn }} / {{ node.statusEn }}
+                        </span>
+                        <span v-if="node.duration_ms" class="stage-node-duration">{{ Number(node.duration_ms).toFixed(0) }}ms</span>
+                      </div>
+                    </div>
+                    <div class="stage-node-subline">{{ node.displaySub }}</div>
+                    <div class="stage-node-desc">{{ traceNodeDesc(node) }}</div>
+                  </div>
+                </div>
               </div>
-            </div>
+            </section>
           </div>
           <!-- 摘要信息 -->
           <el-descriptions v-if="detailSummary && Object.keys(detailSummary).length" :column="2" size="small" border class="detail-summary">
@@ -143,6 +171,7 @@
           <div class="detail-actions">
             <el-button type="primary" size="small" @click="exportTrace(detailRow.trace_id, 'text')">导出执行纪要 (.txt)</el-button>
             <el-button type="success" size="small" @click="exportTrace(detailRow.trace_id, 'html')">导出可视化分析 (.html)</el-button>
+            <el-button size="small" text type="info" @click="goL5Analysis">L5 链路分析</el-button>
             <el-button size="small" text type="info" @click="exportTrace(detailRow.trace_id, 'json')">JSON（调试）</el-button>
           </div>
         </template>
@@ -153,7 +182,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import {
   chartTooltip, categoryAxis, valueAxis,
@@ -164,8 +193,15 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatBeijingTime, formatRelativeBeijing } from '../utils/formatTime'
 import { downloadBlob, fetchWithAuth } from '../utils/download'
 import ArchitectureLayers from '../components/ArchitectureLayers.vue'
+import PageHeader from '../components/common/PageHeader.vue'
+import PipelineBtn from '../components/common/PipelineBtn.vue'
+import { NAV_PAGES } from '../constants/navigation'
+import { enrichTraceNodes, groupTraceNodesByLayer } from '../constants/trace-layer-map'
+
+const pageMeta = NAV_PAGES.trace
 
 const route = useRoute()
+const router = useRouter()
 
 const traces = ref([])
 const loading = ref(false)
@@ -183,6 +219,8 @@ const detailRow = ref(null)
 const detailLoading = ref(false)
 const detailNodes = ref([])
 const detailSummary = ref({})
+
+const detailLayerGroups = computed(() => groupTraceNodesByLayer(detailNodes.value))
 
 const summaryCards = computed(() => [
   { label: '总记录', value: traces.value.length, suffix: '条' },
@@ -227,14 +265,20 @@ function formatSummaryVal(v) {
 }
 function traceNodeDesc(n) {
   const parts = []
+  if (n.toolName) parts.push(`工具 Tool: ${n.toolName}`)
   if (n.detail) parts.push(String(n.detail).slice(0, 160))
   if (n.details && typeof n.details === 'object') {
     const brief = formatObjBrief(n.details, 140)
     if (brief) parts.push(brief)
   }
-  if (n.duration_ms) parts.push(`耗时: ${Number(n.duration_ms).toFixed(0)}ms`)
-  if (n.verdict) parts.push(`判定: ${n.verdict}`)
-  return parts.join(' | ') || '—'
+  if (n.duration_ms) parts.push(`耗时 Duration: ${Number(n.duration_ms).toFixed(0)}ms`)
+  if (n.verdict) parts.push(`判定 Verdict: ${n.verdict}`)
+  return parts.join(' · ') || '—'
+}
+
+function goL5Analysis() {
+  if (!detailRow.value?.trace_id) return
+  router.push({ path: '/l5', query: { trace: detailRow.value.trace_id } })
 }
 
 function nodesFromBundle(bundle) {
@@ -282,7 +326,7 @@ async function openDetail(row) {
         audit_events: (bundle.audit_events || []).length,
       }
     }
-    detailNodes.value = nodes
+    detailNodes.value = enrichTraceNodes(nodes)
     detailSummary.value = summary
     const idx = traces.value.findIndex(t => t.trace_id === row.trace_id)
     if (idx >= 0) {
@@ -686,6 +730,49 @@ async function cleanupOld() {
   min-height: 200px;
 }
 
+/* 五层分组 Layer groups */
+.trace-layer-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.trace-layer-section {
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.trace-layer-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--layer-accent) 12%, #fff), #fff);
+  border-bottom: 2px solid var(--layer-accent);
+}
+
+.trace-layer-id {
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--layer-accent);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.trace-layer-titles { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+.trace-layer-cn { font-size: var(--text-sm); font-weight: 600; color: var(--color-neutral-800); }
+.trace-layer-en { font-size: 10px; color: var(--color-neutral-400); }
+.trace-layer-agent { font-size: 10px; color: var(--color-neutral-500); }
+.trace-layer-count { font-size: 10px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+
+.stage-timeline--layer {
+  padding: var(--space-4) var(--space-4) var(--space-2) calc(32px + var(--space-4));
+  margin-bottom: 0;
+}
+
 .stage-timeline {
   position: relative;
   padding-left: 32px;
@@ -726,6 +813,12 @@ async function cleanupOld() {
 
 .stage-node-marker.success { background: var(--color-success-bg); color: var(--color-success); }
 .stage-node-marker.warning { background: var(--color-warning-bg); color: var(--color-warning); }
+.stage-node-marker.danger { background: var(--color-danger-bg); color: var(--color-danger); }
+.stage-node-marker.info { background: var(--color-primary-50); color: var(--color-primary-500); }
+
+.stage-node-card.is-tool {
+  border-left: 3px solid var(--layer-accent, var(--color-primary-400));
+}
 
 .stage-node-card {
   background: var(--color-neutral-50);
@@ -742,8 +835,46 @@ async function cleanupOld() {
 
 .stage-node-header {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.stage-node-title-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.stage-node-badges {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: var(--space-2);
+}
+
+.stage-node-tool {
+  font-size: 10px;
+  color: var(--color-neutral-500);
+  background: var(--color-neutral-100);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.stage-node-status {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.stage-node-status.is-success { color: var(--color-success); }
+.stage-node-status.is-warning { color: var(--color-warning); }
+.stage-node-status.is-danger { color: var(--color-danger); }
+.stage-node-status.is-info { color: var(--color-primary-500); }
+
+.stage-node-subline {
+  font-size: 10px;
+  color: var(--color-neutral-400);
   margin-bottom: var(--space-1);
 }
 

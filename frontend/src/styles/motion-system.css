@@ -1,0 +1,316 @@
+/* ============================================================
+   MOTION SYSTEM — Aurora + Reveal + Tactile Micro-interactions
+   ui-ux-pro-max: Motion-Driven + Micro-interactions + Aurora UI
+   ============================================================ */
+
+/* ---- Aurora 背景漂移（仅氛围层，GPU 友好） ---- */
+@keyframes aurora-drift {
+  0% { background-position: 0% 40%, 100% 60%, 50% 50%; }
+  33% { background-position: 30% 70%, 70% 30%, 60% 40%; }
+  66% { background-position: 80% 20%, 20% 80%, 40% 60%; }
+  100% { background-position: 0% 40%, 100% 60%, 50% 50%; }
+}
+
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.45; }
+  50% { transform: translate(12px, -18px) scale(1.08); opacity: 0.65; }
+}
+
+@keyframes flow-pulse {
+  0%, 100% { opacity: 0.35; transform: scaleX(0.92); }
+  50% { opacity: 0.85; transform: scaleX(1); }
+}
+
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+/* 主题背景 Aurora 叠加 */
+.app-shell[class*='page-theme-']::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 55% 45% at 20% 80%, var(--page-accent-glow, rgba(37, 99, 235, 0.18)) 0%, transparent 58%),
+    radial-gradient(ellipse 50% 40% at 85% 15%, color-mix(in srgb, var(--page-secondary, #06b6d4) 35%, transparent) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 35% at 50% 50%, color-mix(in srgb, var(--page-accent-light, #60a5fa) 20%, transparent) 0%, transparent 60%);
+  background-size: 200% 200%, 180% 180%, 160% 160%;
+  animation: aurora-drift 16s ease-in-out infinite;
+  mix-blend-mode: soft-light;
+  opacity: 0.75;
+}
+
+.app-shell.page-theme-canvas::before {
+  display: none;
+}
+
+/* Aurora 层在 z-index:0；侧栏/主区必须在其上，否则整页只剩背景 */
+.app-shell > .sidebar,
+.app-shell > .main-area {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- 环境光球（MainLayout 内 DOM） ---- */
+.ambient-orbs {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  animation: orb-float 14s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.ambient-orb--1 {
+  width: 320px;
+  height: 320px;
+  top: 8%;
+  right: 12%;
+  background: var(--page-accent-glow, rgba(37, 99, 235, 0.22));
+  animation-delay: 0s;
+}
+
+.ambient-orb--2 {
+  width: 260px;
+  height: 260px;
+  bottom: 15%;
+  left: 18%;
+  background: color-mix(in srgb, var(--page-secondary, #06b6d4) 30%, transparent);
+  animation-delay: -5s;
+  animation-duration: 18s;
+}
+
+.ambient-orb--3 {
+  width: 180px;
+  height: 180px;
+  top: 45%;
+  left: 55%;
+  background: color-mix(in srgb, var(--page-accent-light, #93c5fd) 25%, transparent);
+  animation-delay: -9s;
+  animation-duration: 12s;
+}
+
+/* ---- 入场揭示（Intersection Observer 加 .is-visible） ---- */
+.reveal-item {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal-item.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { --reveal-delay: 40ms; }
+.reveal-delay-2 { --reveal-delay: 80ms; }
+.reveal-delay-3 { --reveal-delay: 120ms; }
+.reveal-delay-4 { --reveal-delay: 160ms; }
+.reveal-delay-5 { --reveal-delay: 200ms; }
+.reveal-delay-6 { --reveal-delay: 240ms; }
+
+/* ---- 卡片触觉反馈（无布局位移） ---- */
+.motion-lift {
+  cursor: pointer;
+  transition:
+    box-shadow var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.motion-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-cinematic-hover) !important;
+  border-color: color-mix(in srgb, var(--page-accent, #2563eb) 35%, var(--glass-border)) !important;
+}
+
+.motion-lift:active {
+  transform: translateY(0) scale(0.995);
+  transition-duration: 80ms;
+}
+
+/* 指标卡 shimmer 高光 */
+.metric-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 42%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 58%
+  );
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.metric-card:hover::after {
+  animation: shimmer-sweep 0.75s ease-out;
+}
+
+/* ---- 五大支柱工作流轨道 ---- */
+.pillar-rail {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: var(--space-2) var(--space-4);
+  margin: 0 var(--space-6) var(--space-3);
+  background: var(--glass-surface, #fff);
+  border: 1px solid var(--glass-border, rgba(15, 23, 42, 0.1));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(12px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: relative;
+  z-index: 2;
+}
+
+.pillar-rail::-webkit-scrollbar { display: none; }
+
+.pillar-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+  border: none;
+  background: transparent;
+}
+
+.pillar-step:hover {
+  color: var(--color-text-primary);
+  background: var(--glass-chip, #f1f5f9);
+}
+
+.pillar-step.is-active {
+  color: var(--page-accent, var(--color-primary-600));
+  background: color-mix(in srgb, var(--page-accent, #2563eb) 10%, transparent);
+  font-weight: var(--weight-semibold);
+}
+
+.pillar-step.is-active .pillar-dot {
+  background: var(--page-accent, var(--color-primary-600));
+  box-shadow: 0 0 8px var(--page-accent-glow, rgba(37, 99, 235, 0.35));
+}
+
+.pillar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-neutral-300);
+  flex-shrink: 0;
+  transition: background var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+.pillar-connector {
+  flex: 1;
+  min-width: 24px;
+  max-width: 48px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--color-neutral-200) 0%,
+    color-mix(in srgb, var(--page-accent, #2563eb) 40%, var(--color-neutral-200)) 50%,
+    var(--color-neutral-200) 100%
+  );
+  border-radius: 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pillar-connector::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--page-accent, #2563eb), transparent);
+  opacity: 0.5;
+  animation: flow-pulse 2.5s ease-in-out infinite;
+}
+
+.pillar-rail-label {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  padding-right: var(--space-3);
+  border-right: 1px solid var(--glass-border);
+  margin-right: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* 顶栏主题胶囊 */
+.theme-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+  background: color-mix(in srgb, var(--page-accent, #2563eb) 12%, #fff);
+  color: var(--page-accent, var(--color-primary-700));
+  border: 1px solid color-mix(in srgb, var(--page-accent, #2563eb) 25%, transparent);
+  flex-shrink: 0;
+}
+
+.theme-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--page-accent, var(--color-primary-600));
+  box-shadow: 0 0 6px var(--page-accent-glow, rgba(37, 99, 235, 0.4));
+}
+
+@media (max-width: 900px) {
+  .pillar-rail-label { display: none; }
+  .pillar-step span:not(.pillar-dot) { display: none; }
+  .pillar-step { padding: var(--space-2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell[class*='page-theme-']::before,
+  .ambient-orb,
+  .pillar-connector::after,
+  .metric-card::after,
+  .reveal-item {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

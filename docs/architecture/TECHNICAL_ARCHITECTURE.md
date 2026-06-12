@@ -1,8 +1,9 @@
-# 技术架构总览 v0.7.0
+# 技术架构总览 v0.8.0
 
 > **定位**：银河麒麟智能安全运维 Agent（A2 赛题）——以 `security-agent` 为主干，FastAPI 为核心服务层，Streamlit / Vue3 双前端可选，qt01 为赛题能力参考库。  
-> **更新**：2026-05-30  
-> **关联**：[MASTER_PLAN.md](MASTER_PLAN.md)（总控计划）· [TECH_STACK.md](TECH_STACK.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [A2_ARCHITECTURE_MAPPING.md](../A2_ARCHITECTURE_MAPPING.md)
+> **更新**：2026-06-11  
+> **Agent 编排权威**：[FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md)（五层流水线 · 先分析后执行 · 计划/执行双模式）  
+> **关联**：[MASTER_PLAN.md](MASTER_PLAN.md) · [TECH_STACK.md](TECH_STACK.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [A2_ARCHITECTURE_MAPPING.md](../A2_ARCHITECTURE_MAPPING.md)
 
 ---
 
@@ -37,80 +38,118 @@
 
 ---
 
-## 2. 分层架构与解耦边界
+## 2. 五层智能体流水线（运行时编排）
 
-### 2.1 逻辑分层
+> 完整定义见 **[FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md)**。以下为与技术栈对齐的摘要。
+
+### 2.0 设计约束（强制）
+
+| 约束 | 说明 |
+|------|------|
+| 先分析后执行 | 任何用户指令/流程/批量操作必须先经 **L1 分析计划** |
+| L1/L2 不决策 | 第一、二层只感知与管控，**禁止**直接调用写操作 MCP/executor |
+| Agent 复用 | L1 分析计划与 L3 推理分发 **共用同一 Agent**（`mode=plan\|execute`） |
+| MCP+Flow 一体 | 原子 MCP 工具与封装流程 **同一注册模块**，热插拔、统一审计 |
+| 知识在 Wiki | 边界对抗数据、规范知识库、知识回流 → **Gitee Wiki** |
+
+### 2.1 五层总览
+
+```text
+用户输入 → L1 感知计划 → L2 安全管控(+沙箱) → L3 推理分发 → L4 审计回流 → L5 数学分析
+           │并行│           │并排│              │MCP+Flow│      │trace+Wiki│   │指标+绘图│
+           不执行           不执行              可执行          高要求审计
+```
+
+| 层 | 名称 | 核心能力 | 主干模块 |
+|----|------|----------|----------|
+| **L1** | 感知与计划 | 分析计划 · 边界感知 · 知识检索 · 静态感知 · 意图识别 | `agent/` `knowledge/` `monitor/` `scanner/` `demo/boundary` |
+| **L2** | 安全管控 | 护栏/兜底/熔断/热插拔/高危截断/确认/CPU弹窗 ∥ 沙箱试跑 | `safety_gate/` `resilience/` `terminal/sandbox` `mcp/registry` |
+| **L3** | 推理分发执行 | MCP 工具 + 封装流程（metrics/logs/repair/schedule） | `agent/orchestrator` `mcp/` `skills/flows/` `tools/` |
+| **L4** | 审计与回流 | 审计分析 · trace_id 追溯 · 案例打标 → Gitee Wiki | `audit/` `knowledge/reflux`（目标） |
+| **L5** | 链路分析迭代 | 散点/热力/溯源 · 六维指标 · 集成测试 | `l5/analytics.py` · `api/routes/l5_routes.py` |
+
+### 2.2 逻辑分层（与五层正交）
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
 │ 表现层 Presentation                                              │
 │  Streamlit(ui/)  │  Vue3(frontend/)  │  MCP Client / IDE        │
-│  耦合方式：import  │  HTTP /api/*      │  stdio MCP              │
+│  Agent 主界面：计划模式 / 执行模式 · 批量指令（先分析后执行）      │
 └────────────────────────────┬────────────────────────────────────────┘
                              │ 仅通过公开接口
 ┌────────────────────────────▼────────────────────────────────────────┐
 │ API 网关层  security_agent/api/                                       │
-│  认证 JWT │ 路由分五大支柱 │ CORS │ 静态资源 frontend/dist            │
+│  L1–L5 分路由 │ JWT │ CORS │ 执行闸门 middleware                       │
 └────────────────────────────┬────────────────────────────────────────┘
                              │
 ┌────────────────────────────▼────────────────────────────────────────┐
-│ 编排层 Orchestration                                                │
-│  agent/orchestrator  agent/brain  agent/autonomous                  │
-│  workflow/engine（自主任务状态机，非可视化编辑器）                      │
+│ 五层编排层（见 FIVE_LAYER_PIPELINE.md）                               │
+│  L1 plan → L2 gate → L3 dispatch → L4 audit → L5 analytics          │
 └────────────────────────────┬────────────────────────────────────────┘
                              │
         ┌────────────────────┼────────────────────┐
         ▼                    ▼                    ▼
 ┌───────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│ 安全控制层     │  │ 能力层           │  │ 感知与数据层      │
-│ safety_gate/  │  │ tools/ skills/  │  │ monitor/ scanner/│
-│ rules/        │  │ knowledge/      │  │ terminal/ audit/ │
-│ confirm/      │  │ retrieval/      │  │ storage/ data/   │
+│ L2 安全控制    │  │ L3 能力层        │  │ L1/L5 感知数据   │
+│ safety_gate/  │  │ mcp+flows/tools │  │ monitor/scanner │
+│ resilience/   │  │ terminal/exec   │  │ knowledge/wiki  │
 └───────────────┘  └─────────────────┘  └─────────────────┘
 ```
 
-### 2.2 解耦规则（强制）
+### 2.3 解耦规则（强制）
 
 | 规则 | 说明 |
 |------|------|
-| **UI 不 import 业务** | Vue / Streamlit 禁止 `from security_agent.agent import ...`，只调 `/api/*` 或封装好的 client |
-| **安全先于执行** | 写操作必经 `SafetyGate` 或 `ThreeLayerDefenseEngine`，再进 `terminal/executor` |
-| **事件脊柱** | `audit/spine.py`：`TraceContext` + `ReasoningTrace` + `RequestBudget` 同一 `trace_id`；`GET /api/trace/{id}/export` 导出卷宗 |
-| **弹性** | `resilience/`：超时预算树、依赖熔断（`llm:*`/`dify:proxy`）、S0–S2 降级阶梯 |
-| **工具双注册** | `tools/registry.py`（原始工具）+ `skills/registry.py`（MCP Skill），合并暴露给 Brain |
-| **Skill 三层封装** | L1 原子工具/MCP → L2 `skills/flows/` 多步 flow → L3 `agent/orchestrator` 胶水；详见 [MASTER_PLAN.md §2](MASTER_PLAN.md#2-解耦与-skill-封装分层l1--l2--l3) |
-| **配置单入口** | 主干用 `security_agent/config.py`；禁止与 qt01 的 `config/` 包混用 |
-| **qt01 隔离** | `qt01/` 不参与 `uv run`、不参与 CI 默认路径 |
+| **UI 不 import 业务** | Vue / Streamlit 禁止 `from security_agent.agent import ...`，只调 `/api/*` |
+| **L1/L2 执行闸门** | API middleware：无 `plan_id` + L2 pass 则 **拒绝** L3 写操作 |
+| **安全先于执行** | L3 写操作必经 L2 `SafetyGate` / `ThreeLayerDefense`，再进 executor |
+| **事件脊柱** | `audit/spine.py`：全层同一 `trace_id`；L4 卷宗导出 |
+| **弹性** | L2：`resilience/` 超时预算、熔断、S0–S2 降级 |
+| **MCP+Flow 一体** | `mcp/registry` + `skills/flows` 统一 manifest 与热插拔 |
+| **工具单一职责** | metrics / logs / repair / schedule 四类，一工具一事 |
+| **知识 Wiki 源** | 边界对抗、规范库、回流案例 → Gitee Wiki（本地索引缓存） |
+| **配置单入口** | `security_agent/config.py` |
+| **qt01 隔离** | 不参与默认 CI/部署 |
 
-### 2.3 Skill 封装分层（L1 / L2 / L3）
+### 2.4 Skill 封装与 L3 关系（L1 原子 / L2 流程 / L3 分发）
 
-| 层级 | 路径 | 职责 | 状态 |
-|------|------|------|------|
-| **L1** | `tools/`、`skills/*/skill.py`、MCP server | 单步原子能力 | ✅ |
-| **L2** | `skills/flows/runner.py` | 确定性多步 flow（`secure_exec` / `alert_response` / `scan_report`） | ⚠️ 脚手架，`run_skill_flow()` 可用 |
-| **L3** | `agent/orchestrator.py`、`brain.py` | LLM 意图路由、trace 贯穿、调用 L2 | ✅ |
-
-UI 与 L2 之间建议经 REST（P1：`POST /api/skills/flows/{name}/run`），当前仅 Python 直调。
-
----
-
-## 3. 五大支柱 ↔ 模块 ↔ API 对照
-
-| 赛题支柱 | 核心模块 | REST 前缀 | 完成度 |
-|----------|----------|-----------|--------|
-| ① OS 环境深度感知 | `scanner/` `monitor/` `agent/perception.py` | `/api/perception` `/api/monitor` | ✅ 已实现 |
-| ② MCP 插件化 | `tools/` `skills/*/mcp_server.py` `knowledge/mcp/` | `/api/mcp` | ✅ 已实现；⚠️ 热插拔未做 |
-| ③ 安全意图校验 | `safety_gate/` `rules/` | `/api/safety` | ✅ 已实现（含三层防御） |
-| ④ 最小权限执行 | `terminal/privilege.py` `terminal/sandbox.py` | `/api/executor` | ✅ 已实现 |
-| ⑤ 推理链路溯源 | `audit/trace.py` `audit/reasoning_trace.py` | `/api/trace` `/api/audit` | ✅ 已实现 |
+| 层级 | 路径 | 在五层流水线中的位置 | 状态 |
+|------|------|----------------------|------|
+| **L1 原子** | `tools/`、`skills/*/skill.py`、MCP server | L3 可调用的最小单元；L1 层 **仅只读** 感知类 | ✅ |
+| **L2 流程** | `skills/flows/runner.py` | L3 封装流程；L2 沙箱可 dry-run | ⚠️ |
+| **L3 分发** | `agent/orchestrator.py`、`brain.py` | Plan/Execute 模式；与 L1 共用 Agent | ⚠️ 需 mode 显式化 |
 
 ---
 
-## 4. 模块完成度矩阵
+## 3. 五层 ↔ 赛题五大支柱 ↔ API 对照
+
+> 支柱 = 能力域；五层 = 运行时阶段。详见 [FIVE_LAYER_PIPELINE.md §6](FIVE_LAYER_PIPELINE.md#6-与-a2-五大支柱对照)。
+
+| 赛题支柱 | 五层主落点 | 核心模块 | REST 前缀 | 完成度 |
+|----------|------------|----------|-----------|--------|
+| ① OS 深度感知 | **L1** 静态感知 + **L5** 绘图 | `scanner/` `monitor/` `perception.py` | `/api/perception` | ⚠️ L1 并行编排待统一 |
+| ② MCP 插件化 | **L3**（L2 热插拔） | `mcp/` `skills/` `tools/` | `/api/mcp` | ✅ 热插拔已有 |
+| ③ 安全意图校验 | **L2** 安全控制 | `safety_gate/` `rules/` | `/api/safety` | ✅ |
+| ④ 最小权限执行 | **L2** 沙箱 + **L3** | `terminal/sandbox` `executor` | `/api/executor` | ✅ |
+| ⑤ 推理链路溯源 | **L4** | `audit/trace` `spine` | `/api/trace` | ✅ 回流 Wiki ⚠️ |
+
+### 3.1 目标 API（按层）
+
+| 层 | 关键端点 | 状态 |
+|----|----------|------|
+| L1 | `POST /api/agent/plan` · `/api/boundary/evaluate` · `/api/perception/static` | ⚠️ 规划中 |
+| L2 | `POST /api/safety/defense/evaluate` · `/api/sandbox/dry-run` | ⚠️ 后者待建 |
+| L3 | `POST /api/agent/execute` · `/api/skills/flows/{name}/run` | ⚠️ chat 待拆分 |
+| L4 | `GET /api/trace/{id}` · `POST /api/knowledge/reflux` | ⚠️ reflux 待建 |
+| L5 | `GET /api/analytics/*` | ❌ |
+
+---
+
+## 4. 模块完成度矩阵（按五层）
 
 图例：**✅ 完成** · **⚠️ 部分** · **❌ 未做** · **📦 仅在 qt01**
 
-### 4.1 安全控制层 `safety_gate/`
+### 4.1 L2 安全控制层 `safety_gate/`
 
 | 模块 | 说明 | 状态 | 来源 |
 |------|------|------|------|
@@ -123,17 +162,15 @@ UI 与 L2 之间建议经 REST（P1：`POST /api/skills/flows/{name}/run`），�
 | `mac_checker.py` | 麒麟 KYSEC/SELinux | ✅ | `terminal/executor.py` 执行前钩子 |
 | `orchestrator.run_with_three_layer_defense` | 统一安全执行入口 | ✅ | 主干封装 |
 
-### 4.2 Agent 与编排 `agent/`
+### 4.2 L1/L3 Agent 与编排 `agent/`
 
-| 模块 | 说明 | 状态 |
-|------|------|------|
-| `brain.py` | LLM 多轮对话 + 工具调用 | ✅ |
-| `orchestrator.py` | 意图识别 + 计划 + 三层防御执行 | ✅ |
-| `autonomous.py` | Plan-Execute 自主运维 | ✅ |
-| `escalation.py` | 告警升级与自愈 | ✅ |
-| `perception.py` | 环境采集 | ⚠️ 偏被动，缺请求时自动探测 |
-| `reasoning_engine.py` | ReAct/Plan-Execute 策略选择 | 📦 qt01 |
-| `multi_agent.py` | 六 Agent 协作 | 📦 qt01 |
+| 模块 | 说明 | 五层 | 状态 |
+|------|------|------|------|
+| `brain.py` | LLM 对话 + 工具调用 | L1 plan / L3 execute 共用 | ⚠️ 需 mode 拆分 |
+| `orchestrator.py` | 意图识别 + 计划 + 分发 | L1 + L3 | ✅ |
+| `autonomous.py` | Plan-Execute 自主运维 | L1→L3 链 | ✅ |
+| `perception.py` | 静态感知采集 | L1 | ⚠️ 需并行编排 |
+| `escalation.py` | 告警升级 | L2 CPU 弹窗 | ✅ |
 
 ### 4.3 执行与终端 `terminal/`
 
@@ -151,48 +188,69 @@ UI 与 L2 之间建议经 REST（P1：`POST /api/skills/flows/{name}/run`），�
 | `trace.py` | TraceContext 6 阶段 | ✅ |
 | `reasoning_trace.py` | 思考/操作/安全/知识全记录 | ✅ |
 
-### 4.5 MCP 与 Skills
+### 4.5 L3 MCP、Flow 与工具（一体模块）
+
+| 模块 | 说明 | 工具域 | 状态 |
+|------|------|--------|------|
+| `tools/registry` | 原始工具 | metrics/logs/repair/schedule 待分组 | ⚠️ |
+| `skills/*/mcp_server.py` | stdio MCP | 同上 | ✅ |
+| `skills/flows/` | 封装流程 | L3 与 MCP 同 manifest | ⚠️ |
+| `mcp/registry.py` | 热插拔 reload | L2 | ✅ |
+
+**目标工具域**：指标 · 日志 · 故障修复 · 资源调度 — **单一工具单一职责**。
+
+### 4.6 L4 审计 `audit/`
 
 | 模块 | 说明 | 状态 |
 |------|------|------|
-| 5 个 Skill 包 | healthcheck / log_analyzer / … | ✅ |
-| `skills/*/mcp_server.py` | stdio MCP 独立进程 | ✅ |
-| `mcp/registry.py` | 运行时热插拔（reload / manifest） | ✅ |
-| `mcp/plugin_manager.py` (qt01 完整版) | 重型注册中心 | 📦 qt01 |
-| 工具总数 | ~23 原始 + ~26 Skill | ✅ |
+| `log.py` | JSONL 审计（高要求 append-only） | ✅ |
+| `trace.py` | TraceContext 六阶段 | ✅ |
+| `reasoning_trace.py` | 全链路推理记录 | ✅ |
+| `knowledge/reflux` | 案例打标 → Gitee Wiki | ❌ 目标 |
 
-### 4.6 工作流与可视化
+### 4.7 L5 链路分析 `security_agent/l5/`
+
+> 完整方案 → [L5_ANALYTICS.md](L5_ANALYTICS.md)
+
+| 能力 | 说明 | 状态 |
+|------|------|------|
+| 散点离群 | 3σ + IQR · `/api/l5/scatter` | ✅ |
+| 热力矩阵 | 时间×服务 · `/api/l5/heatmap` | ✅ |
+| 链路溯源 | Span 根因 · `/api/l5/root-cause/{id}` | ✅ |
+| 六维量化 | `/api/eval/score` + `l5-metrics.js` | ✅ |
+| 集成测试 | `/api/l5/integration/*` | ✅ |
+| 前端专属页 | `/l5` L5Analytics.vue | ✅ |
+
+### 4.8 工作流与可视化
 
 | 能力 | 主干 | qt01 | 建议 |
 |------|------|------|------|
-| 自主任务状态机 | `workflow/engine.py` ✅ | `execution_controller.py` 📦 | 主干够用 |
-| Qt 流程图编辑器 | ❌ | `qt-security-flow/` 📦 | 答辩备选，不并入 |
-| Dify 可视化工作流 | ❌ | `dify_integration/` 📦 | V2 可选 |
-| Vue 只读流程图 | ❌ | — | V2 用 Vue Flow |
-| Web 拖拽编排 | ❌ | — | **不做**（性价比低） |
+| 五层泳道 UI | `WorkflowView.vue` | — | 对齐 L1–L5 |
+| 自主任务状态机 | `workflow/engine.py` | 📦 | L3 辅助 |
+| Qt/Dify 拖拽编排 | ❌ | 📦 | **不做** |
 
-### 4.7 前端交付线
+### 4.9 前端交付线（计划/执行双模式）
 
 | 项目 | 技术栈 | 状态 | 说明 |
 |------|--------|------|------|
-| Streamlit 控制台 | Streamlit + Plotly | ✅ 可用 | `boot_start.sh` → :8501，功能最全 |
-| Vue3 SPA | Vue3 + Vite + Element Plus + Pinia | ⚠️ 骨架完成 | 10 个页面已建，**API 部分未对齐** |
-| FastAPI 静态托管 | `app.py` mount `frontend/dist` | ⚠️ | 需 `npm run build` 后生效 |
+| Vue3 Agent 主界面 | AgentChat.vue | ⚠️ | **计划/执行双模式** · 批量先分析后执行 |
+| Vue3 五层泳道 | WorkflowView.vue | ⚠️ | 对齐 L1–L5 可视化 |
+| Streamlit | Plotly | ✅ | 开发期全功能 |
+| FastAPI 静态托管 | `frontend/dist` | ✅ | :8900 |
 
-#### Vue 页面联调状态
+#### Vue 页面 ↔ 五层映射
 
-| 路由 | 页面 | API 对接 | 状态 |
-|------|------|----------|------|
-| `/login` | Login.vue | `/api/auth/login` | ⚠️ 待验 |
-| `/` | Dashboard.vue | perception + alerts | ⚠️ 待验 |
-| `/agent` | AgentChat.vue | `/api/agent/chat` | ⚠️ 待验 |
-| `/safety` | SafetyGate.vue | `POST /api/safety/defense/evaluate` | ✅ 已对齐 |
-| `/executor` | Executor.vue | `POST /api/executor/execute` | ✅ 已对齐 |
-| `/trace` | TraceView.vue | `GET /api/trace/` | ✅ 已对齐 |
-| `/mcp` | MCPManage.vue | `GET /api/mcp/servers` | ✅ 已对齐 |
-| `/alerts` | Alerts.vue | `GET /api/alerts/` | ✅ 已对齐 |
-| `/knowledge` | Knowledge.vue | `GET /api/knowledge/playbooks` | ✅ 已对齐 |
-| `/users` | Users.vue | `GET /api/auth/users` | ✅ 已对齐 |
+| 路由 | 页面 | 五层 | API |
+|------|------|------|-----|
+| `/agent` | AgentChat | L1 plan / L3 execute | `/api/agent/plan` · `/api/agent/execute` |
+| `/` | Dashboard | 运维概览 | `/api/perception/*` |
+| `/l5` | L5Analytics | L5 散点/热力/溯源/集成测试 | `/api/l5/*` · `/api/eval/score` |
+| `/safety` | SafetyGate | L2 安全控制 | `/api/safety/*` |
+| `/workflow` | WorkflowView | L1–L5 全景 | `/api/workflow/*` |
+| `/mcp` | MCPManage | L3 MCP+Flow | `/api/mcp/*` |
+| `/trace` | TraceView | L4 审计 | `/api/trace/*` |
+| `/knowledge` | Knowledge | L1 检索 + L4 回流 | `/api/knowledge/*` |
+| `/alerts` | Alerts | L2 CPU 弹窗 | `/api/alerts/*` |
 
 ---
 
@@ -232,21 +290,28 @@ UI 与 L2 之间建议经 REST（P1：`POST /api/skills/flows/{name}/run`），�
 
 ---
 
-## 6. 关键数据流
+## 6. 关键数据流（五层）
 
-### 6.1 用户对话（Streamlit 或 Vue → Agent）
+### 6.1 标准用户指令（先分析后执行）
 
 ```text
-用户输入
-  → POST /api/agent/chat  (Vue)  或  AgentBrain.chat() (Streamlit 直连)
-  → orchestrator.build_plan / tools.registry
-  → check_tool / SafetyGate（工具级）
-  → terminal/executor（若含 shell）
-  → audit.log + reasoning_trace
-  → 响应返回前端
+用户输入（指令/流程/批量）
+  → POST /api/agent/plan          [L1]
+      parallel: boundary_perception + knowledge_search + static_perception
+      → intent + AnalysisPlan（只读，无写操作）
+  → 前端「计划模式」展示 → 用户确认
+  → POST /api/safety/defense/evaluate  [L2 安全控制]
+  → POST /api/sandbox/dry-run（可选）  [L2 沙箱]
+  → verdict pass/confirm
+  → POST /api/agent/execute       [L3]（mode=execute, plan_id）
+      → MCP 工具 / 封装 flow（metrics|logs|repair|schedule）
+      → executor（写操作）
+  → audit/spine + trace           [L4]
+  → POST /api/knowledge/reflux    [L4 → Gitee Wiki]
+  → GET /api/analytics/*          [L5]
 ```
 
-### 6.2 高危命令（三层防御 + 沙箱）
+### 6.2 高危命令（L2 三层防御 + L3 沙箱执行）
 
 ```text
 命令 + 用户原话
@@ -260,13 +325,21 @@ UI 与 L2 之间建议经 REST（P1：`POST /api/skills/flows/{name}/run`），�
   → data/audit.log + data/traces/*.jsonl
 ```
 
-### 6.3 MCP 插件调用
+### 6.3 L3 MCP + Flow 一体调用
 
 ```text
-Brain 工具列表 ← tools/registry + skills/registry
-  → call_tool_local() 或 独立 mcp_server 子进程
-  → safety_gate（按工具风险）
-  → 执行 + 审计
+Brain（execute 模式）← unified manifest（tools + flows）
+  → 按域选工具：metrics | logs | repair | schedule
+  → L2 二次 SafetyGate
+  → call_tool_local / mcp_server 子进程
+  → L4 audit + trace_id
+```
+
+### 6.4 知识库（Gitee Wiki）
+
+```text
+L1 检索 ← sync ← Gitee Wiki（规范 + 边界对抗集）
+L4 回流 → 案例解析 → 打标 → push Gitee Wiki → 重建本地索引
 ```
 
 ---
@@ -301,17 +374,18 @@ security-agent/
 
 ---
 
-## 9. 近期优先级（与架构对齐）
+## 9. 近期优先级（五层对齐）
 
-| 优先级 | 任务 | 归属 |
-|--------|------|------|
-| P0 | Vue `SafetyGate.vue` 对接 `/api/safety/defense/evaluate` | ✅ frontend |
-| P0 | `npm run build` + FastAPI 静态托管验证 | ✅ dist 已构建 |
-| P1 | Vue 各页 API 字段与 `api/models.py` 对齐 | frontend |
-| P1 | `mac_checker` 接入 executor 执行前钩子 | safety_gate |
-| P2 | Pinia 拆分 stores（alerts / agent / safety） | frontend |
-| P2 | 只读流程图页（Vue Flow）展示预置 JSON | frontend |
-| P3 | 从 qt01 择优迁入 `mcp/plugin_manager.py` | 后端 |
+| 优先级 | 任务 | 层 |
+|--------|------|-----|
+| P0 | [FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md) 文档落地 | 全层 |
+| P0 | AgentChat 计划/执行双模式 + 批量队列 UI | 前端 L1/L3 |
+| P1 | `/api/agent/plan` 与 `/api/agent/execute` 拆分 | L1/L3 |
+| P1 | L1 并行编排器（边界+知识+静态感知） | L1 |
+| P1 | MCP 工具四类分组 + 单一职责命名 | L3 |
+| P1 | Gitee Wiki 只读同步 | L1/L4 |
+| P2 | L4 知识回流 push Wiki | L4 |
+| P2 | L5 analytics 模块 + 绘图 API | L5 |
 
 ---
 
@@ -338,8 +412,9 @@ cd frontend && npm install && npm run dev
 
 | 文档 | 内容 |
 |------|------|
-| [MASTER_PLAN.md](MASTER_PLAN.md) | **总控计划**：阶段路线图、矩阵、验收、决策点 |
-| **本文** | 总架构、完成度、解耦、三交付线 |
+| **[FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md)** | **五层流水线权威定义** |
+| [MASTER_PLAN.md](MASTER_PLAN.md) | 总控计划、验收 |
+| **本文** | 三交付线、模块矩阵、API |
 | [TECH_STACK.md](TECH_STACK.md) | 依赖版本与自研模块清单 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Streamlit 九页与 Skill 细节 |
 | [../A2_ARCHITECTURE_MAPPING.md](../A2_ARCHITECTURE_MAPPING.md) | 赛题得分点对照 |

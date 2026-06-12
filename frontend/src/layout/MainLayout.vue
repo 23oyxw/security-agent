@@ -1,15 +1,28 @@
 <template>
   <div class="app-shell" :class="pageThemeClass">
+    <!-- 环境光球（对话页关闭以减轻绘制） -->
+    <div v-if="!isAgentRoute" class="ambient-orbs" aria-hidden="true">
+      <div class="ambient-orb ambient-orb--1"></div>
+      <div class="ambient-orb ambient-orb--2"></div>
+      <div class="ambient-orb ambient-orb--3"></div>
+    </div>
+
     <!-- 侧边栏（独立组件） -->
-    <Sidebar :collapsed="collapsed" @toggle="collapsed = !collapsed" @navigate="navigate" />
+    <Sidebar
+      :collapsed="collapsed"
+      :width="sidebarWidth"
+      @toggle="collapsed = !collapsed"
+      @navigate="navigate"
+      @resize-start="startResize"
+    />
 
     <!-- 主区域 -->
     <div class="main-area">
       <!-- 顶栏（独立组件） -->
       <Topbar :collapsed="collapsed" @toggle-sidebar="collapsed = !collapsed" @logout="logout" />
 
-      <!-- 内容区 -->
-      <main class="content">
+      <!-- 内容区（顶栏 PillarWorkflowRail 已移除，五层导航仅在侧栏） -->
+      <main ref="contentRef" class="content" :class="{ 'content--agent': isAgentRoute }">
         <router-view v-slot="{ Component, route: viewRoute }">
           <transition :name="transitionName" mode="out-in">
             <component :is="Component" :key="viewRoute.fullPath" />
@@ -38,22 +51,29 @@ import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { useSystemPolling } from '../composables/useSystemPolling'
+import { useStaggerReveal } from '../composables/useStaggerReveal'
 import Sidebar from '../components/layout/Sidebar.vue'
 import Topbar from '../components/layout/Topbar.vue'
+import { useSidebarResize } from '../composables/useSidebarResize'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-// 轮询逻辑由 composable 管理，Layout 不再直接操作 Store
-useSystemPolling(30000)
+// 轮询 60s；对话页不阻塞首屏
+useSystemPolling(60000)
 
 const collapsed = ref(false)
+const { width: sidebarWidth, startResize } = useSidebarResize()
+const contentRef = ref(null)
+const { refresh: refreshReveal } = useStaggerReveal(contentRef)
 
 const pageThemeClass = computed(() => {
   const theme = route.meta.theme || 'ops'
   return `page-theme-${theme}`
 })
+
+const isAgentRoute = computed(() => route.path === '/agent' || route.path.startsWith('/agent/'))
 
 const THEME_CLASSES = [
   'page-theme-ops', 'page-theme-intel', 'page-theme-guard', 'page-theme-alert',
@@ -72,6 +92,13 @@ watch(
 
 // 路由层级动效
 const transitionName = ref('slide-fade')
+
+watch(
+  () => route.path,
+  () => {
+    if (route.path !== '/agent') refreshReveal()
+  },
+)
 
 watch(
   () => route.path,
@@ -116,6 +143,8 @@ function logout() {
   /* 必须读 page-theme 变量；勿写死 gradient-content-bg */
   background: var(--gradient-page-bg, var(--gradient-content-bg));
   background-attachment: fixed;
+  position: relative;
+  isolation: isolate;
 }
 
 /* ---- 主区域 ---- */
@@ -123,7 +152,8 @@ function logout() {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0; /* 防止 flex 子项溢出 */
+  min-width: 0;
+  min-height: 0;
   position: relative;
 }
 
@@ -173,6 +203,13 @@ function logout() {
 .content::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
   border-radius: 3px;
+}
+
+.content--agent {
+  padding: var(--space-3) var(--space-4);
+  overflow: hidden;
+  height: calc(100dvh - var(--topbar-height, 56px) - 8px);
+  box-sizing: border-box;
 }
 
 /* ============================================================

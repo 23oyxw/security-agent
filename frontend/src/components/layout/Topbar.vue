@@ -10,9 +10,18 @@
           <el-breadcrumb-item>{{ currentPageName }}</el-breadcrumb-item>
         </el-breadcrumb>
       </nav>
+      <span v-if="themeLabel" class="theme-pill" :title="`当前页面主题：${themeLabel}`">
+        <span class="theme-pill-dot" aria-hidden="true"></span>
+        {{ themeLabel }}
+      </span>
     </div>
 
     <div class="topbar-right">
+      <button class="chat-entry-btn" type="button" title="打开智能体对话" @click="router.push('/agent')">
+        <el-icon :size="15"><ChatDotRound /></el-icon>
+        <span>智能体对话</span>
+      </button>
+
       <!-- 胶囊指标栏 -->
       <div class="metrics-pill">
         <div class="pill-metric" title="CPU 使用率">
@@ -79,6 +88,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../../stores/user'
 import { useAlertsStore } from '../../stores/alerts'
 import { useMetricsStore } from '../../stores/metrics'
+import { getPageLabel, getThemeLabel, normalizePath } from '../../constants/navigation'
 
 defineProps({ collapsed: Boolean })
 defineEmits(['toggle-sidebar', 'logout'])
@@ -89,17 +99,8 @@ const userStore = useUserStore()
 const alertsStore = useAlertsStore()
 const metricsStore = useMetricsStore()
 
-/* 面包屑 — 复用 Sidebar 的 menuGroups 结构保持一致 */
-const pageMap = {
-  '/': '仪表盘', '/agent': '智能助手', '/canvas': '无限画布',
-  '/safety': '安全执行', '/alerts': '告警管理',
-  '/mcp': 'MCP 能力中心', '/trace': 'Trace 溯源',
-  '/knowledge': '知识库', '/guide': '技术导引',
-}
-const currentPageName = computed(() => {
-  const p = route.path === '/dashboard' ? '/' : route.path
-  return pageMap[p] || '页面'
-})
+const currentPageName = computed(() => getPageLabel(route.path))
+const themeLabel = computed(() => getThemeLabel(route.meta.theme))
 
 const isNarrow = computed(() => window.innerWidth < 1100)
 
@@ -163,6 +164,7 @@ function handleAlert(cmd) {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .breadcrumb-nav {
@@ -202,6 +204,27 @@ function handleAlert(cmd) {
 .icon-btn:focus-visible {
   outline: 2px solid var(--color-primary-500);
   outline-offset: 2px;
+}
+
+.chat-entry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-500));
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+  transition: transform var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+.chat-entry-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.45);
 }
 
 /* ---- 右区 ---- */
