@@ -48,7 +48,7 @@ frontend/.vite/
 # Claude Code 本地配置（含敏感信息，勿提交）
 .claude.json
 
-# 构建产物：仅忽略仓库根目录 dist/（发布 zip）；frontend/dist 须提交供 B/S 托管
+# 构建产物：仅忽略仓库根目录 /dist/（发布 zip）；frontend/dist 须提交供 B/S 托管
 /dist/
 security_agent/api/static/
 
