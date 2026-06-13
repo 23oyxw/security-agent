@@ -1,5 +1,55 @@
->>> 规范正文: docs/deploy/WINDOWS.md <<<
+# Windows 运行说明（规范正文）
 
+> 根目录 WINDOWS_GUIDE_CN.txt / WINDOWS_RUN_GUIDE.txt 为本文件副本。
+
+## 中文版
+
+`	ext
+﻿================================================================================
+  security-agent Windows 运行说明 (中文版)
+  版本 0.7.0
+================================================================================
+
+【发给老师的文件】
+  整个 security-agent 文件夹（含 frontend/dist）
+  可打 zip，附带本说明
+
+【需安装】Python 3.10 + Node.js 18+（重建前端时用）+ 浏览器
+
+【启动步骤 - 每条单独回车】
+
+1. cd C:\路径\security-agent
+2. py -3.10 -m venv .venv
+3. .venv\Scripts\activate
+4. pip install -i https://mirrors.aliyun.com/pypi/simple -e .
+5. copy .env.example .env
+6. notepad .env   (填 LLM_API_KEY 等)
+7. 若白屏: cd frontend && npm install --legacy-peer-deps && npm run build && cd ..
+8. set PYTHONPATH=.
+9. mkdir data\logs 2>nul
+10. .venv\Scripts\python -m uvicorn security_agent.api.app:app --host 127.0.0.1 --port 8900
+11. 浏览器 http://localhost:8900/  Ctrl+F5
+12. 登录 admin / admin123
+
+【Python 依赖】
+fastapi uvicorn python-multipart PyJWT passlib python-dotenv httpx pyyaml
+slowapi tenacity websockets openai mcp psutil
+(可选: streamlit pandas numpy matplotlib plotly)
+
+【常见问题】
+- encodings 错误 -> 用 py -3.10
+- 白屏 -> npm run build 重建 frontend/dist
+- 命令语法错 -> 不要多条粘一行
+
+【一键启动】完成上述安装后，可双击 START_WIN.bat
+
+访问: http://localhost:8900/
+
+`
+
+## English
+
+`	ext
 ================================================================================
   security-agent - Windows Run Guide (B/S mode, port 8900)
   Version: 0.7.0
@@ -126,60 +176,5 @@
     python-dotenv, httpx, pyyaml, slowapi, tenacity, websockets
     openai, mcp, psutil
 
-  Optional (old Streamlit UI / charts):
-    streamlit, pandas, numpy, matplotlib, pillow, plotly
-
-  Python version: >= 3.10
-
-[6] Frontend dependencies (only for npm run build)
-
-    vue3, vite, element-plus, echarts, axios, pinia, vue-router
-
-[7] Troubleshooting
-
-  Error: No module named encodings
-    -> Use py -3.10, not broken Python 3.14
-
-  Error: white screen with title only
-    -> frontend/dist incomplete. Run Step 7 (npm run build), restart backend, Ctrl+F5
-
-  Error: command syntax incorrect
-    -> Run ONE command per line in CMD
-
-  Error: Agent chat no reply
-    -> Check LLM_API_KEY in .env, restart uvicorn
-
-  Error: port in use
-    -> Start on 8901:
-       .venv\Scripts\python -m uvicorn security_agent.api.app:app --host 127.0.0.1 --port 8901
-    -> Open http://localhost:8901/
-
-[8] Stop service
-
-  In the uvicorn CMD window press: Ctrl + C
-
-[9] Dev mode (optional, two windows)
-
-  Window 1 backend:
-    set PYTHONPATH=.
-    .venv\Scripts\python -m uvicorn security_agent.api.app:app --host 127.0.0.1 --port 8900
-
-  Window 2 frontend hot reload:
-    cd frontend
-    npm run dev
-
-  Browser: http://localhost:5173/
-
-[10] Health check
-
-  In another CMD:
-
-    curl http://127.0.0.1:8900/api/health
-
-  JSON with status ok = service is running.
-
-================================================================================
-  URL:      http://localhost:8900/
-  Login:    admin / admin123
-  API docs: http://localhost:8900/docs
-================================================================================
+  Optional (old Streamlit
+`

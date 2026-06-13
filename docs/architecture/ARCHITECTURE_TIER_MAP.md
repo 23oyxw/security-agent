@@ -1,6 +1,7 @@
 # 架构分级对照图（建议 vs 实现 vs 开源）
 
-> 权威索引：`FINAL_ARCHITECTURE.md` · `ENCAPSULATION_TO_L5_ROADMAP.md` · 本文 T0-T4 分级
+> 权威索引：`FINAL_ARCHITECTURE.md` · `ENCAPSULATION_TO_L5_ROADMAP.md` · 本文 T0-T4 分级  
+> 答辩入口：[docs/INDEX.md](../INDEX.md) · 仓库结构：[REPO_STRUCTURE.md](../REPO_STRUCTURE.md)
 
 ## 分级总览
 

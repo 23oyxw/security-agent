@@ -1,6 +1,10 @@
 
 > 智能安全运维代理系统 · 中国软件设计 A2 赛题
 
+**答辩文档入口（必读）**：[docs/INDEX.md](docs/INDEX.md)  
+**仓库结构规范**：[docs/REPO_STRUCTURE.md](docs/REPO_STRUCTURE.md)  
+**提交清单（避免 disqualify）**：[docs/competitions/SUBMISSION_CHECKLIST.md](docs/competitions/SUBMISSION_CHECKLIST.md)
+
 **总控计划**：[docs/architecture/MASTER_PLAN.md](docs/architecture/MASTER_PLAN.md)  
 **终版架构（权威）**：[docs/architecture/FINAL_ARCHITECTURE.md](docs/architecture/FINAL_ARCHITECTURE.md)  
 **五层流水线**：[docs/architecture/FIVE_LAYER_PIPELINE.md](docs/architecture/FIVE_LAYER_PIPELINE.md)  
@@ -224,9 +228,12 @@ bash boot_start.sh
 
 ## 📚 文档
 
+- **[文档总索引（答辩入口）](docs/INDEX.md)**
+- [仓库结构规范](docs/REPO_STRUCTURE.md)
+- [提交规范清单](docs/competitions/SUBMISSION_CHECKLIST.md)
 - [架构文档](docs/architecture/)
 - [A2 赛题](docs/competitions/)
-- [开发文档](docs/development/)
+- [部署（含 Windows）](docs/deploy/)
 - [用户文档](docs/user/)
 
 ---

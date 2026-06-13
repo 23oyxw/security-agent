@@ -61,6 +61,12 @@ data/mcp/*
 # GitHub Actions
 .github/
 
+# 答辩提交：勿纳入版本库的个人/临时材料
+*.docx
+*_extracted.txt
+/data/*建议*
+/WINDOWS运行说明.txt
+
 # Streamlit 配置
 .streamlit/
 
