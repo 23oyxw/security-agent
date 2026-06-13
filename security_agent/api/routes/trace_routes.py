@@ -160,6 +160,7 @@ async def get_trace(trace_id: str, user: User = Depends(get_current_user)):
                 {
                     "node_id": f"stage-{i}",
                     "name": s.get("name", ""),
+                    "stage_key": (s.get("data") or {}).get("stage_key") or s.get("name", ""),
                     "type": "stage",
                     "timestamp": format_storage_timestamp(s.get("timestamp", "")),
                     "duration_ms": deltas[i] if i < len(deltas) else s.get("duration_ms", 0),

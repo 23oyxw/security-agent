@@ -7,7 +7,7 @@
         <el-divider direction="vertical" />
         <span class="canvas-title">{{ canvasMeta.title }}</span>
         <el-tag size="small" type="info" effect="plain">{{ canvasMeta.formula }}</el-tag>
-        <span class="canvas-hint">主线 Main · 左侧辅线 Rail · 点层标签跳转</span>
+        <span class="canvas-hint">{{ spineHint }}</span>
         <el-tag v-if="liveConnected" size="small" type="success" effect="dark">● 实时</el-tag>
       </div>
       <div class="canvas-topbar-right">
@@ -208,6 +208,10 @@ import {
   buildCanvasEdges,
   getLayerNodeIds,
 } from '../constants/canvas-topology'
+import {
+  resolveLiveNodeIds,
+  resolveActiveAgents,
+} from '../constants/canvas-spine-map'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
@@ -225,10 +229,12 @@ const drawerData = ref(null)
 const drawerSections = ref([])
 const drawerActions = ref([])
 
-const canvasMeta = CANVAS_META
+const canvasMeta = ref({ ...CANVAS_META })
 const layerBands = CANVAS_LAYER_BANDS
 const layerMeta = CANVAS_LAYER_META
 const activeBand = ref('L1')
+const spineHint = ref('主线 Main · 辅线 Rail · Trace 驱动高亮')
+const activeAgents = ref([])
 
 function nodeTierClass(data) {
   const tier = data?.tier || 'rail'
@@ -237,26 +243,26 @@ function nodeTierClass(data) {
     'cv-node--alert': data?.alert,
     'cv-node--pulse': data?.alert,
     'cv-node--live': data?.livePulse,
+    'cv-node--agent-active': data?.agentActive,
+    'cv-node--auxiliary': data?.role === 'auxiliary',
   }
 }
 
-const STAGE_SPINE_MAP = {
-  L1_triple_perception: ['spine-l1-input', 'spine-l1-plan'],
-  L1_intent: ['spine-l1-plan'],
-  L2_safety_sandbox: ['spine-l2-verdict', 'rail-l2-sandbox'],
-  GATE_layer_pass: ['spine-gate'],
-  L3_execute_start: ['spine-l3-exec'],
-  L4_audit_finalize: ['spine-l4-trace'],
-  L5_analytics_snapshot: ['spine-l5-analytics'],
-}
-
-function applySpineHighlight(stageNames = []) {
-  const liveIds = new Set()
-  for (const name of stageNames) {
-    for (const id of STAGE_SPINE_MAP[name] || []) liveIds.add(id)
-  }
+function applySpineHighlight(traceNodes = []) {
+  const liveIds = resolveLiveNodeIds(traceNodes)
+  activeAgents.value = resolveActiveAgents(traceNodes)
   nodes.value.forEach(nd => {
-    if (nd.data) nd.data = { ...nd.data, livePulse: liveIds.has(nd.id) }
+    if (!nd.data) return
+    const agent = nd.data.agent
+    nd.data = {
+      ...nd.data,
+      livePulse: liveIds.has(nd.id),
+      agentActive: agent && activeAgents.value.includes(agent),
+    }
+  })
+  edges.value.forEach(ed => {
+    const spine = ed.data?.kind === 'spine'
+    ed.animated = spine && liveIds.has(ed.target)
   })
 }
 
@@ -298,13 +304,33 @@ function fitView() {
 // ---- 实时数据轮询 ----
 async function fetchLiveData() {
   try {
-    const [metrics, mcp, evalRes, traceList] = await Promise.all([
+    const [metrics, mcp, evalRes, traceList, spine] = await Promise.all([
       api.get('/perception/metrics').catch(() => null),
       api.get('/mcp/servers').catch(() => []),
       api.get('/eval/score').catch(() => null),
       api.get('/trace/', { params: { limit: 1 } }).catch(() => ({ traces: [] })),
+      api.get('/workflow/spine').catch(() => null),
     ])
-    liveConnected.value = Boolean(metrics)
+    liveConnected.value = Boolean(metrics || spine)
+    if (spine?.formula) {
+      canvasMeta.value = { ...CANVAS_META, formula: spine.formula }
+      const agentNames = (spine.three_agents || []).map(a => a.display_name || a.agent).join(' · ')
+      spineHint.value = agentNames
+        ? `三 Agent：${agentNames} · 辅线工具/Trace`
+        : '主线 Main · 辅线 Rail · Trace 驱动高亮'
+    }
+    if (spine?.performance_snapshot) {
+      const ps = spine.performance_snapshot
+      const nd = nodes.value.find(n => n.id === 'rail-l1-static')
+      if (nd && ps.cpu_percent != null && !metrics) {
+        nd.data = {
+          ...nd.data,
+          value: `${Math.round(ps.cpu_percent)}%`,
+          sub: `内存 ${ps.memory_percent ?? '—'}%`,
+          percent: ps.cpu_percent,
+        }
+      }
+    }
     if (metrics) {
       const nd = nodes.value.find(n => n.id === 'rail-l1-static')
       if (nd) {
@@ -347,8 +373,15 @@ async function fetchLiveData() {
     const latest = (traceList?.traces || [])[0]
     if (latest?.trace_id) {
       const viz = await api.get(`/trace/${latest.trace_id}`).catch(() => null)
-      const stageNames = (viz?.nodes || []).map(n => n.name).filter(Boolean)
-      applySpineHighlight(stageNames)
+      applySpineHighlight(viz?.nodes || [])
+      const traceNd = nodes.value.find(n => n.id === 'spine-l4-trace')
+      if (traceNd && viz?.trace_id) {
+        traceNd.data = {
+          ...traceNd.data,
+          sub: `trace ${String(viz.trace_id).slice(0, 8)}`,
+          stages: `${(viz.nodes || []).length} stages`,
+        }
+      }
     } else {
       applySpineHighlight([])
     }
@@ -368,6 +401,7 @@ const NODE_ROUTES = {
   'rail-l1-boundary': '/l1/boundary',
   'rail-l1-knowledge': '/knowledge',
   'rail-l1-static': '/perception',
+  'rail-l1-reports': '/reports',
   'rail-l2-intent': '/safety',
   'rail-l2-sandbox': '/safety',
   'rail-l2-guard': '/safety',
@@ -404,6 +438,8 @@ function onNodeClick({ node }) {
   if (node.data?.stages) rows.push({ label: '阶段', value: node.data.stages })
   if (node.data?.time) rows.push({ label: '详情', value: node.data.time })
   if (node.data?.value) rows.push({ label: '数值', value: node.data.value })
+  if (node.data?.encapsulation) rows.push({ label: '封装 Tier', value: node.data.encapsulation })
+  if (node.data?.role) rows.push({ label: '定位', value: node.data.role === 'main' ? '主线' : '辅助' })
   drawerSections.value = [{ title: '节点信息 Node', rows }]
   const path = node.data?.route || NODE_ROUTES[node.id]
   const band = layerBands.find(b => b.layer === node.data?.layer)
@@ -695,6 +731,15 @@ onUnmounted(() => {
 @keyframes cv-live {
   0%, 100% { box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25); }
   50%      { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.08); }
+}
+
+.cv-node--agent-active {
+  outline: 2px solid rgba(16, 185, 129, 0.55);
+}
+
+.cv-node--auxiliary {
+  opacity: 0.92;
+  border-style: dashed;
 }
 
 /* ---- 圆环进度条 (Monitor 节点专用) ---- */

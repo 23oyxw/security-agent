@@ -44,12 +44,14 @@ const NODES = [
   { id: 'rail-l1-knowledge', type: 'skill', x: RAIL_X, y: 96, tier: 'rail', layer: 'L1',
     data: { label: '知识检索', labelEn: 'Knowledge', toolsLabel: 'Wiki RAG · Intent', route: '/knowledge' } },
   { id: 'rail-l1-static', type: 'monitor', x: RAIL_X, y: 156, tier: 'rail', layer: 'L1',
-    data: { label: '态势总览', labelEn: 'Situation', value: '—%', sub: 'Static Eye · 8维', percent: 0, alert: false, route: '/perception' } },
+    data: { label: '态势总览', labelEn: 'Situation', value: '—%', sub: 'Static Eye · 8维', percent: 0, alert: false, route: '/perception', encapsulation: 'T1' } },
+  { id: 'rail-l1-reports', type: 'skill', x: RAIL_X, y: 216, tier: 'rail', layer: 'L1',
+    data: { label: '任务分析', labelEn: 'Task Analyze', toolsLabel: 'Prompt · Upload', route: '/reports', encapsulation: 'T3' } },
 
   { id: 'spine-l1-input', type: 'executor', x: SPINE_X, y: 40, tier: 'spine', layer: 'L1',
-    data: { label: '用户输入', labelEn: 'User Input', command: 'Plan Mode · 计划模式', status: 'entry', statusText: 'Start', route: '/agent' } },
+    data: { label: '用户输入', labelEn: 'User Input', command: 'Plan Mode · 计划模式', status: 'entry', statusText: 'Start', route: '/agent', agent: 'core_dispatch', role: 'main' } },
   { id: 'spine-l1-plan', type: 'trace', x: SPINE_X, y: 160, tier: 'spine', layer: 'L1',
-    data: { label: '计划产出', labelEn: 'Plan Output', stages: 'plan_id · trace_id', ok: true, stageCount: 4, okStages: 4, route: '/agent' } },
+    data: { label: '计划产出', labelEn: 'Plan Output', stages: 'plan_id · trace_id', ok: true, stageCount: 4, okStages: 4, route: '/agent', agent: 'core_dispatch', role: 'main' } },
 
   // ═══ L2 带 ═══
   { id: 'rail-l2-intent', type: 'snapshot', x: RAIL_X, y: 270, tier: 'rail', layer: 'L2',
@@ -60,17 +62,17 @@ const NODES = [
     data: { label: '全局护栏', labelEn: 'Guardrails', toolsLabel: 'Fuse · Confirm', route: '/safety' } },
 
   { id: 'spine-l2-verdict', type: 'executor', x: SPINE_X, y: 300, tier: 'spine', layer: 'L2',
-    data: { label: 'L2 裁决', labelEn: 'Verdict', command: 'pass / confirm / deny', status: 'gate', statusText: 'Gate', route: '/safety' } },
+    data: { label: 'L2 裁决', labelEn: 'Verdict', command: 'pass / confirm / deny', status: 'gate', statusText: 'Gate', route: '/safety', agent: 'safety_sandbox', role: 'main' } },
 
   // ═══ GATE ═══
   { id: 'spine-gate', type: 'executor', x: SPINE_X, y: 430, tier: 'spine', layer: 'GATE',
-    data: { label: '层间门禁', labelEn: 'Mode Gate', command: 'plan + L2 → execute', status: 'locked', statusText: 'GATE', route: '/agent' } },
+    data: { label: '层间门禁', labelEn: 'Mode Gate', command: 'plan + L2 → execute', status: 'locked', statusText: 'GATE', route: '/agent', agent: 'core_dispatch', role: 'main' } },
 
   // ═══ L3 带 ═══
   { id: 'rail-l3-mcp', type: 'skill', x: RAIL_X, y: 510, tier: 'rail', layer: 'L3',
-    data: { label: 'MCP 热插拔', labelEn: 'MCP Hub', toolsLabel: 'Hot-swap Tools', route: '/mcp' } },
+    data: { label: 'MCP 热插拔', labelEn: 'MCP Hub', toolsLabel: 'Hot-swap Tools', route: '/mcp', encapsulation: 'T0', role: 'auxiliary' } },
   { id: 'rail-l3-flow', type: 'executor', x: RAIL_X, y: 560, tier: 'rail', layer: 'L3',
-    data: { label: '封装流程', labelEn: 'Skill Flow', command: 'L2 Flow → L3 Run', status: 'active', statusText: 'Flow', route: '/flows' } },
+    data: { label: '封装流程', labelEn: 'Skill Flow', command: 'L2 Flow → L3 Run', status: 'active', statusText: 'Flow', route: '/flows', encapsulation: 'T3', role: 'auxiliary' } },
   ...TOOL_CLUSTERS.map((c, i) => ({
     id: `rail-l3-${c.cluster}`,
     type: 'skill',
@@ -83,11 +85,13 @@ const NODES = [
       labelEn: c.cluster,
       toolsLabel: `${c.cluster} cluster`,
       route: '/mcp',
+      role: 'auxiliary',
+      encapsulation: 'T0',
     },
   })),
 
   { id: 'spine-l3-exec', type: 'executor', x: SPINE_X, y: 560, tier: 'spine', layer: 'L3',
-    data: { label: 'L3 执行', labelEn: 'Dispatch', command: 'MCP + Tools · 唯一写操作', status: 'ready', statusText: 'Execute', route: '/agent' } },
+    data: { label: 'L3 执行', labelEn: 'Dispatch', command: 'MCP + Tools · 唯一写操作', status: 'ready', statusText: 'Execute', route: '/agent', agent: 'core_dispatch', role: 'main' } },
 
   // ═══ L4 带 ═══
   { id: 'rail-l4-chart', type: 'snapshot', x: RAIL_X, y: 740, tier: 'rail', layer: 'L4',
@@ -98,7 +102,7 @@ const NODES = [
     data: { label: 'Wiki 回流', labelEn: 'Wiki Reflux', command: 'Case → Gitee', status: 'cycle', statusText: 'Reflux', route: '/knowledge' } },
 
   { id: 'spine-l4-trace', type: 'trace', x: SPINE_X, y: 780, tier: 'spine', layer: 'L4',
-    data: { label: 'Trace 卷宗', labelEn: 'Trace Record', stages: 'Full chain · 全链路', ok: true, stageCount: 6, okStages: 6, route: '/trace' } },
+    data: { label: 'Trace 卷宗', labelEn: 'Trace Record', stages: 'Full chain · 全链路', ok: true, stageCount: 6, okStages: 6, route: '/trace', agent: 'audit_iteration', role: 'auxiliary' } },
 
   // ═══ L5 带 ═══
   { id: 'rail-l5-scatter', type: 'monitor', x: RAIL_X, y: 930, tier: 'rail', layer: 'L5',
@@ -111,7 +115,7 @@ const NODES = [
     data: { label: '集成测试', labelEn: 'Integration', command: 'L1–L5 Matrix', status: 'active', statusText: 'Test', route: '/l5' } },
 
   { id: 'spine-l5-analytics', type: 'monitor', x: SPINE_X, y: 980, tier: 'spine', layer: 'L5',
-    data: { label: 'L5 量化', labelEn: 'Analytics Hub', value: '6 KPIs', sub: 'Scatter · Heat · RCA', percent: 78, route: '/l5' } },
+    data: { label: 'L5 量化', labelEn: 'Analytics Hub', value: '6 KPIs', sub: 'Scatter · Heat · RCA', percent: 78, route: '/l5', agent: 'audit_iteration', role: 'auxiliary' } },
 ]
 
 // 兼容旧导出
@@ -169,6 +173,7 @@ export function buildCanvasEdges() {
     feed('f-l1-b', 'rail-l1-boundary', 'spine-l1-plan', 'spine-l1-plan', '#3b82f6'),
     feed('f-l1-k', 'rail-l1-knowledge', 'spine-l1-plan', 'spine-l1-plan', '#3b82f6'),
     feed('f-l1-s', 'rail-l1-static', 'spine-l1-plan', 'spine-l1-plan', '#3b82f6'),
+    feed('f-l1-r', 'rail-l1-reports', 'spine-l1-plan', 'spine-l1-plan', '#3b82f6'),
 
     // ── L2 辅线 → 裁决 ──
     feed('f-l2-i', 'rail-l2-intent', 'spine-l2-verdict', 'spine-l2-verdict', '#10b981'),
