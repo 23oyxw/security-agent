@@ -195,9 +195,10 @@ async def execute_plan(
     if needs_confirm and not user_confirmed:
         raise ValueError("需要用户确认后再执行")
 
-    from security_agent.pipeline.coordination import record_l3_execute_start
+    from security_agent.pipeline.coordination import record_gate_pass, record_l3_execute_start
     from security_agent.agent.core_agents import core_dispatch_agent, audit_iteration_agent
 
+    record_gate_pass(plan)
     record_l3_execute_start(plan)
     tid = normalize_trace_id(session_id or plan.get("trace_id"))
 

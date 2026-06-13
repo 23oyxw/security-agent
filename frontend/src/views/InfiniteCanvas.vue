@@ -236,7 +236,28 @@ function nodeTierClass(data) {
     [`cv-node--${tier}`]: true,
     'cv-node--alert': data?.alert,
     'cv-node--pulse': data?.alert,
+    'cv-node--live': data?.livePulse,
   }
+}
+
+const STAGE_SPINE_MAP = {
+  L1_triple_perception: ['spine-l1-input', 'spine-l1-plan'],
+  L1_intent: ['spine-l1-plan'],
+  L2_safety_sandbox: ['spine-l2-verdict', 'rail-l2-sandbox'],
+  GATE_layer_pass: ['spine-gate'],
+  L3_execute_start: ['spine-l3-exec'],
+  L4_audit_finalize: ['spine-l4-trace'],
+  L5_analytics_snapshot: ['spine-l5-analytics'],
+}
+
+function applySpineHighlight(stageNames = []) {
+  const liveIds = new Set()
+  for (const name of stageNames) {
+    for (const id of STAGE_SPINE_MAP[name] || []) liveIds.add(id)
+  }
+  nodes.value.forEach(nd => {
+    if (nd.data) nd.data = { ...nd.data, livePulse: liveIds.has(nd.id) }
+  })
 }
 
 async function jumpToLayer(layerId) {
@@ -277,10 +298,11 @@ function fitView() {
 // ---- 实时数据轮询 ----
 async function fetchLiveData() {
   try {
-    const [metrics, mcp, evalRes] = await Promise.all([
+    const [metrics, mcp, evalRes, traceList] = await Promise.all([
       api.get('/perception/metrics').catch(() => null),
       api.get('/mcp/servers').catch(() => []),
       api.get('/eval/score').catch(() => null),
+      api.get('/trace/', { params: { limit: 1 } }).catch(() => ({ traces: [] })),
     ])
     liveConnected.value = Boolean(metrics)
     if (metrics) {
@@ -310,7 +332,7 @@ async function fetchLiveData() {
         }
       }
     }
-    const clusterIds = ['rail-l3-metrics', 'rail-l3-logs', 'rail-l3-repair', 'rail-l3-schedule']
+    const clusterIds = ['rail-l3-metrics', 'rail-l3-logs', 'rail-l3-repair', 'rail-l3-dispatch']
     if (Array.isArray(mcp)) {
       mcp.slice(0, 4).forEach((s, i) => {
         const nd = nodes.value.find(n => n.id === clusterIds[i])
@@ -321,6 +343,14 @@ async function fetchLiveData() {
           }
         }
       })
+    }
+    const latest = (traceList?.traces || [])[0]
+    if (latest?.trace_id) {
+      const viz = await api.get(`/trace/${latest.trace_id}`).catch(() => null)
+      const stageNames = (viz?.nodes || []).map(n => n.name).filter(Boolean)
+      applySpineHighlight(stageNames)
+    } else {
+      applySpineHighlight([])
     }
   } catch {
     liveConnected.value = false
@@ -346,7 +376,7 @@ const NODE_ROUTES = {
   'rail-l3-metrics': '/mcp',
   'rail-l3-logs': '/mcp',
   'rail-l3-repair': '/mcp',
-  'rail-l3-schedule': '/mcp',
+  'rail-l3-dispatch': '/mcp',
   'rail-l4-chart': '/trace',
   'rail-l4-audit': '/trace',
   'rail-l4-wiki': '/knowledge',
@@ -654,6 +684,17 @@ onUnmounted(() => {
 @keyframes cv-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
   50%      { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+
+.cv-node--live {
+  border-color: var(--color-primary-500) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+  animation: cv-live 2s ease-in-out infinite;
+}
+
+@keyframes cv-live {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25); }
+  50%      { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.08); }
 }
 
 /* ---- 圆环进度条 (Monitor 节点专用) ---- */

@@ -164,11 +164,14 @@ class TraceContext:
             name: 阶段名，应在 TRACE_STAGES 中定义
             detail: 该阶段的详细信息（决策、结果等）
         """
+        from security_agent.pipeline.stage_meta import enrich_stage_data
+
+        enriched = enrich_stage_data(name, detail)
         stage_entry = {
             "stage": name,
             "ts": now_iso(),
             "trace_id": self._trace_id,
-            "detail": detail or {},
+            "detail": enriched,
         }
         self._stages.append(stage_entry)
         audit.append_audit(
@@ -186,7 +189,7 @@ class TraceContext:
                 self.storage.add_stage(
                     self._trace_id,
                     name,
-                    detail,
+                    enriched,
                     delta_ms,
                     timestamp=now_iso(),
                 )

@@ -70,6 +70,65 @@ async def trace_stats(user: User = Depends(get_current_user)):
         return {"total": 0, "by_status": {}, "by_degradation": {}}
 
 
+@router.get("/heatmap")
+async def trace_heatmap(days: int = 7, user: User = Depends(get_current_user)):
+    """Trace 时段热力 — 按日×小时聚合真实 trace 创建时间."""
+    from collections import defaultdict
+    from datetime import datetime, timedelta
+
+    from security_agent.storage.trace_storage import get_trace_storage
+    from security_agent.timeutil import parse_iso
+
+    days = max(1, min(days, 14))
+    now = datetime.now()
+    day_keys: list[str] = []
+    for i in range(days - 1, -1, -1):
+        day_keys.append((now - timedelta(days=i)).strftime("%Y-%m-%d"))
+
+    grid: dict[str, list[int]] = {d: [0] * 24 for d in day_keys}
+    labels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+
+    try:
+        storage = get_trace_storage()
+        for row in storage.list_traces(limit=500):
+            raw = row.get("created_at") or ""
+            dt = parse_iso(str(raw))
+            if not dt:
+                continue
+            if hasattr(dt, "tzinfo") and dt.tzinfo:
+                dt = dt.replace(tzinfo=None)
+            day = dt.strftime("%Y-%m-%d")
+            if day not in grid:
+                continue
+            grid[day][dt.hour] += 1
+    except Exception:
+        pass
+
+    data: list[list[int]] = []
+    day_labels: list[str] = []
+    for d in day_keys:
+        dt = datetime.strptime(d, "%Y-%m-%d")
+        day_labels.append(f"{labels[dt.weekday()]} {d[5:]}")
+        data.append(grid[d])
+
+    flat = []
+    max_val = 0
+    for yi, row in enumerate(data):
+        for xi, val in enumerate(row):
+            flat.append([xi, yi, val])
+            max_val = max(max_val, val)
+
+    return {
+        "days": days,
+        "hours": list(range(24)),
+        "day_labels": day_labels,
+        "data": flat,
+        "max": max_val,
+        "total": sum(sum(r) for r in data),
+        "source": "trace_storage",
+    }
+
+
 @router.get("/{trace_id}", response_model=TraceVisualization)
 async def get_trace(trace_id: str, user: User = Depends(get_current_user)):
     """获取推理链路可视化."""
@@ -106,6 +165,9 @@ async def get_trace(trace_id: str, user: User = Depends(get_current_user)):
                     "duration_ms": deltas[i] if i < len(deltas) else s.get("duration_ms", 0),
                     "status": "success",
                     "details": s.get("data") or {},
+                    "layer": (s.get("data") or {}).get("layer"),
+                    "tool": (s.get("data") or {}).get("tool"),
+                    "cluster": (s.get("data") or {}).get("cluster"),
                 }
                 for i, s in enumerate(row.get("stages", []))
             ]

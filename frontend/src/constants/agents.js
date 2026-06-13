@@ -77,7 +77,7 @@ export const TOOL_CLUSTERS = [
   { cluster: 'metrics', displayName: '指标采集', icon: 'Odometer' },
   { cluster: 'logs', displayName: '日志处理', icon: 'Document' },
   { cluster: 'repair', displayName: '故障修复', icon: 'SetUp' },
-  { cluster: 'schedule', displayName: '资源调度', icon: 'Grid' },
+  { cluster: 'dispatch', displayName: '资源调度', icon: 'Grid' },
 ]
 
 export const BATCH_STATUS = {

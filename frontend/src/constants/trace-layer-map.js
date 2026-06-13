@@ -32,7 +32,7 @@ const TOOL_CLUSTER_RULES = [
   { cluster: 'metrics', cn: '指标采集', en: 'Metrics', patterns: [/metric/i, /health/i, /cpu/i, /memory/i, /disk/i] },
   { cluster: 'logs', cn: '日志处理', en: 'Logs', patterns: [/log/i, /journal/i, /syslog/i] },
   { cluster: 'repair', cn: '故障修复', en: 'Repair', patterns: [/repair/i, /fix/i, /rollback/i, /restore/i] },
-  { cluster: 'schedule', cn: '资源调度', en: 'Schedule', patterns: [/sched/i, /quota/i, /nice/i, /kill/i] },
+  { cluster: 'dispatch', cn: '资源调度', en: 'Dispatch', patterns: [/dispatch/i, /sched/i, /quota/i, /autonomous/i, /monitor/i] },
   { cluster: 'flow', cn: '封装流程', en: 'Skill Flow', patterns: [/skill_flow/i, /flow/i] },
   { cluster: 'mcp', cn: 'MCP 工具', en: 'MCP Tool', patterns: [/mcp/i] },
 ]
@@ -76,8 +76,10 @@ export function layerDisplay(layer) {
 export function enrichTraceNode(raw, index = 0) {
   const name = raw.name || raw.stage || raw.node_id || `Step ${index + 1}`
   const data = raw.details || raw.data || {}
-  const layer = raw.layer || resolveTraceLayer(name, data)
-  const toolCluster = resolveToolCluster(name, data)
+  const layer = raw.layer || data.layer || resolveTraceLayer(name, data)
+  const toolCluster = data.cluster
+    ? TOOL_CLUSTER_RULES.find(c => c.cluster === data.cluster) || { cluster: data.cluster, cn: data.cluster, en: data.cluster }
+    : resolveToolCluster(name, data)
   const toolName = raw.tool || data.tool || data.tool_name || (toolCluster ? toolCluster.en : '')
   const st = formatTraceStatus(raw.status || (raw.error ? 'failed' : 'success'))
   const ld = layerDisplay(layer)

@@ -16,16 +16,16 @@ TOOL_CLUSTER: dict[str, str] = {
     "block_high_risk_process": "repair",
     "generate_security_report": "logs",
     "run_full_security_check": "metrics",
-    "run_autonomous_mission": "schedule",
-    "start_monitor": "schedule",
-    "stop_monitor": "schedule",
+    "run_autonomous_mission": "dispatch",
+    "start_monitor": "dispatch",
+    "stop_monitor": "dispatch",
 }
 
 CLUSTER_LABELS = {
     "metrics": "指标采集",
     "logs": "日志处理",
     "repair": "故障修复",
-    "schedule": "资源调度",
+    "dispatch": "资源调度",
 }
 
 

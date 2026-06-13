@@ -39,7 +39,7 @@ TOOL_CLUSTERS: list[dict[str, Any]] = [
     {"cluster": "metrics", "display_name": "指标采集", "examples": ["get_system_health", "query_security_scan_json"]},
     {"cluster": "logs", "display_name": "日志处理", "examples": ["get_audit_log", "journal 检索"]},
     {"cluster": "repair", "display_name": "故障修复", "examples": ["run_terminal_command", "block_process flow"]},
-    {"cluster": "schedule", "display_name": "资源调度", "examples": ["run_autonomous_mission", "cpu_stress flow"]},
+    {"cluster": "dispatch", "display_name": "资源调度", "examples": ["run_autonomous_mission", "cpu_stress flow"]},
 ]
 
 ORCHESTRATOR = {

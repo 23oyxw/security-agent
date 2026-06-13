@@ -208,6 +208,7 @@ const loading = ref(false)
 const pageSize = ref(20)
 const lastRefreshed = ref('')
 const chartView = ref('timeline')
+const heatmapData = ref(null)
 const chartLoading = ref(false)
 const traceChart = ref(null)
 let chartInstance = null
@@ -368,7 +369,11 @@ async function exportTrace(traceId, format = 'text') {
 async function fetchTraces() {
   loading.value = true
   try {
-    const res = await api.get('/trace/', { params: { limit: pageSize.value } }).catch(() => ({ traces: [] }))
+    const [res, hm] = await Promise.all([
+      api.get('/trace/', { params: { limit: pageSize.value } }).catch(() => ({ traces: [] })),
+      api.get('/trace/heatmap', { params: { days: 7 } }).catch(() => null),
+    ])
+    heatmapData.value = hm
     const list = res.traces || res.items || res || []
     traces.value = (Array.isArray(list) ? list : []).map(t => ({
       ...t,
@@ -430,20 +435,17 @@ function renderChart() {
         }],
       })
     } else if (view === 'heatmap') {
-      const hours = Array.from({ length: 24 }, (_, i) => `${i}时`)
-      const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-      const data = []
-      for (let d = 0; d < 7; d++) {
-        for (let h = 0; h < 24; h++) {
-          data.push([h, d, Math.floor(Math.random() * 5)])
-        }
-      }
+      const hm = heatmapData.value
+      const hours = hm?.hours?.map(h => `${h}时`) || Array.from({ length: 24 }, (_, i) => `${i}时`)
+      const days = hm?.day_labels || ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+      const data = hm?.data?.length ? hm.data : []
+      const maxVal = hm?.max || Math.max(1, ...data.map(d => d[2] || 0))
       chartInstance.setOption({
-        tooltip: { position: 'top' },
+        tooltip: { position: 'top', formatter: p => `${days[p.value[1]]} ${hours[p.value[0]]}: ${p.value[2]} 条` },
         grid: { left: '2%', right: '2%', bottom: '10%', containLabel: true },
         xAxis: { type: 'category', data: hours, splitArea: { show: true } },
         yAxis: { type: 'category', data: days, splitArea: { show: true } },
-        visualMap: { min: 0, max: 5, calculable: true, orient: 'horizontal', left: 'center', bottom: '0%',
+        visualMap: { min: 0, max: maxVal, calculable: true, orient: 'horizontal', left: 'center', bottom: '0%',
           textStyle: { color: '#475569' },
           inRange: { color: ['#f8fafc', '#c7d2fe', '#818cf8', '#6366f1', '#4f46e5', '#f59e0b'] }
         },

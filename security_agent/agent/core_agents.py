@@ -140,8 +140,10 @@ class AuditIterationAgent:
         except Exception:
             pass
         try:
-            from security_agent.pipeline.coordination import record_l4_finalize
+            from security_agent.pipeline.coordination import record_l4_finalize, record_l5_analytics
+
             record_l4_finalize(plan, summary)
+            record_l5_analytics(plan, summary)
         except Exception:
             pass
         return summary
