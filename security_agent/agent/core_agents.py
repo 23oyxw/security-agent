@@ -148,6 +148,40 @@ class AuditIterationAgent:
             pass
         return summary
 
+    async def finalize_plan_snapshot(
+        self,
+        plan: dict[str, Any],
+        *,
+        l2_result: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """Plan-only path: L4/L5 lightweight snapshot without L3 execute."""
+        from security_agent.pipeline.trace_id import normalize_trace_id
+
+        trace_id = normalize_trace_id(plan.get("trace_id") or plan.get("plan_id"))
+        summary = {
+            "agent": self.agent_id,
+            "trace_id": trace_id,
+            "plan_id": plan.get("plan_id"),
+            "audit_status": "plan_snapshot",
+            "l2_verdict": (l2_result or {}).get("verdict") or plan.get("l2_verdict"),
+            "tools_invoked": 0,
+            "wiki_reflux": "pending",
+            "mode": "plan_only",
+            "metrics_snapshot": {
+                "intent": plan.get("intent"),
+                "batch_id": plan.get("batch_id"),
+                "phase_lock": plan.get("phase_lock"),
+            },
+        }
+        try:
+            from security_agent.pipeline.coordination import record_l4_finalize, record_l5_analytics
+
+            record_l4_finalize(plan, summary)
+            record_l5_analytics(plan, summary)
+        except Exception:
+            pass
+        return summary
+
 
 core_dispatch_agent = CoreDispatchAgent()
 safety_sandbox_agent = SafetySandboxAgent()

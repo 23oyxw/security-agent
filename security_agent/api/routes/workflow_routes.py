@@ -85,6 +85,78 @@ async def wiki_export_status(user: User = Depends(get_current_user)):
     }
 
 
+@router.get("/spine")
+async def get_main_spine(user: User = Depends(get_current_user)):
+    """主线统筹 — 三 Agent + 五层 + MCP/Skill 分层 + 性能总览钩子."""
+    from security_agent.agent.agent_registry import AGENT_REGISTRY, ORCHESTRATOR, TOOL_CLUSTERS
+    from security_agent.security.response_policy import apply_response_policy
+
+    manifest = _load_manifest()
+    perf: dict[str, Any] = {}
+    try:
+        import psutil
+        perf["cpu_percent"] = psutil.cpu_percent(interval=0.05)
+        perf["memory_percent"] = psutil.virtual_memory().percent
+    except Exception:
+        pass
+    try:
+        from security_agent.skills.registry import list_skills
+        skill_count = len(list_skills())
+    except Exception:
+        skill_count = 0
+
+    payload = {
+        "formula": ORCHESTRATOR.get("formula"),
+        "main_line": ["L1", "L2", "GATE", "L3", "L4", "L5"],
+        "auxiliary": ["trace", "tools", "knowledge", "alerts"],
+        "three_agents": AGENT_REGISTRY,
+        "orchestrator": ORCHESTRATOR,
+        "tool_clusters": TOOL_CLUSTERS,
+        "tier_labels": manifest.get("tier_labels", {}),
+        "workflow_count": len(manifest.get("workflows") or []),
+        "encapsulation": {
+            "manifest": "data/mcp/workflow_manifest.json",
+            "mcp_api": "GET /api/mcp/servers",
+            "skill_flow_api": "GET /api/skills/flows",
+            "htn": "security_agent/pipeline/htn_planner.py",
+        },
+        "performance_snapshot": perf,
+        "api_surface": {
+            "orchestrate": "POST /api/agent/orchestrate",
+            "task_analyze": "POST /api/reports/analyze",
+            "knowledge_rag": "POST /api/knowledge/rag",
+            "repair": "POST /api/repair/trigger",
+            "alerts": "GET /api/alerts/aggregated",
+            "eval": "GET /api/eval/score",
+            "l5": "GET /api/l5/scatter",
+        },
+    }
+    return apply_response_policy(payload, user)
+
+
+@router.post("/layer-check")
+async def layer_check(body: dict[str, Any], user: User = Depends(get_current_user)):
+    """层级检测 — stage/message → layer/tool/cluster 权威标注."""
+    from security_agent.pipeline.stage_meta import enrich_stage_data
+    from security_agent.security.response_policy import apply_response_policy
+
+    stage = str(body.get("stage_name") or body.get("stage") or "L1_analyze")
+    data = body.get("data") or {}
+    message = body.get("message")
+    if message and not data:
+        from security_agent.analysis.task_analyzer import analyze_task
+        analysis = analyze_task(str(message), user_role=user.role)
+        return apply_response_policy({
+            "mode": "message",
+            "layers_detected": analysis.get("layers_detected"),
+            "intent": analysis.get("intent"),
+            "stage_preview": analysis.get("stage_preview"),
+            "main_spine": analysis.get("main_spine"),
+        }, user)
+    enriched = enrich_stage_data(stage, dict(data))
+    return apply_response_policy({"mode": "stage", "stage_name": stage, "enriched": enriched}, user)
+
+
 
 @router.get("/standard")
 async def get_standard_workflow(user: User = Depends(get_current_user)):

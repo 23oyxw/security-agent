@@ -147,8 +147,41 @@
         </div>
       </el-tab-pane>
 
-      <!-- Tab 2: 工作流模板 -->
-      <el-tab-pane label="工作流模板" name="template">
+      <!-- Tab 2: 主线统筹 -->
+      <el-tab-pane label="主线统筹" name="spine">
+        <div class="template-panel" v-if="spine">
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="编排公式">{{ spine.formula }}</el-descriptions-item>
+            <el-descriptions-item label="工作流数">{{ spine.workflow_count }}</el-descriptions-item>
+            <el-descriptions-item label="主线">{{ (spine.main_line||[]).join(' → ') }}</el-descriptions-item>
+            <el-descriptions-item label="辅助">{{ (spine.auxiliary||[]).join(' · ') }}</el-descriptions-item>
+          </el-descriptions>
+          <h4 class="wf-sub">三代 Agent</h4>
+          <el-table :data="spine.three_agents || []" size="small" stripe>
+            <el-table-column prop="display_name" label="Agent" />
+            <el-table-column prop="layer" label="层级" width="90" />
+            <el-table-column prop="description" label="职责" show-overflow-tooltip />
+          </el-table>
+          <h4 class="wf-sub">性能快照</h4>
+          <p>CPU {{ spine.performance_snapshot?.cpu_percent ?? '—' }}% · 内存 {{ spine.performance_snapshot?.memory_percent ?? '—' }}%</p>
+        </div>
+      </el-tab-pane>
+
+      <!-- Tab 3: 工作流定义 -->
+      <el-tab-pane label="工作流定义" name="manifest">
+        <el-table :data="manifestRows" size="small" stripe empty-text="加载中">
+          <el-table-column prop="title" label="工作流" />
+          <el-table-column prop="tier" label="Tier" width="70" />
+          <el-table-column prop="intent" label="意图" width="120" />
+          <el-table-column prop="layer" label="层" width="60" />
+          <el-table-column label="工具链" show-overflow-tooltip>
+            <template #default="{ row }">{{ (row.tool_chain||[]).join(', ') }}</template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+
+      <!-- Tab 4: 工作流模板 -->
+      <el-tab-pane label="标准流程" name="template">
         <div class="template-panel">
           <div class="section-card">
             <div class="section-card-header">
@@ -172,7 +205,7 @@
         </div>
       </el-tab-pane>
 
-      <!-- Tab 3: Skill 目录 -->
+      <!-- Tab 5: Skill 目录 -->
       <el-tab-pane label="Skill 目录" name="skills">
         <div class="skills-grid">
           <div v-for="skill in skills" :key="skill.name"
@@ -227,6 +260,8 @@ const drawerTitle = ref('')
 const drawerNode = ref(null)
 
 const workflow = reactive({ title: '', description: '', steps: [] })
+const spine = ref(null)
+const manifestRows = ref([])
 
 const layers = reactive({
   collection: { status: 'idle', nodes: [], thresholds: {} },
@@ -285,8 +320,14 @@ async function fetchAll() {
 
 async function fetchWorkflow() {
   try {
-    const res = await api.get('/workflow/standard')
-    Object.assign(workflow, res)
+    const [std, manifest, spineRes] = await Promise.all([
+      api.get('/workflow/standard'),
+      api.get('/workflow/manifest').catch(() => null),
+      api.get('/workflow/spine').catch(() => null),
+    ])
+    Object.assign(workflow, std)
+    manifestRows.value = manifest?.workflows || []
+    spine.value = spineRes
   } catch {}
 }
 
@@ -372,6 +413,12 @@ watch(pollInterval, (v) => {
 
 .workflow-banner {
   margin-bottom: var(--space-4);
+}
+
+.wf-sub {
+  margin: 16px 0 8px;
+  font-size: 14px;
+  color: var(--color-neutral-600);
 }
 
 /* ---- 顶栏（遗留样式，PageHeader 已替代） ---- */

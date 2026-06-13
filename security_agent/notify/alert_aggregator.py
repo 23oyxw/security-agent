@@ -16,6 +16,34 @@ _DERIVATIVE_OF: dict[str, str] = {
 
 _DEFAULT_WINDOW_MIN = 5
 
+_ALERT_TAXONOMY: dict[str, dict[str, str]] = {
+    "磁盘爆满": {"category": "infra", "grade": "P0", "action": "repair_disk_cleanup"},
+    "CPU告警": {"category": "performance", "grade": "P1", "action": "scale_or_throttle"},
+    "内存告警": {"category": "performance", "grade": "P1", "action": "inspect_process"},
+    "服务宕机": {"category": "availability", "grade": "P0", "action": "restart_service"},
+    "连接超时": {"category": "network", "grade": "P2", "action": "check_network"},
+    "进程异常退出": {"category": "runtime", "grade": "P1", "action": "inspect_logs"},
+    "安全事件": {"category": "security", "grade": "P0", "action": "isolate_and_audit"},
+    "权限越界": {"category": "security", "grade": "P0", "action": "l2_block"},
+}
+
+
+def _classify_alert(alert: dict[str, Any]) -> dict[str, str]:
+    etype = str(alert.get("type") or alert.get("title") or "event")
+    sev = str(alert.get("level") or alert.get("severity") or "low").lower()
+    tax = _ALERT_TAXONOMY.get(etype, {})
+    grade = tax.get("grade") or (
+        "P0" if sev in ("critical", "严重") else
+        "P1" if sev in ("high", "高") else
+        "P2" if sev in ("medium", "中") else "P3"
+    )
+    return {
+        "category": tax.get("category") or "general",
+        "grade": grade,
+        "recommended_action": tax.get("action") or "review_trace",
+        "taxonomy_source": "manifest" if etype in _ALERT_TAXONOMY else "severity_fallback",
+    }
+
 
 def _parse_ts(raw: str | None) -> datetime | None:
     if not raw:
@@ -75,6 +103,7 @@ def aggregate_alerts(
         rank = severity_rank.get(sev, 1)
 
         if key not in groups:
+            taxonomy = _classify_alert(alert)
             groups[key] = {
                 "group_id": hashlib.md5(key.encode()).hexdigest()[:10],
                 "key": key,
@@ -88,6 +117,7 @@ def aggregate_alerts(
                 "sample_message": (alert.get("message") or "")[:200],
                 "alert_ids": [str(alert.get("id") or "")],
                 "is_root": root is None,
+                **taxonomy,
             }
             if root is None:
                 root_types_seen.add(etype)
@@ -110,6 +140,9 @@ def aggregate_alerts(
             "title": g["type"],
             "source": g["source"],
             "severity": g["severity"],
+            "category": g.get("category"),
+            "grade": g.get("grade"),
+            "recommended_action": g.get("recommended_action"),
             "message": g["sample_message"] if g["count"] == 1 else f"{g['sample_message']}（合并 {g['count']} 条）",
             "count": g["count"],
             "aggregated": g["count"] > 1,

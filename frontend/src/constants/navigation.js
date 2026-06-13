@@ -102,8 +102,20 @@ export const NAV_PAGES = {
     theme: 'audit',
     layer: 'L1-L5',
     layerLabel: '五层实时观测',
-    subtitle: '已合并至智能体对话页 · 自动跳转',
-    redirectTo: '/agent?tab=pipeline',
+    subtitle: '主线泳道 · 工作流定义 · MCP/Skill 分层 · 三 Agent 协同',
+  },
+  reports: {
+    id: 'reports',
+    path: '/reports',
+    name: 'Reports',
+    label: '任务分析报表',
+    shortLabel: '分析报表',
+    icon: 'Document',
+    theme: 'intel',
+    layer: 'L1',
+    layerLabel: '任务分层分析',
+    subtitle: 'Prompt/命令分析 · 上传 · 工作流匹配 · 学术参照',
+    agent: 'core_dispatch',
   },
   mcp: {
     id: 'mcp',
@@ -240,11 +252,12 @@ export const THEME_LABELS = {
 }
 
 const LAYER_ACTIVE_MAP = {
-  L1: ['/agent', '/knowledge', '/perception', '/l1/boundary'],
+  L1: ['/agent', '/knowledge', '/perception', '/l1/boundary', '/reports'],
   L2: ['/safety', '/alerts', '/executor', '/blue-team'],
   L3: ['/agent', '/mcp', '/flows'],
   L4: ['/trace'],
   L5: ['/l5'],
+  'L1-L5': ['/canvas', '/workflow'],
 }
 
 export function normalizePath(path) {

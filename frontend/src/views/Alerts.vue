@@ -68,14 +68,16 @@
       <div class="table-wrap">
         <el-table :data="displayAlerts" v-loading="loading" stripe size="small" @selection-change="onSelectChange" ref="alertTable" empty-text="暂无告警">
           <el-table-column type="selection" width="40" />
-          <el-table-column label="级别" width="80">
+          <el-table-column label="级别" width="110">
             <template #default="{ row }">
               <span class="severity-badge" :class="row.severity || 'info'">
                 <span class="severity-dot"></span>
                 {{ severityLabel(row.severity) }}
               </span>
+              <el-tag v-if="row.grade" size="small" type="warning" class="grade-tag">{{ row.grade }}</el-tag>
             </template>
           </el-table-column>
+          <el-table-column v-if="aggregatedMode" label="分类" width="100" prop="category" />
           <el-table-column label="时间" width="180">
             <template #default="{ row }">
               <div class="alert-time">{{ displayTime(row) }}</div>

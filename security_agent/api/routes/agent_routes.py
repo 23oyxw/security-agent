@@ -41,7 +41,11 @@ async def agent_registry(user: User = Depends(get_current_user)):
 @router.post("/orchestrate", response_model=OrchestrateResponse)
 async def orchestrate(req: OrchestrateRequest, user: User = Depends(get_current_user)):
     """编排：核心调度(analyze) → 安全沙箱 → [execute] → 审计迭代."""
-    from security_agent.agent.core_agents import core_dispatch_agent, safety_sandbox_agent
+    from security_agent.agent.core_agents import (
+        audit_iteration_agent,
+        core_dispatch_agent,
+        safety_sandbox_agent,
+    )
     from security_agent.api.agent_plan import get_plan, execute_plan
 
     agents: list[AgentStageStatus] = [
@@ -108,6 +112,12 @@ async def orchestrate(req: OrchestrateRequest, user: User = Depends(get_current_
                     agents[2].detail = f"trace {str(audit_summary.get('trace_id', ''))[:8]}"
             else:
                 agents[0].detail = "awaiting execute 阶段锁"
+        else:
+            agents[2].status = "running"
+            agents[2].detail = "plan 快照 L4/L5"
+            audit_summary = await audit_iteration_agent.finalize_plan_snapshot(plan, l2_result=l2)
+            agents[2].status = "done"
+            agents[2].detail = f"plan {str(plan.get('plan_id', ''))[:8]}"
 
         return OrchestrateResponse(
             plan=AnalysisPlanResponse(**plan),
