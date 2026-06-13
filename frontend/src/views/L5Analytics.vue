@@ -51,6 +51,13 @@
         <ul v-if="evolutionHints.length" class="evolve-hints">
           <li v-for="(h, i) in evolutionHints" :key="i">{{ h }}</li>
         </ul>
+        <div class="policy-row">
+          <el-button size="small" @click="loadPolicyHints">L5→L1 策略建议</el-button>
+          <el-button size="small" type="primary" plain @click="applyPolicy">反写 L1 调优</el-button>
+        </div>
+        <ul v-if="policyHints?.hints?.length" class="evolve-hints">
+          <li v-for="(h, i) in policyHints.hints" :key="'p'+i">{{ h.message || h.action }}</li>
+        </ul>
       </article>
       <article class="l5-card">
         <header class="card-head"><h2>各层数据对照</h2></header>
@@ -134,7 +141,7 @@
           <el-button size="small" :loading="testRunning" @click="runTestsAll">跑全链路</el-button>
         </div>
         <el-checkbox-group v-model="selectedTests" class="test-list">
-          <label v-for="t in catalog?.tests || []" :key="t.id" class="test-row">
+          <label v-for="t in activeTests" :key="t.id" class="test-row">
             <el-checkbox :value="t.id">
               <span class="test-name">{{ t.name }}</span>
               <el-tag size="small" effect="plain">{{ t.layer }}</el-tag>
@@ -166,6 +173,10 @@ import {
   fetchL5RootCause,
   fetchL5IntegrationCatalog,
   runL5Integration,
+  fetchL5ExternalCatalog,
+  runL5External,
+  fetchL5PolicyFeedback,
+  applyL5PolicyFeedback,
 } from '../api/l5'
 import api from '../api'
 import {
@@ -177,7 +188,16 @@ import {
 import { MATH_MODEL_CATALOG } from '../constants/pipeline-architecture'
 
 const integrationTab = ref('internal')
+const externalCatalog = ref(null)
+const policyHints = ref(null)
 const mathModels = MATH_MODEL_CATALOG
+
+const activeTests = computed(() => {
+  if (integrationTab.value === 'external') {
+    return (externalCatalog.value?.scenarios || []).map(s => ({ id: s.id, name: s.name, layer: s.layer }))
+  }
+  return catalog.value?.tests || []
+})
 
 const agentStore = useAgentStore()
 const router = useRouter()
@@ -204,16 +224,16 @@ let heatmapChart = null
 
 const selectAll = computed({
   get() {
-    const all = catalog.value?.tests?.map(t => t.id) || []
+    const all = activeTests.value.map(t => t.id) || []
     return all.length > 0 && selectedTests.value.length === all.length
   },
   set(v) {
-    selectedTests.value = v ? (catalog.value?.tests?.map(t => t.id) || []) : []
+    selectedTests.value = v ? activeTests.value.map(t => t.id) : []
   },
 })
 
 const indeterminate = computed(() => {
-  const n = catalog.value?.tests?.length || 0
+  const n = activeTests.value.length || 0
   return selectedTests.value.length > 0 && selectedTests.value.length < n
 })
 
@@ -356,14 +376,28 @@ async function loadCharts() {
 
 async function loadCatalog() {
   catalog.value = await fetchL5IntegrationCatalog()
+  externalCatalog.value = await fetchL5ExternalCatalog()
   selectedTests.value = catalog.value.tests?.map(t => t.id) || []
+}
+
+async function loadPolicyHints() {
+  policyHints.value = await fetchL5PolicyFeedback()
+}
+
+async function applyPolicy() {
+  const res = await applyL5PolicyFeedback()
+  ElMessage.success(`已反写 L1 调优 · ${res.hints_count} 条`)
 }
 
 async function runTests() {
   testRunning.value = true
   try {
-    testResult.value = await runL5Integration(selectedTests.value.length ? selectedTests.value : null)
-    ElMessage.success(`集成测试完成：${testResult.value.passed}/${testResult.value.total} 通过`)
+    if (integrationTab.value === 'external') {
+      testResult.value = await runL5External(selectedTests.value.length ? selectedTests.value : null)
+    } else {
+      testResult.value = await runL5Integration(selectedTests.value.length ? selectedTests.value : null)
+    }
+    ElMessage.success(`测试完成：${testResult.value.passed}/${testResult.value.total} 通过`)
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || e.message)
   } finally {
@@ -372,7 +406,7 @@ async function runTests() {
 }
 
 function runTestsAll() {
-  selectedTests.value = catalog.value?.tests?.map(t => t.id) || []
+  selectedTests.value = activeTests.value.map(t => t.id) || []
   runTests()
 }
 
@@ -396,6 +430,10 @@ onUnmounted(() => {
   scatterChart?.dispose()
   heatmapChart?.dispose()
   waterfallChart?.dispose()
+})
+
+watch(integrationTab, () => {
+  selectedTests.value = activeTests.value.map(t => t.id) || []
 })
 
 watch(() => route.query.trace, tid => {

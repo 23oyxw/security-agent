@@ -7,6 +7,7 @@ source: docs\architecture\FIVE_LAYER_PIPELINE.md
 
 > **终版权威（Agent 合并定义）** → **[FINAL_ARCHITECTURE.md](FINAL_ARCHITECTURE.md)** v1.0-final  
 > **落地路线（定义封装→L5）** → **[ENCAPSULATION_TO_L5_ROADMAP.md](ENCAPSULATION_TO_L5_ROADMAP.md)**  
+> **分级对照（建议 vs 实现）** → **[ARCHITECTURE_TIER_MAP.md](ARCHITECTURE_TIER_MAP.md)**  
 > **版本**：v1.0 · **更新**：2026-06-11  
 > 本文描述 **五层刚性流程** 细节；三代 Agent 合并关系以终版文档为准。
 

@@ -10,6 +10,7 @@
           <span class="pulse-dot"></span>
           {{ polling ? '30s 自动刷新' : '已暂停' }}
         </span>
+        <el-button size="small" plain @click="toggleAggregated">{{ aggregatedMode ? '原始列表' : '聚合降噪' }}</el-button>
         <PipelineBtn action="refresh" size="small" :loading="loading" @click="fetchAlerts" />
         <el-button size="small" plain @click="togglePoll">
           {{ polling ? '暂停' : '恢复' }}
@@ -65,7 +66,7 @@
         </div>
       </div>
       <div class="table-wrap">
-        <el-table :data="alerts" v-loading="loading" stripe size="small" @selection-change="onSelectChange" ref="alertTable" empty-text="暂无告警">
+        <el-table :data="displayAlerts" v-loading="loading" stripe size="small" @selection-change="onSelectChange" ref="alertTable" empty-text="暂无告警">
           <el-table-column type="selection" width="40" />
           <el-table-column label="级别" width="80">
             <template #default="{ row }">
@@ -117,7 +118,14 @@ import PageHeader from '../components/common/PageHeader.vue'
 import PipelineBtn from '../components/common/PipelineBtn.vue'
 import { NAV_PAGES } from '../constants/navigation'
 
+import { fetchAggregatedAlerts } from '../api/l5'
+
 const pageMeta = NAV_PAGES.alerts
+const aggregatedMode = ref(false)
+const stormStats = ref(null)
+const aggregatedItems = ref([])
+
+const displayAlerts = computed(() => (aggregatedMode.value ? aggregatedItems.value : alerts.value))
 
 const POLL_MS = 5000
 const router = useRouter()
@@ -211,9 +219,27 @@ function renderTrendChart() {
 }
 
 async function fetchAlerts() {
+  if (aggregatedMode.value) {
+    const agg = await fetchAggregatedAlerts()
+    stormStats.value = agg
+    aggregatedItems.value = (agg.display_alerts || []).map(a => ({
+      ...a,
+      acknowledged: false,
+      source: a.source || 'aggregate',
+    }))
+    return
+  }
   const params = filter.value ? { severity: filter.value } : {}
   await alertsStore.fetchAlerts(params)
   nextTick(renderTrendChart)
+}
+
+async function toggleAggregated() {
+  aggregatedMode.value = !aggregatedMode.value
+  await fetchAlerts()
+  if (stormStats.value?.suppressed_count) {
+    ElMessage.info(`降噪抑制 ${stormStats.value.suppressed_count} 条衍生告警`)
+  }
 }
 
 function togglePoll() {

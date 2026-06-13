@@ -29,8 +29,10 @@ source: docs\architecture\ARCHITECTURE_TIER_MAP.md
 | 知识 3 要点+来源 | 已落地 | `knowledge_contract.py` | — |
 | 沙箱全包写操作 | 已加强 | `sandbox_gate` + `force_sandbox` | — |
 | RAG 六环节 | 部分 | `hybrid.py` | Ragas |
-| 外部攻击集成测试 | 部分 | L5 Tab 外部模拟 | — |
-| 告警风暴降噪 | 待做 | — | — |
+| 外部攻击集成测试 | 已落地 | `external_sim.py` · L5 外部 Tab | — |
+| 告警风暴降噪 | 已落地 | `alert_aggregator.py` | — |
+| 环境修复专页 | 已落地 | `/repair` · `repair_routes.py` | — |
+| L5 策略反写 L1 | 已落地 | `policy_feedback.py` | `l1_tuning.json` |
 | Wiki 回流 | 部分 | `sync_gitee_wiki.sh` + `build_wiki_tier_bundle.py` | Gitee API |
 
 ## 文档阅读顺序（答辩）

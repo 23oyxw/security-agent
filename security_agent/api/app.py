@@ -40,6 +40,7 @@ from security_agent.api.routes import (
     eval_routes,
     l5_routes,
     l1_routes,
+    repair_routes,
 )
 
 _START_TIME = time.time()
@@ -93,6 +94,7 @@ app.include_router(ops_routes.router,         prefix="/api/ops",          tags=[
 app.include_router(metrics_routes.router,     prefix="",                  tags=["监控指标"])
 app.include_router(eval_routes.router,         prefix="/api/eval",         tags=["Agent 评估"])
 app.include_router(l5_routes.router,           prefix="/api/l5",           tags=["L5 链路分析"])
+app.include_router(repair_routes.router,       prefix="/api/repair",       tags=["环境修复"])
 
 # 健康检查（无需认证）
 @app.get("/api/health")

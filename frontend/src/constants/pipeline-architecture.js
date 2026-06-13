@@ -68,7 +68,7 @@ export const SIDEBAR_LAYERS = [
     important: '唯一刚性闸门。只校验拦截，不参与执行决策。',
     constraint: '零执行 · 零决策',
     action: 'l2Safety',
-    extras: [{ label: 'L2 告警中心', path: '/alerts', icon: 'Bell', badgeKey: 'alerts' }],
+    extras: [{ label: 'L2 告警中心', path: '/alerts', icon: 'Bell', badgeKey: 'alerts' }, { label: '环境修复', path: '/repair', icon: 'SetUp' }],
     items: [
       '沙箱隔离预演',
       '兜底回退机制',

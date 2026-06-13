@@ -177,6 +177,20 @@ async def delete_alerts(body: BatchDeleteRequest, user: User = Depends(get_curre
     return {"ok": True, "deleted_count": deleted, "acknowledged_by": user.username}
 
 
+@router.get("/aggregated")
+async def aggregated_alerts(window_minutes: int = 5, user: User = Depends(get_current_user)):
+    """防告警风暴：窗口聚合 + 衍生告警抑制."""
+    try:
+        from security_agent.notify.alerts import read_recent_alerts
+        from security_agent.notify.alert_aggregator import aggregate_alerts
+
+        raw = read_recent_alerts(limit=200)
+        agg = aggregate_alerts(raw, window_minutes=window_minutes)
+        return agg
+    except Exception as e:
+        return {"groups": [], "display_alerts": [], "error": str(e), "raw_count": 0}
+
+
 @router.get("/stats")
 async def alert_stats(user: User = Depends(get_current_user)):
     """告警统计：按级别和状态汇总"""

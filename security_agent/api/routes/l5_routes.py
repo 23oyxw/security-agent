@@ -112,6 +112,48 @@ async def l5_integration_run(req: IntegrationRunRequest, user: User = Depends(ge
     return await run_integration_suite(req.test_ids)
 
 
+class ExternalSimRequest(BaseModel):
+    scenario_ids: list[str] | None = None
+
+
+@router.get("/integration/external/catalog")
+async def l5_external_catalog(user: User = Depends(get_current_user)):
+    from security_agent.l5.external_sim import EXTERNAL_SCENARIOS
+
+    return {
+        "method": "external blackbox demo",
+        "discovery_only": True,
+        "scenarios": EXTERNAL_SCENARIOS,
+    }
+
+
+@router.post("/integration/external/run")
+async def l5_external_run(req: ExternalSimRequest, user: User = Depends(get_current_user)):
+    from security_agent.l5.external_sim import run_external_simulation
+
+    return await run_external_simulation(req.scenario_ids)
+
+
+@router.get("/policy-feedback")
+async def l5_policy_feedback(user: User = Depends(get_current_user)):
+    from security_agent.l5.policy_feedback import build_policy_hints, load_policy_hints
+
+    try:
+        from security_agent.agent.evaluation import get_evaluator
+
+        dims = get_evaluator().dimension_scores()
+        return build_policy_hints(dims)
+    except Exception:
+        return load_policy_hints()
+
+
+@router.post("/policy-feedback/apply")
+async def l5_policy_apply(user: User = Depends(get_current_user)):
+    from security_agent.l5.policy_feedback import apply_policy_hints
+
+    return apply_policy_hints()
+
+
 @router.get("/clusters")
 async def l5_clusters(user: User = Depends(get_current_user)):
     from security_agent.l5.cluster_analytics import cluster_boundary_hits, cluster_trace_latencies

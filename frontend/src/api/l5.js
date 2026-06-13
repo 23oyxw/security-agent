@@ -27,3 +27,23 @@ export function fetchL5MathCatalog() {
 export function fetchL5Clusters() {
   return api.get('/l5/clusters')
 }
+
+export function fetchL5ExternalCatalog() {
+  return api.get('/l5/integration/external/catalog')
+}
+
+export function runL5External(scenarioIds = null) {
+  return api.post('/l5/integration/external/run', { scenario_ids: scenarioIds })
+}
+
+export function fetchL5PolicyFeedback() {
+  return api.get('/l5/policy-feedback')
+}
+
+export function applyL5PolicyFeedback() {
+  return api.post('/l5/policy-feedback/apply')
+}
+
+export function fetchAggregatedAlerts(windowMinutes = 5) {
+  return api.get('/alerts/aggregated', { params: { window_minutes: windowMinutes } })
+}
