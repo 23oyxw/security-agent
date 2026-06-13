@@ -33,6 +33,13 @@ async def get_facets(user: User = Depends(get_current_user)):
     return list_facets()
 
 
+@router.get("/rag-pipeline")
+async def rag_pipeline_status(user: User = Depends(get_current_user)):
+    """RAG 六环节流水线状态（轻量实现，无 Ragas 依赖）."""
+    from security_agent.retrieval.rag_pipeline import get_rag_pipeline_status
+    return get_rag_pipeline_status()
+
+
 @router.post("/search")
 async def search(req: KnowledgeSearchRequest, user: User = Depends(get_current_user)):
     """检索知识库（POST方式）"""

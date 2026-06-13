@@ -240,6 +240,10 @@ async function toggleAggregated() {
   if (stormStats.value?.suppressed_count) {
     ElMessage.info(`降噪抑制 ${stormStats.value.suppressed_count} 条衍生告警`)
   }
+  const pub = stormStats.value?.publish_suppress
+  if (pub?.total_suppressed) {
+    ElMessage.info(`发布侧累计降噪 ${pub.total_suppressed} 次`)
+  }
 }
 
 function togglePoll() {

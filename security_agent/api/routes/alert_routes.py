@@ -55,7 +55,7 @@ def _normalize_alert(raw: dict, idx: int) -> dict:
 async def list_alerts(limit: int = 50, severity: str = "", user: User = Depends(get_current_user)):
     """列出告警"""
     try:
-        from security_agent.notify.alerts import read_recent_alerts
+        from security_agent.notify.alerts import get_suppress_stats, read_recent_alerts
 
         items = [_normalize_alert(a, i) for i, a in enumerate(read_recent_alerts(limit=limit))]
         if severity:
@@ -181,11 +181,12 @@ async def delete_alerts(body: BatchDeleteRequest, user: User = Depends(get_curre
 async def aggregated_alerts(window_minutes: int = 5, user: User = Depends(get_current_user)):
     """防告警风暴：窗口聚合 + 衍生告警抑制."""
     try:
-        from security_agent.notify.alerts import read_recent_alerts
+        from security_agent.notify.alerts import get_suppress_stats, read_recent_alerts
         from security_agent.notify.alert_aggregator import aggregate_alerts
 
         raw = read_recent_alerts(limit=200)
         agg = aggregate_alerts(raw, window_minutes=window_minutes)
+        agg["publish_suppress"] = get_suppress_stats()
         return agg
     except Exception as e:
         return {"groups": [], "display_alerts": [], "error": str(e), "raw_count": 0}

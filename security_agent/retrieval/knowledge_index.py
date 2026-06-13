@@ -195,7 +195,7 @@ def search_structured(
             val = f.get(dim, "其他")
             facet_counts[dim][val] += 1
 
-    return results
+    return rerank_hits(query, results, top_k=top_k)
 
 
 def list_facets() -> dict[str, Any]:
@@ -207,3 +207,25 @@ def list_facets() -> dict[str, Any]:
         "os_layer": ["应用层", "内核层", "网络层", "文件系统"],
         "source": ["playbook", "wiki"],
     }
+
+def rerank_hits(query: str, hits: list[dict[str, Any]], *, top_k: int | None = None) -> list[dict[str, Any]]:
+    """Lightweight rerank: boost title/tag overlap on top of retrieval score."""
+    if not hits:
+        return []
+    q_tokens = _tokenize(query)
+    expanded = _expand_query(q_tokens)
+    rescored: list[tuple[float, dict[str, Any]]] = []
+    for hit in hits:
+        title_t = _tokenize(hit.get("title", ""))
+        tags_t = {t.lower() for t in hit.get("threat_tags", [])}
+        bonus = len(q_tokens & title_t) * 0.8 + len(expanded & tags_t) * 0.5
+        base = float(hit.get("score") or 0)
+        item = dict(hit)
+        item["score"] = round(base + bonus, 3)
+        item["rerank_bonus"] = round(bonus, 3)
+        rescored.append((item["score"], item))
+    rescored.sort(key=lambda x: -x[0])
+    out = [item for _, item in rescored]
+    if top_k is not None:
+        return out[:top_k]
+    return out
