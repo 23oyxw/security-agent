@@ -48,10 +48,9 @@ frontend/.vite/
 # Claude Code 本地配置（含敏感信息，勿提交）
 .claude.json
 
-# 构建产物
-dist/
-frontend/dist/
-security_agent/api/static/
+ # 构建产物
+ dist/
+ security_agent/api/static/
 
 # 运行时追踪/快照数据
 data/traces/
