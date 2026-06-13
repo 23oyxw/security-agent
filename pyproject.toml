@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "security-agent"
 version = "0.7.0"
@@ -32,6 +36,10 @@ dependencies = [
     "slowapi>=0.1.9",
     "tenacity>=8.2.0",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["security_agent*", "ui*"]
 
 [tool.uv]
 package = false

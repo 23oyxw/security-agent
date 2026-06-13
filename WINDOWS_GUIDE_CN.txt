@@ -1,0 +1,39 @@
+﻿================================================================================
+  security-agent Windows 运行说明 (中文版)
+  版本 0.7.0
+================================================================================
+
+【发给老师的文件】
+  整个 security-agent 文件夹（含 frontend/dist）
+  可打 zip，附带本说明
+
+【需安装】Python 3.10 + Node.js 18+（重建前端时用）+ 浏览器
+
+【启动步骤 - 每条单独回车】
+
+1. cd C:\路径\security-agent
+2. py -3.10 -m venv .venv
+3. .venv\Scripts\activate
+4. pip install -i https://mirrors.aliyun.com/pypi/simple -e .
+5. copy .env.example .env
+6. notepad .env   (填 LLM_API_KEY 等)
+7. 若白屏: cd frontend && npm install --legacy-peer-deps && npm run build && cd ..
+8. set PYTHONPATH=.
+9. mkdir data\logs 2>nul
+10. .venv\Scripts\python -m uvicorn security_agent.api.app:app --host 127.0.0.1 --port 8900
+11. 浏览器 http://localhost:8900/  Ctrl+F5
+12. 登录 admin / admin123
+
+【Python 依赖】
+fastapi uvicorn python-multipart PyJWT passlib python-dotenv httpx pyyaml
+slowapi tenacity websockets openai mcp psutil
+(可选: streamlit pandas numpy matplotlib plotly)
+
+【常见问题】
+- encodings 错误 -> 用 py -3.10
+- 白屏 -> npm run build 重建 frontend/dist
+- 命令语法错 -> 不要多条粘一行
+
+【一键启动】完成上述安装后，可双击 START_WIN.bat
+
+访问: http://localhost:8900/
