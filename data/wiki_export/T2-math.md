@@ -1,3 +1,8 @@
+---
+tier: T2
+source: docs\architecture\L5_ANALYTICS.md
+---
+
 # L5 链路追踪可视化 · 统计迭代
 
 > **版本**：v1.0 · **更新**：2026-06-11  

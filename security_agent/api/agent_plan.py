@@ -39,6 +39,27 @@ async def build_analysis_plan(
     trace_id = normalize_trace_id(uuid.uuid4().hex[:12])
     core = build_plan(message)
 
+    htn_path: dict[str, Any] = {}
+    tool_chain = list(core.get("tool_chain") or [])
+    if tool_chain and not core.get("skill_flow"):
+        from security_agent.pipeline.htn_planner import optimize_tool_chain
+
+        htn_path = optimize_tool_chain(tool_chain, core.get("intent", "general"))
+        tool_chain = htn_path.get("chain") or tool_chain
+
+    sandbox_envelope = None
+    if tool_chain:
+        try:
+            from security_agent.pipeline.sandbox_gate import sandbox_preview
+
+            for tool_name in tool_chain:
+                preview = sandbox_preview(tool_name, core.get("tool_args", {}).get(tool_name, {}))
+                if preview.get("sandbox_required"):
+                    sandbox_envelope = preview
+                    break
+        except Exception:
+            pass
+
     triple = await run_triple_perception_parallel(message)
     boundary_block = triple["adversarial_boundary"]
     knowledge_block = triple["sensitive_knowledge"]
@@ -68,7 +89,10 @@ async def build_analysis_plan(
         "intent": core.get("intent", "general"),
         "message": message,
         "user_message_resolved": core.get("user_message_resolved") or message,
-        "tool_chain": core.get("tool_chain") or [],
+        "tool_chain": tool_chain,
+        "tool_chain_raw": core.get("tool_chain") or [],
+        "htn_path": htn_path or None,
+        "sandbox_envelope": sandbox_envelope,
         "tool_args": core.get("tool_args") or {},
         "skill_flow": core.get("skill_flow"),
         "use_llm_tools": bool(core.get("use_llm_tools")),

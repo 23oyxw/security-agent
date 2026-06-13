@@ -19,6 +19,22 @@
       </div>
     </el-card>
 
+    <!-- 定义封装栈 -->
+    <el-card class="section-card" shadow="never">
+      <template #header><h3>定义封装 → 五层 → 数学模型</h3></template>
+      <el-row :gutter="16">
+        <el-col :span="8" v-for="block in encapsulationStack" :key="block.id">
+          <div class="l5-block">
+            <h4>{{ block.title }}</h4>
+            <p>{{ block.desc }}</p>
+            <ul class="encap-list">
+              <li v-for="(item, i) in block.items" :key="i">{{ item }}</li>
+            </ul>
+          </div>
+        </el-col>
+      </el-row>
+    </el-card>
+
     <!-- 五层流程 -->
     <el-card class="section-card" shadow="never">
       <template #header><h3>五层刚性流水线</h3></template>
@@ -92,6 +108,7 @@
     <el-card class="section-card" shadow="never">
       <template #header><h3>权威文档</h3></template>
       <ul class="doc-list">
+        <li><code>docs/architecture/ENCAPSULATION_TO_L5_ROADMAP.md</code> — 定义封装到 L5 落地路线</li>
         <li><code>docs/architecture/FINAL_ARCHITECTURE.md</code> — 终版唯一权威</li>
         <li><code>docs/architecture/FIVE_LAYER_PIPELINE.md</code> — 五层流程细节</li>
         <li><code>docs/architecture/L5_ANALYTICS.md</code> — L5 散点/热力/集成测试</li>
@@ -102,8 +119,10 @@
 </template>
 
 <script setup>
-import { PIPELINE_FORMULA } from '../constants/pipeline-architecture'
+import { PIPELINE_FORMULA, ENCAPSULATION_STACK } from '../constants/pipeline-architecture'
 import { AGENT_VISUAL } from '../constants/agent-visual'
+
+const encapsulationStack = ENCAPSULATION_STACK
 
 const agents = Object.values(AGENT_VISUAL).map(a => ({
   id: a.id,
@@ -176,6 +195,8 @@ const quickStart = [
 .l5-block { padding: 12px; border-radius: var(--radius-md); background: rgba(14, 165, 233, 0.08); height: 100%; }
 .l5-block h4 { margin: 0 0 8px; font-size: 14px; }
 .l5-block p { font-size: 12px; line-height: 1.6; color: var(--color-text-secondary); margin: 0 0 8px; }
+.encap-list { margin: 0; padding-left: 18px; font-size: 12px; color: var(--color-text-secondary); }
+.encap-list li { margin-bottom: 4px; }
 .l5-block .el-tag { margin-right: 4px; }
 
 .core-quote {

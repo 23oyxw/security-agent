@@ -20,7 +20,70 @@ from security_agent.monitor.dynamic_threshold import get_dynamic_threshold
 
 router = APIRouter()
 
+_MANIFEST_PATH = Path(__file__).resolve().parents[3] / "data" / "mcp" / "workflow_manifest.json"
 _WORKFLOW_PATH = Path(__file__).resolve().parents[3] / "configs" / "workflows" / "autonomous_ops.json"
+_WIKI_EXPORT_DIR = Path(__file__).resolve().parents[3] / "data" / "wiki_export"
+
+
+def _load_manifest() -> dict[str, Any]:
+    if _MANIFEST_PATH.is_file():
+        return json.loads(_MANIFEST_PATH.read_text(encoding="utf-8"))
+    return {"version": "1.0", "workflows": []}
+
+
+@router.get("/manifest")
+async def get_workflow_manifest(user: User = Depends(get_current_user)):
+    """HTN 工作流标注清单 — 意图/簇/代价/层级/沙箱."""
+    manifest = _load_manifest()
+    from security_agent.pipeline.tool_taxonomy import TOOL_CLUSTERS, summarize_chain
+
+    workflows = []
+    for wf in manifest.get("workflows") or []:
+        chain = wf.get("tool_chain") or []
+        summary = summarize_chain(chain) if chain else {"clusters": {}, "total_cost": 0}
+        workflows.append({
+            **wf,
+            "cluster_map": summary.get("clusters"),
+            "total_cost": summary.get("total_cost"),
+            "sandbox_required": summary.get("total_cost", 0) > 0,
+        })
+    return {
+        "version": manifest.get("version"),
+        "description": manifest.get("description"),
+        "tier_labels": manifest.get("tier_labels", {}),
+        "workflows": workflows,
+    }
+
+
+@router.get("/tier-catalog")
+async def get_tier_catalog(user: User = Depends(get_current_user)):
+    """分级目录 — 定义/流水线/数学/工作流/沙箱."""
+    return {
+        "tiers": [
+            {"id": "T0", "name": "定义封装", "store": "data/mcp/workflow_manifest.json", "wiki": "wiki-export/T0-definition"},
+            {"id": "T1", "name": "五层流水线", "store": "docs/architecture/FIVE_LAYER_PIPELINE.md", "wiki": "wiki-export/T1-pipeline"},
+            {"id": "T2", "name": "数学量化", "store": "security_agent/l5/", "wiki": "wiki-export/T2-math"},
+            {"id": "T3", "name": "工作流标注", "store": "data/mcp/workflow_manifest.json", "wiki": "wiki-export/T3-workflow"},
+            {"id": "T4", "name": "沙箱全包", "store": "security_agent/pipeline/sandbox_gate.py", "wiki": "wiki-export/T4-sandbox"},
+        ],
+        "compare_doc": "docs/architecture/ARCHITECTURE_TIER_MAP.md",
+    }
+
+
+@router.get("/wiki-export/status")
+async def wiki_export_status(user: User = Depends(get_current_user)):
+    """Gitee Wiki 导出包状态."""
+    files = []
+    if _WIKI_EXPORT_DIR.is_dir():
+        for p in sorted(_WIKI_EXPORT_DIR.glob("*.md")):
+            files.append({"name": p.name, "size": p.stat().st_size})
+    return {
+        "export_dir": str(_WIKI_EXPORT_DIR),
+        "files": files,
+        "sync_script": "scripts/sync_gitee_wiki.sh",
+        "build_script": "scripts/build_wiki_tier_bundle.py",
+    }
+
 
 
 @router.get("/standard")

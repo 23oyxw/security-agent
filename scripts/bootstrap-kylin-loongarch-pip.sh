@@ -24,18 +24,24 @@ fi
 source .venv/bin/activate
 
 PIP_INDEX="${PIP_INDEX:-https://mirrors.aliyun.com/pypi/simple}"
-REQ="${SEC_ROOT}/requirements-loongarch.txt"
+REQ_MIN="${SEC_ROOT}/requirements-loongarch-min.txt"
+REQ_OPT="${SEC_ROOT}/requirements-loongarch-optional.txt"
 
-if [[ ! -f "${REQ}" ]]; then
-  log "缺少 ${REQ}" >&2
+if [[ ! -f "${REQ_MIN}" ]]; then
+  log "缺少 ${REQ_MIN}" >&2
   exit 1
 fi
 
 log "安装系统编译依赖（cryptography/mcp 可能需要）..."
 sudo dnf install -y libffi-devel openssl-devel python3-devel gcc gcc-c++ 2>/dev/null || true
 
-log "pip 安装依赖（龙芯请耐心等待）..."
-pip install -i "${PIP_INDEX}" -r "${REQ}"
+log "pip 安装最小依赖（B/S 答辩）..."
+pip install -i "${PIP_INDEX}" -r "${REQ_MIN}"
+
+if [[ "${LOONGARCH_FULL:-0}" == "1" && -f "${REQ_OPT}" ]]; then
+  log "安装可选依赖（pandas/streamlit 等，失败可忽略）..."
+  pip install -i "${PIP_INDEX}" -r "${REQ_OPT}" || log "可选依赖部分安装失败，B/S 不受影响"
+fi
 
 mkdir -p data/logs data/reports
 touch data/audit.log 2>/dev/null || true

@@ -82,6 +82,20 @@ class PlanStore:
             return None
         return json.loads(row[0])
 
+    def list_recent(self, limit: int = 20) -> list[dict[str, Any]]:
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(
+                "SELECT plan_json FROM plans ORDER BY updated_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            try:
+                out.append(json.loads(row[0]))
+            except json.JSONDecodeError:
+                continue
+        return out
+
 
 _default_store: PlanStore | None = None
 

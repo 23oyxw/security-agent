@@ -1,0 +1,15 @@
+# LoongArch/Kylin min deps for B/S port 8900
+httpx>=0.28.1
+mcp>=1.27.1
+openai>=2.37.0
+psutil>=7.2.2
+python-dotenv>=1.2.2
+fastapi>=0.115.0
+uvicorn>=0.34.0
+python-multipart>=0.0.18
+PyJWT>=2.10.0
+passlib[bcrypt]>=1.7.4
+websockets>=15.0
+pyyaml>=6.0.3
+slowapi>=0.1.9
+tenacity>=8.2.0

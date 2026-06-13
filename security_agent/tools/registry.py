@@ -120,6 +120,18 @@ async def call_tool_local(
             "请在智能助手页勾选「确认高危操作」后重试。"
         )
 
+    from security_agent.pipeline.sandbox_gate import sandbox_preview
+
+    sandbox = sandbox_preview(name, args, user_confirmed=confirmed)
+    if sandbox.get("verdict") == "deny":
+        audit.append_audit("sandbox_deny", {"tool": name, "sandbox": sandbox}, level="warning")
+        return f"L2 沙箱拒绝: {sandbox.get('envelope', {}).get('preview', {}).get('message', '预演失败')}"
+    if sandbox.get("verdict") == "preview_fail" and sandbox.get("sandbox_required"):
+        preview = sandbox.get("envelope", {}).get("preview", {})
+        if not preview.get("ok"):
+            audit.append_audit("sandbox_preview_fail", {"tool": name, "sandbox": sandbox}, level="warning")
+            return f"L2 沙箱预演未通过: {preview.get('message', '命令执行失败')}"
+
     try:
         result = fn(**args)
         if hasattr(result, "__await__"):

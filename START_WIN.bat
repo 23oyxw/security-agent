@@ -34,4 +34,5 @@ set PYTHONPATH=.
 echo Starting http://127.0.0.1:8900/
 echo Login: admin / admin123
 echo Press Ctrl+C to stop.
+start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" http://127.0.0.1:8900/
 ".venv\Scripts\python.exe" -m uvicorn security_agent.api.app:app --host 127.0.0.1 --port 8900

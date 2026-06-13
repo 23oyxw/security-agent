@@ -112,6 +112,75 @@ async def l5_integration_run(req: IntegrationRunRequest, user: User = Depends(ge
     return await run_integration_suite(req.test_ids)
 
 
+@router.get("/clusters")
+async def l5_clusters(user: User = Depends(get_current_user)):
+    from security_agent.l5.cluster_analytics import cluster_boundary_hits, cluster_trace_latencies
+
+    traces = _load_traces()
+    boundary_hits: list[dict] = []
+    try:
+        from security_agent.storage.plan_store import get_plan_store
+
+        for plan in (get_plan_store().list_recent(limit=20) or []):
+            for hit in plan.get("boundary_hits") or []:
+                if isinstance(hit, dict):
+                    boundary_hits.append(hit)
+    except Exception:
+        pass
+
+    return {
+        "boundary": cluster_boundary_hits(boundary_hits),
+        "traces": cluster_trace_latencies(traces) if traces else cluster_trace_latencies([
+            {"trace_id": "demo-1", "duration_ms": 420, "error_rate": 0},
+            {"trace_id": "demo-2", "duration_ms": 890, "error_rate": 12},
+            {"trace_id": "demo-3", "duration_ms": 2100, "failed": True},
+        ]),
+    }
+
+
+@router.get("/math-catalog")
+async def l5_math_catalog(user: User = Depends(get_current_user)):
+    return {
+        "models": [
+            {
+                "id": "l1_dbscan_boundary",
+                "layer": "L1",
+                "name": "边界 DBSCAN-2D",
+                "formula": "severity(verdict) x confidence(rule_count)",
+                "oss": "pure Python DBSCAN (no sklearn)",
+            },
+            {
+                "id": "l5_scatter_3sigma_iqr",
+                "layer": "L5",
+                "name": "散点 3sigma + IQR",
+                "formula": "outlier if |x-mu|>3sigma or x outside [Q1-1.5IQR, Q3+1.5IQR]",
+                "oss": "Python statistics",
+            },
+            {
+                "id": "l5_heatmap_density",
+                "layer": "L5",
+                "name": "时段热力 weighted_density",
+                "formula": "risk = duration/50 + failed*40",
+                "oss": "ECharts heatmap",
+            },
+            {
+                "id": "l5_trace_dbscan",
+                "layer": "L5",
+                "name": "链路 DBSCAN-2D",
+                "formula": "cluster (latency_s, error_rate)",
+                "oss": "cluster_analytics.py",
+            },
+            {
+                "id": "l3_htn_0_1",
+                "layer": "L3",
+                "name": "HTN 0-1 工具路径",
+                "formula": "min cost; order metrics->logs->repair->dispatch",
+                "oss": "LangGraph-style; workflow_manifest.json",
+            },
+        ],
+    }
+
+
 @router.get("/integration/catalog")
 async def l5_integration_catalog(user: User = Depends(get_current_user)):
     return {

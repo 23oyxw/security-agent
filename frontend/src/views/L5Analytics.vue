@@ -8,13 +8,31 @@
         </p>
       </div>
       <div class="l5-hero-meta">
-        <el-tag type="info" effect="plain">模型：3σ + IQR · 加权密度</el-tag>
+        <el-tag type="info" effect="plain">模型：3σ + IQR · DBSCAN · HTN 0-1</el-tag>
         <el-tag type="success" effect="plain">绘图：ECharts</el-tag>
         <el-tag v-if="scatter?.anomaly_count != null" type="danger" effect="plain">
           异常 {{ scatter.anomaly_count }} 点
         </el-tag>
+        <el-tag v-for="m in mathModels" :key="m.id" size="small" effect="plain" type="info">
+          {{ m.layer }} · {{ m.name }}
+        </el-tag>
       </div>
     </header>
+
+    <section v-if="mathModels.length" class="l5-metrics-row">
+      <article class="l5-card l5-card--wide">
+        <header class="card-head">
+          <h2>数学模型目录</h2>
+          <span class="card-sub">定义封装 → 五层流水线 → L5 量化（纯 Python / ECharts）</span>
+        </header>
+        <div class="metric-grid">
+          <div v-for="m in mathModels" :key="m.id" class="metric-cell">
+            <span class="metric-label">{{ m.layer }} · {{ m.name }}</span>
+            <span class="metric-src">{{ m.tag }}</span>
+          </div>
+        </div>
+      </article>
+    </section>
 
     <!-- 六维量化 + 各层对照 -->
     <section class="l5-metrics-row">
@@ -101,6 +119,15 @@
           <h2>集成测试 · 模块链路</h2>
           <span class="card-sub">{{ catalog?.method || '分层集成 + 链路矩阵' }}</span>
         </header>
+        <el-tabs v-model="integrationTab" class="integration-tabs">
+          <el-tab-pane label="内部链路" name="internal">
+            <p class="tab-desc">Agent 层间消息/参数/指令流转 — 黑盒内模块对接</p>
+          </el-tab-pane>
+          <el-tab-pane label="外部模拟" name="external">
+            <p class="tab-desc">浏览器触发异常流量/高危指令模拟 — 检验五层对外防御（演示 mock）</p>
+            <el-alert type="warning" :closable="false" show-icon title="外部攻击模拟需云 VM 网络权限；当前为答辩演示模式" />
+          </el-tab-pane>
+        </el-tabs>
         <div class="test-toolbar">
           <el-checkbox v-model="selectAll" :indeterminate="indeterminate" @change="toggleAll">全选</el-checkbox>
           <el-button type="primary" size="small" :loading="testRunning" @click="runTests">运行选中</el-button>
@@ -147,7 +174,10 @@ import {
   buildL5MetricValues,
   buildEvolutionHints,
 } from '../constants/l5-metrics'
-import { useAgentStore } from '../stores/agent'
+import { MATH_MODEL_CATALOG } from '../constants/pipeline-architecture'
+
+const integrationTab = ref('internal')
+const mathModels = MATH_MODEL_CATALOG
 
 const agentStore = useAgentStore()
 const router = useRouter()

@@ -102,7 +102,7 @@ class TerminalSkill(SkillBase):
     async def run_terminal(self, command: str, confirmed: bool = False) -> str:
         from security_agent.terminal.executor import run_terminal
 
-        result = await run_terminal(command, user_confirmed=confirmed)
+        result = await run_terminal(command, user_confirmed=confirmed, force_sandbox=True)
         return result.to_text()
 
     async def audit_tail(self, limit: int = 30) -> str:

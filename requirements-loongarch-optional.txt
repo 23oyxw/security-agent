@@ -1,0 +1,7 @@
+# Optional: streamlit/charts (may fail compile on LoongArch)
+pandas>=2.0.0
+numpy>=1.26.0
+matplotlib>=3.8.0
+pillow>=10.0.0
+plotly>=6.0.0
+streamlit>=1.57.0

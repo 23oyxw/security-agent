@@ -231,10 +231,19 @@ async def run_sensitive_knowledge_retrieval(
         except Exception:
             pass
 
+    brief: dict[str, Any] = {}
+    try:
+        from security_agent.pipeline.knowledge_contract import format_knowledge_brief
+
+        brief = format_knowledge_brief(refs[:top_k])
+    except Exception:
+        pass
+
     return {
         "module": "sensitive_knowledge",
         "title": "灵敏知识库检索",
         "refs": refs[:top_k],
+        "brief": brief,
         "hit_count": len(refs[:top_k]),
         "sensitivity": sensitivity,
         "intent_tags": intent_tags,

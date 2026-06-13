@@ -19,3 +19,11 @@ export function fetchL5IntegrationCatalog() {
 export function runL5Integration(testIds = null) {
   return api.post('/l5/integration/run', { test_ids: testIds })
 }
+
+export function fetchL5MathCatalog() {
+  return api.get('/l5/math-catalog')
+}
+
+export function fetchL5Clusters() {
+  return api.get('/l5/clusters')
+}

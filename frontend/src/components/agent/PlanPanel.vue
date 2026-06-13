@@ -59,6 +59,32 @@
         </div>
       </el-collapse-item>
 
+      <el-collapse-item name="workflow">
+        <template #title>
+          <span class="collapse-title">④ HTN 工作流标注</span>
+          <el-tag v-if="htnPath.path_id" size="small" type="success" effect="plain">{{ htnPath.path_id }}</el-tag>
+        </template>
+        <p v-if="htnPath.workflow_title" class="wf-title">{{ htnPath.workflow_title }}</p>
+        <div class="wf-meta">
+          <el-tag size="small" effect="plain">代价 {{ htnPath.total_cost ?? 0 }}</el-tag>
+          <el-tag size="small" effect="plain">方法 {{ htnPath.method || 'htn_0_1_cost' }}</el-tag>
+          <el-tag v-if="sandboxRequired" size="small" type="warning" effect="plain">需沙箱</el-tag>
+        </div>
+        <div v-if="htnSteps.length" class="htn-steps">
+          <div v-for="(s, i) in htnSteps" :key="i" class="htn-step">
+            <span class="htn-idx">{{ i + 1 }}</span>
+            <span>{{ s.task }}</span>
+            <el-tag size="small" effect="plain">{{ s.cluster }}</el-tag>
+          </div>
+        </div>
+        <div v-if="clusterMap" class="cluster-map">
+          <div v-for="(tools, cluster) in clusterMap" :key="cluster" class="cluster-row">
+            <strong>{{ cluster }}</strong>
+            <el-tag v-for="t in tools" :key="t" size="small" effect="plain">{{ t }}</el-tag>
+          </div>
+        </div>
+      </el-collapse-item>
+
       <el-collapse-item name="knowledge">
         <template #title>
           <span class="collapse-title">② 灵敏知识库检索</span>
@@ -66,6 +92,13 @@
             灵敏度 {{ knowledgeSensitivity }}
           </el-tag>
         </template>
+        <p v-if="knowledgeBrief.summary" class="brief-summary">{{ knowledgeBrief.summary }}</p>
+        <ul v-if="knowledgeBrief.bullets?.length" class="brief-list">
+          <li v-for="(b, i) in knowledgeBrief.bullets" :key="i">
+            <strong>{{ b.title }}</strong> — {{ b.text }}
+            <span class="brief-src">[{{ b.source }}]</span>
+          </li>
+        </ul>
         <div v-if="!plan.knowledge_refs?.length" class="empty-hint">无命中（可扩充 Gitee Wiki 知识库）</div>
         <div v-for="(k, i) in plan.knowledge_refs" :key="i" class="kb-row">
           <strong>{{ k.title }}</strong>
@@ -93,8 +126,11 @@
     </el-collapse>
 
     <div v-if="plan.tool_chain?.length" class="tool-chain">
-      <span class="chain-label">L3 预计工具簇：</span>
+      <span class="chain-label">L3 优化工具链：</span>
       <el-tag v-for="t in plan.tool_chain" :key="t" size="small" effect="plain">{{ t }}</el-tag>
+      <span v-if="plan.tool_chain_raw?.length && plan.tool_chain_raw.join() !== plan.tool_chain.join()" class="chain-raw">
+        原始：{{ plan.tool_chain_raw.join(' → ') }}
+      </span>
     </div>
   </div>
 </template>
@@ -108,7 +144,13 @@ const props = defineProps({
   l2Verdict: { type: String, default: null },
 })
 
-const openPanels = ref(['boundary', 'knowledge', 'static'])
+const openPanels = ref(['boundary', 'workflow', 'knowledge', 'static'])
+
+const htnPath = computed(() => props.plan?.htn_path || {})
+const htnSteps = computed(() => htnPath.value.htn_steps || [])
+const clusterMap = computed(() => htnPath.value.clusters || null)
+const sandboxRequired = computed(() => (htnPath.value.total_cost || 0) > 0)
+const knowledgeBrief = computed(() => knowledgeBlock.value.brief || {})
 
 const tp = computed(() => props.plan?.triple_perception || {})
 const boundaryBlock = computed(() => tp.value.adversarial_boundary || {})
@@ -306,5 +348,16 @@ function verdictType(v) {
 }
 
 .chain-label { color: var(--color-text-muted); margin-right: var(--space-1); }
+.chain-raw { display: block; width: 100%; margin-top: 4px; font-size: 10px; color: var(--color-neutral-400); }
+.wf-title { font-size: var(--text-xs); font-weight: 600; margin: 0 0 6px; }
+.wf-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.htn-steps { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.htn-step { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); }
+.htn-idx { width: 18px; height: 18px; border-radius: 50%; background: var(--color-primary-100); color: var(--color-primary-600); font-size: 10px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+.cluster-map { font-size: var(--text-xs); }
+.cluster-row { margin-bottom: 6px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.brief-summary { font-size: var(--text-xs); color: var(--color-neutral-600); margin: 0 0 6px; }
+.brief-list { margin: 0 0 8px; padding-left: 18px; font-size: var(--text-xs); }
+.brief-src { color: var(--color-primary-500); margin-left: 4px; font-size: 10px; }
 .empty-hint { font-size: var(--text-xs); color: var(--color-text-muted); padding: var(--space-2) 0; }
 </style>

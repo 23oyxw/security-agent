@@ -129,3 +129,40 @@ export const SIDEBAR_ACTIONS = {
 
 /** 侧栏主线状态灯顺序（含 GATE） */
 export const SPINE_ORDER = ['L1', 'L2', 'GATE', 'L3', 'L4', 'L5']
+
+/** 定义封装 → 五层 → 数学模型（答辩导引） */
+export const ENCAPSULATION_STACK = [
+  {
+    id: 'DEF',
+    title: '定义封装',
+    desc: 'MCP 原子工具 + Skill Flow + workflow_manifest.json',
+    items: ['四工具簇 metrics/logs/repair/dispatch', 'L2 Skill 封装', 'HTN 0-1 路径'],
+  },
+  {
+    id: 'PIPE',
+    title: '五层流水线',
+    desc: 'L1 分析 → L2 防护 → L3 执行 → L4 卷宗 → L5 量化',
+    items: ['三 Agent 协同', '层间门禁', 'trace_id 全链路'],
+  },
+  {
+    id: 'MATH',
+    title: '数学模型',
+    desc: 'L1 DBSCAN 边界 · L5 3σ/IQR/热力/聚类',
+    items: ['纯 Python 无 sklearn', '策略反写 L1', '集成测试矩阵'],
+  },
+]
+
+export const TOOL_CLUSTERS = {
+  metrics: ['get_system_health', 'query_security_scan', 'list_processes', 'check_exposed_ports'],
+  logs: ['get_audit_log', 'generate_security_report'],
+  repair: ['run_full_security_check', 'run_terminal_command'],
+  dispatch: ['run_autonomous_mission', 'start_monitor', 'stop_monitor'],
+}
+
+export const MATH_MODEL_CATALOG = [
+  { id: 'l1_dbscan', layer: 'L1', name: '边界 DBSCAN-2D', tag: 'severity×confidence' },
+  { id: 'l3_htn', layer: 'L3', name: 'HTN 0-1 路径', tag: 'metrics→logs→repair→dispatch' },
+  { id: 'l5_3sigma', layer: 'L5', name: '散点 3σ+IQR', tag: '单点偶发离群' },
+  { id: 'l5_heat', layer: 'L5', name: '热力 weighted_density', tag: '时段/集群故障' },
+  { id: 'l5_dbscan', layer: 'L5', name: '链路 DBSCAN-2D', tag: '成片异常补充' },
+]
