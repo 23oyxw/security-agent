@@ -1,37 +1,18 @@
-import { TOOL_CLUSTERS } from './agents'
+import { TOOL_CLUSTERS, STAGE_SPINE_MAP_RAW, LAYER_MAIN_SPINE } from './from-contract'
 
 const L3_CLUSTER_RAILS = TOOL_CLUSTERS.map(c => `rail-l3-${c.cluster}`)
 
 export const STAGE_SPINE_MAP = {
-  L1_triple_perception: ['spine-l1-input', 'spine-l1-plan', 'rail-l1-boundary', 'rail-l1-knowledge', 'rail-l1-static'],
-  L1_intent: ['spine-l1-plan'],
-  L1_analyze_task: ['spine-l1-plan', 'rail-l1-reports'],
-  L2_safety_sandbox: ['spine-l2-verdict', 'rail-l2-intent', 'rail-l2-sandbox', 'rail-l2-guard'],
-  GATE_layer_pass: ['spine-gate'],
-  L3_execute_start: ['spine-l3-exec', 'rail-l3-mcp', 'rail-l3-flow', ...L3_CLUSTER_RAILS],
-  L4_audit_finalize: ['spine-l4-trace', 'rail-l4-chart', 'rail-l4-audit', 'rail-l4-wiki'],
-  L5_analytics_snapshot: ['spine-l5-analytics', 'rail-l5-scatter', 'rail-l5-heatmap', 'rail-l5-root', 'rail-l5-test'],
-  receive_request: ['spine-l1-input'],
-  approved_plan_dispatch: ['spine-gate'],
-  skill_flow_start: ['rail-l3-flow', 'spine-l3-exec'],
-  skill_flow_end: ['rail-l3-flow', 'spine-l3-exec'],
-  safety_check: ['spine-l2-verdict', 'rail-l2-sandbox'],
-  harness_verify: ['rail-l2-sandbox'],
-  execution: ['spine-l3-exec'],
-  inference_decision: ['spine-l1-plan', 'spine-l3-exec'],
-  environment_probe: ['rail-l1-static'],
-  environment_probe_result: ['rail-l1-static'],
-  post_verify: ['spine-l4-trace'],
+  ...STAGE_SPINE_MAP_RAW,
+  L3_execute_start: [
+    'spine-l3-exec',
+    'rail-l3-mcp',
+    'rail-l3-flow',
+    ...L3_CLUSTER_RAILS,
+  ],
 }
 
-export const LAYER_MAIN_SPINE = {
-  L1: ['spine-l1-input', 'spine-l1-plan'],
-  L2: ['spine-l2-verdict'],
-  GATE: ['spine-gate'],
-  L3: ['spine-l3-exec'],
-  L4: ['spine-l4-trace'],
-  L5: ['spine-l5-analytics'],
-}
+export { LAYER_MAIN_SPINE }
 
 export const CLUSTER_RAIL_IDS = Object.fromEntries(TOOL_CLUSTERS.map(c => [c.cluster, `rail-l3-${c.cluster}`]))
 

@@ -6,6 +6,7 @@
 
 | 顺序 | 文档 | 用途 |
 |------|------|------|
+| 0 | [architecture/TRIPLE_UNIFY.md](architecture/TRIPLE_UNIFY.md) | 三方统一契约（真源 JSON） |
 | 1 | [REPO_STRUCTURE.md](REPO_STRUCTURE.md) | 仓库目录规范 |
 | 2 | [architecture/ARCHITECTURE_TIER_MAP.md](architecture/ARCHITECTURE_TIER_MAP.md) | T0-T4 分级 |
 | 3 | [architecture/FIVE_LAYER_PIPELINE.md](architecture/FIVE_LAYER_PIPELINE.md) | 五层主线 |
@@ -23,7 +24,7 @@
 
 根目录 WINDOWS_*.txt 为快捷副本，以 deploy/WINDOWS.md 为准。
 
-## 3. B/S 入口（:8900）
+## 3. B/S 入口（8900）
 
 | URL | 页面 |
 |-----|------|

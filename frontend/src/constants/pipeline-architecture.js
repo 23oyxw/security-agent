@@ -127,8 +127,8 @@ export const SIDEBAR_ACTIONS = {
   gateExecute: { label: '切换执行模式', layer: 'GATE', icon: 'ArrowRight' },
 }
 
-/** 侧栏主线状态灯顺序（含 GATE） */
-export const SPINE_ORDER = ['L1', 'L2', 'GATE', 'L3', 'L4', 'L5']
+/** 侧栏主线状态灯顺序（含 GATE） — 来自契约 */
+export { SPINE_ORDER } from './from-contract'
 
 /** 定义封装 → 五层 → 数学模型（答辩导引） */
 export const ENCAPSULATION_STACK = [

@@ -20,6 +20,14 @@ from security_agent.auth.models import User
 router = APIRouter()
 
 
+
+
+@router.get("/contract")
+async def agent_contract(user: User = Depends(get_current_user)):
+    """三方统一契约 — 与 data/contracts/triple_unify.json 一致."""
+    from security_agent.contracts.loader import get_contract
+    return get_contract()
+
 @router.get("/registry")
 async def agent_registry(user: User = Depends(get_current_user)):
     """三代 Agent + 工具簇 + 编排元数据（与前端 constants/agents.js 对齐）"""
@@ -28,13 +36,19 @@ async def agent_registry(user: User = Depends(get_current_user)):
         ORCHESTRATOR,
         TOOL_CLUSTERS,
         PIPELINE_LAYERS,
+        PIPELINE_LAYER_DETAIL,
+        LAYER_AGENT_MAP,
     )
+    from security_agent.contracts.loader import get_contract
 
     return {
         "orchestrator": ORCHESTRATOR,
         "agents": AGENT_REGISTRY,
         "tool_clusters": TOOL_CLUSTERS,
         "pipeline_layers": PIPELINE_LAYERS,
+        "pipeline_layer_detail": PIPELINE_LAYER_DETAIL,
+        "layer_agent_map": LAYER_AGENT_MAP,
+        "contract_version": get_contract()["version"],
     }
 
 

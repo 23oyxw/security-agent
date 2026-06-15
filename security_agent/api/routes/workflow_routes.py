@@ -89,6 +89,7 @@ async def wiki_export_status(user: User = Depends(get_current_user)):
 async def get_main_spine(user: User = Depends(get_current_user)):
     """主线统筹 — 三 Agent + 五层 + MCP/Skill 分层 + 性能总览钩子."""
     from security_agent.agent.agent_registry import AGENT_REGISTRY, ORCHESTRATOR, TOOL_CLUSTERS
+    from security_agent.contracts.loader import get_contract
     from security_agent.security.response_policy import apply_response_policy
 
     manifest = _load_manifest()
@@ -107,8 +108,8 @@ async def get_main_spine(user: User = Depends(get_current_user)):
 
     payload = {
         "formula": ORCHESTRATOR.get("formula"),
-        "main_line": ["L1", "L2", "GATE", "L3", "L4", "L5"],
-        "auxiliary": ["trace", "tools", "knowledge", "alerts"],
+        "main_line": get_contract().get("main_line"),
+        "auxiliary": get_contract().get("auxiliary"),
         "three_agents": AGENT_REGISTRY,
         "orchestrator": ORCHESTRATOR,
         "tool_clusters": TOOL_CLUSTERS,
