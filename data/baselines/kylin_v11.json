@@ -1,0 +1,13 @@
+{
+  "id": "kylin_v11",
+  "name": "Galaxy Kylin V11 baseline",
+  "version": "1.0",
+  "source": "graded security baseline subset",
+  "categories": [
+    "ssh",
+    "firewall",
+    "kernel",
+    "account",
+    "service"
+  ]
+}

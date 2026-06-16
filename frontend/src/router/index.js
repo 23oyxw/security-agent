@@ -14,6 +14,7 @@ const routes = [
       { path: 'safety', name: 'Safety', component: () => import('../views/SafetyGate.vue'), meta: { theme: 'guard' } },
       { path: 'alerts', name: 'Alerts', component: () => import('../views/Alerts.vue'), meta: { theme: 'alert' } },
       { path: 'repair', name: 'Repair', component: () => import('../views/RepairPanel.vue'), meta: { theme: 'guard', title: '环境修复' } },
+      { path: 'inspection', name: 'Inspection', component: () => import('../views/InspectionPanel.vue'), meta: { theme: 'guard', title: '基线巡检' } },
       { path: 'mcp', name: 'MCP', component: () => import('../views/MCPManage.vue'), meta: { theme: 'mesh' } },
       { path: 'trace', name: 'Trace', component: () => import('../views/TraceView.vue'), meta: { theme: 'audit' } },
       { path: 'knowledge', name: 'Knowledge', component: () => import('../views/Knowledge.vue'), meta: { theme: 'archive' } },

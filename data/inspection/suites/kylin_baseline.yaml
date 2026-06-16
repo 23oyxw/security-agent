@@ -1,0 +1,31 @@
+id: kylin_baseline
+name: Kylin baseline inspection suite
+description: Read-only huace-style cases for loongarch64
+read_only: true
+retest_after_repair: true
+platform: linux
+cases:
+  - id: ssh_root_login
+    title: SSH root login policy
+    category: ssh
+    command: "grep -E '^PermitRootLogin' /etc/ssh/sshd_config 2>/dev/null || echo 'PermitRootLogin yes'"
+    assert: {type: contains, expect: "no"}
+    grade: P1
+  - id: disk_usage_root
+    title: Root disk usage percent
+    category: infra
+    command: "df -P / 2>/dev/null | tail -1 | awk '{print $5}' | tr -d '%'"
+    assert: {type: numeric, op: lt, expect: 90}
+    grade: P1
+  - id: listening_ports
+    title: Risky listening ports
+    category: service
+    command: "ss -lnt 2>/dev/null | awk 'NR>1{print $4}' | grep -E ':23|:445' || true"
+    assert: {type: empty}
+    grade: P0
+  - id: uid_zero_accounts
+    title: UID0 account count
+    category: account
+    command: "awk -F: '($3==0){print $1}' /etc/passwd 2>/dev/null | wc -l | tr -d ' '"
+    assert: {type: numeric, op: eq, expect: 1}
+    grade: P0

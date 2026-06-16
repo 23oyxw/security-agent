@@ -86,7 +86,11 @@ export const SIDEBAR_LAYERS = [
     accent: '#f59e0b',
     important: '唯一允许 MCP/工具写操作。需 L2 通过后解锁。',
     action: 'l3ExecuteMode',
-    extras: [{ label: 'L3 工具中心', path: '/mcp', icon: 'Connection' }],
+    extras: [
+      { label: 'L3 工具中心', path: '/mcp', icon: 'Connection' },
+      { label: '基线巡检', path: '/inspection', icon: 'Finished' },
+      { label: '环境修复', path: '/repair', icon: 'SetUp' },
+    ],
     items: ['指标采集', '日志处理', '故障修复', '资源调度'],
   },
   {

@@ -172,6 +172,16 @@ def run_daily_report() -> dict:
     }
 
 
+
+
+def run_inspection() -> dict:
+    """华测式基线巡检套件."""
+    import asyncio
+    from security_agent.inspection.runner import run_suite
+
+    report = asyncio.run(run_suite("kylin_baseline", push_webhook=True))
+    return {"task": "inspection", "ts": now_iso(), "status": "告警" if not report.get("summary", {}).get("ok") else "正常", "report": report}
+
 def run_full() -> dict:
     """全量巡检（所有项目）."""
     result = run_daily_report()
@@ -180,6 +190,7 @@ def run_full() -> dict:
 
 
 TASKS = {
+    "inspection": run_inspection,
     "healthcheck": run_healthcheck,
     "hardening": run_hardening,
     "log_scan": run_log_scan,

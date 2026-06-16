@@ -50,6 +50,8 @@ def main() -> int:
         ("GET /api/dify/health", lambda: client.get("/api/dify/health")),
         ("GET /api/skills/flows/", lambda: client.get("/api/skills/flows/", headers=headers)),
         ("GET /api/workflow/standard", lambda: client.get("/api/workflow/standard", headers=headers)),
+        ("GET /api/inspection/catalog", lambda: client.get("/api/inspection/catalog", headers=headers)),
+        ("GET /api/inspection/risk/predict", lambda: client.get("/api/inspection/risk/predict", headers=headers)),
         ("GET /api/auth/me", lambda: client.get("/api/auth/me", headers=headers)),
     ]
     for label, fn in endpoints:

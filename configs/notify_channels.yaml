@@ -1,0 +1,9 @@
+enabled: false
+min_grade: P1
+dedupe_seconds: 300
+channels:
+  - id: default
+    name: generic-webhook
+    url: ""
+    template: json
+    headers: {}

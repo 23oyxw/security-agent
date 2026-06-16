@@ -38,7 +38,10 @@ async function onTrigger(item) {
   try {
     const res = await triggerRepair(item.id, true)
     if (res.ok) {
-      ElMessage.success(`修复已启动计划 ${res.plan_id}`)
+      const retest = res.retest
+      ElMessage.success(retest
+        ? `修复完成 · 复测 ${retest.summary?.passed}/${retest.summary?.total} 通过`
+        : `修复已启动计划 ${res.plan_id}`)
       history.value = (await fetchRepairHistory()).repairs || []
     } else if (res.needs_confirm) {
       ElMessage.warning('L2 需要二次确认')

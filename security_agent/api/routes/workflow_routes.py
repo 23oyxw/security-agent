@@ -125,6 +125,8 @@ async def get_main_spine(user: User = Depends(get_current_user)):
         "api_surface": {
             "orchestrate": "POST /api/agent/orchestrate",
             "task_analyze": "POST /api/reports/analyze",
+            "inspection_run": "POST /api/inspection/run",
+            "inspection_risk": "GET /api/inspection/risk/predict",
             "knowledge_rag": "POST /api/knowledge/rag",
             "repair": "POST /api/repair/trigger",
             "alerts": "GET /api/alerts/aggregated",

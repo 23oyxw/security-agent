@@ -188,7 +188,12 @@ async def aggregated_alerts(window_minutes: int = 5, user: User = Depends(get_cu
         agg = aggregate_alerts(raw, window_minutes=window_minutes)
         agg["publish_suppress"] = get_suppress_stats()
         from security_agent.security.response_policy import apply_response_policy
-        return apply_response_policy(agg, user)
+        from security_agent.notify.webhook import push_aggregated_alerts
+        agg = apply_response_policy(agg, user)
+        wh = push_aggregated_alerts(agg)
+        if wh.get("ok") or wh.get("skipped"):
+            agg["webhook_push"] = wh
+        return agg
     except Exception as e:
         return {"groups": [], "display_alerts": [], "error": str(e), "raw_count": 0}
 
