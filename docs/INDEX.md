@@ -11,9 +11,10 @@
 | 2 | [architecture/ARCHITECTURE_TIER_MAP.md](architecture/ARCHITECTURE_TIER_MAP.md) | T0-T4 分级 |
 | 3 | [architecture/FIVE_LAYER_PIPELINE.md](architecture/FIVE_LAYER_PIPELINE.md) | 五层主线 |
 | 4 | [architecture/ORCHESTRATOR_THREE_AGENTS.md](architecture/ORCHESTRATOR_THREE_AGENTS.md) | 三 Agent |
-| 5 | [competitions/SUBMISSION_CHECKLIST.md](competitions/SUBMISSION_CHECKLIST.md) | 提交规范 |
-| 6 | [architecture/INSPECTION_ENGINE.md](architecture/INSPECTION_ENGINE.md) | 华测式巡检引擎 |
-| 7 | [competitions/DEMO_SCRIPT.md](competitions/DEMO_SCRIPT.md) | 演示脚本 |
+| 5 | [RELEASE.md](RELEASE.md) | 版本与本地启动 |
+| 6 | [competitions/SUBMISSION_CHECKLIST.md](competitions/SUBMISSION_CHECKLIST.md) | 提交规范 |
+| 7 | [architecture/INSPECTION_ENGINE.md](architecture/INSPECTION_ENGINE.md) | 华测式巡检引擎 |
+| 8 | [competitions/DEMO_SCRIPT.md](competitions/DEMO_SCRIPT.md) | 演示脚本 |
 
 ## 2. 部署
 

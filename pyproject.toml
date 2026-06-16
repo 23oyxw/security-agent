@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "security-agent"
-version = "0.7.0"
+version = "0.8.0"
 description = "银河麒麟智能安全运维 Agent — 多维感知 + 推理决策 + 安全控制"
 readme = "README.md"
 requires-python = ">=3.10"

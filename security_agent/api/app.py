@@ -16,6 +16,8 @@ from slowapi.errors import RateLimitExceeded
 
 logger = logging.getLogger(__name__)
 
+from security_agent.version import __version__
+
 from security_agent.api.routes import (
     auth_routes,
     perception_routes,
@@ -51,7 +53,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 app = FastAPI(
     title="银河麒麟智能安全运维 Agent",
     description="多维感知 + 推理决策 + 安全控制",
-    version="0.7.0",
+    version=__version__,
 )
 app.state.limiter = limiter
 
@@ -103,7 +105,7 @@ app.include_router(inspection_routes.router,   prefix="/api/inspection",   tags=
 async def health():
     return {
         "status": "ok",
-        "version": "0.7.0",
+        "version": __version__,
         "uptime": round(time.time() - _START_TIME, 2),
         "modules": {
             "智能 Agent 引擎": "active",
@@ -115,6 +117,8 @@ async def health():
             "WebSocket 流式": "active",
             "全链路 Trace": "active",
             "弹性熔断降级": "active",
+            "华测式巡检引擎": "active",
+            "可插拔 Webhook": "active",
             "S4 人工审批": "active",
         },
     }

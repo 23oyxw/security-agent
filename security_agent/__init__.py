@@ -1,3 +1,4 @@
 """Security operations agent — core package."""
+from security_agent.version import __version__
 
-__version__ = "0.5.0"
+__all__ = ["__version__"]

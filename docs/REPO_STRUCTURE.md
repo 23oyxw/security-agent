@@ -2,6 +2,11 @@
 
 > 历史报告 [development/FILE_STRUCTURE_OPTIMIZATION.md](development/FILE_STRUCTURE_OPTIMIZATION.md) 已归档，以本文为准。
 
+## 版本
+
+- 根目录 `VERSION` — 唯一版本号（见 [RELEASE.md](RELEASE.md)）
+- `python scripts/check_version.py` 校验对齐
+
 ## 顶层
 
 - README.md, pyproject.toml, .env.example
@@ -37,6 +42,8 @@
 | skills/, tools/ | MCP |
 | retrieval/ | 知识库 RAG |
 | analysis/ | 任务分析 |
+| inspection/ | 华测式巡检引擎 |
+| notify/webhook.py | 可插拔外联告警 |
 
 ## 前端
 

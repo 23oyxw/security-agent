@@ -10,8 +10,8 @@
 **五层流水线**：[docs/architecture/FIVE_LAYER_PIPELINE.md](docs/architecture/FIVE_LAYER_PIPELINE.md)  
 **技术架构**：[docs/architecture/TECHNICAL_ARCHITECTURE.md](docs/architecture/TECHNICAL_ARCHITECTURE.md) · [docs/architecture/MASTER_PLAN.md](docs/architecture/MASTER_PLAN.md)  
 **答辩演示**：[docs/competitions/DEMO_SCRIPT.md](docs/competitions/DEMO_SCRIPT.md)  
-**启动**：`bash boot_start.sh` → http://127.0.0.1:**8900**（Vue 控制台 + API；文档若写 8000 请 `export SEC_API_PORT=8000`）  
-**回归**：`bash scripts/run_regression.sh` · **P0 联调**：`bash scripts/p0_frontend_checklist.sh`（需 API 已启动）
+**启动**：Windows `START_WIN.bat` · Linux `bash scripts/boot_start_loongarch.sh` → http://127.0.0.1:**8900**  
+**版本**：根目录 `VERSION`（当前 0.8.0）· 校验 `python scripts/check_version.py` · 详见 [docs/RELEASE.md](docs/RELEASE.md)
 
 ## 📁 项目结构
 
