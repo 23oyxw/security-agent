@@ -30,9 +30,13 @@ if not exist "frontend\dist\index.html" (
 
 if not exist "data\logs" mkdir "data\logs"
 
+rem Free port 8900 if stuck
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8900" ^| findstr "LISTENING"') do taskkill /F /PID %%a >nul 2>&1
+
 set PYTHONPATH=.
 echo Starting http://127.0.0.1:8900/
 echo Login: admin / admin123
+echo If pages empty: run scripts\start_backend.ps1 and use 8900 NOT file:// dist
 echo Press Ctrl+C to stop.
-start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" http://127.0.0.1:8900/
+start "" "http://127.0.0.1:8900/"
 ".venv\Scripts\python.exe" -m uvicorn security_agent.api.app:app --host 127.0.0.1 --port 8900

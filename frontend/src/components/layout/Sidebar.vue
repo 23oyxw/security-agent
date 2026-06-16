@@ -65,6 +65,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMetricsStore } from '../../stores/metrics'
 import { useAlertsStore } from '../../stores/alerts'
+import { useBackendStore } from '../../stores/backend'
 import { useUserStore } from '../../stores/user'
 import { buildSidebarFooterLinks } from '../../constants/navigation'
 import PipelineArchitectureRail from './PipelineArchitectureRail.vue'
@@ -78,6 +79,7 @@ defineEmits(['toggle', 'navigate', 'resize-start'])
 const route = useRoute()
 const metricsStore = useMetricsStore()
 const alertsStore = useAlertsStore()
+const backendStore = useBackendStore()
 const userStore = useUserStore()
 
 const footerLinks = computed(() => buildSidebarFooterLinks(userStore.role))
@@ -87,6 +89,7 @@ const sidebarStyle = computed(() => ({
 }))
 
 const statusClass = computed(() => {
+  if (!backendStore.online) return 'danger'
   const cpu = metricsStore.cpuPercent || 0
   const mem = metricsStore.memoryPercent || 0
   const alerts = alertsStore.unreadCount || 0
@@ -96,6 +99,7 @@ const statusClass = computed(() => {
 })
 
 const statusText = computed(() => {
+  if (!backendStore.online) return '后端离线'
   if (statusClass.value === 'healthy') return '运行中'
   if (statusClass.value === 'warning') return '高负载'
   return '严重告警'

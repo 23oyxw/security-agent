@@ -10,13 +10,17 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useMetricsStore } from '../stores/metrics'
 import { useAlertsStore } from '../stores/alerts'
+import { useBackendStore } from '../stores/backend'
 
 export function useSystemPolling(intervalMs = 30000) {
   const metricsStore = useMetricsStore()
   const alertsStore = useAlertsStore()
+  const backendStore = useBackendStore()
   let timer = null
 
   const poll = async () => {
+    await backendStore.ping()
+    if (!backendStore.online) return
     await Promise.allSettled([
       metricsStore.fetchMetrics(),
       alertsStore.fetchRecent(5),

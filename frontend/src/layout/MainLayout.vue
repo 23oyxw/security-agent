@@ -18,6 +18,15 @@
 
     <!-- 主区域 -->
     <div class="main-area">
+      <el-alert
+        v-if="!backendStore.online"
+        type="error"
+        :closable="false"
+        show-icon
+        class="backend-offline-banner"
+        title="后端未连接"
+        description="请先运行 START_WIN.bat 或 scripts/start_backend.ps1 启动 http://127.0.0.1:8900 ，勿单独打开 dist/index.html。"
+      />
       <!-- 顶栏（独立组件） -->
       <Topbar :collapsed="collapsed" @toggle-sidebar="collapsed = !collapsed" @logout="logout" />
 
@@ -50,6 +59,7 @@
 import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { useBackendStore } from '../stores/backend'
 import { useSystemPolling } from '../composables/useSystemPolling'
 import { useStaggerReveal } from '../composables/useStaggerReveal'
 import Sidebar from '../components/layout/Sidebar.vue'
@@ -59,6 +69,7 @@ import { useSidebarResize } from '../composables/useSidebarResize'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const backendStore = useBackendStore()
 
 // 轮询 60s；对话页不阻塞首屏
 useSystemPolling(60000)
