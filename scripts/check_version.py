@@ -43,6 +43,10 @@ def main() -> None:
     if "__version__" not in app_src:
         fail("app.py must use __version__ from security_agent.version")
 
+    init_py = (ROOT / "security_agent/api/__init__.py").read_text(encoding="utf-8")
+    if "from security_agent.version import __version__" not in init_py:
+        fail("security_agent/api/__init__.py must import __version__ from security_agent.version")
+
     ok(f"version {VERSION} aligned")
 
 

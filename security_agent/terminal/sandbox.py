@@ -16,14 +16,27 @@
 from __future__ import annotations
 
 import os
-import pwd
-import grp
 import shutil
 import signal
 import subprocess
-import resource as rlim
+import sys
 from dataclasses import dataclass, field
 from typing import Any
+
+try:
+    import pwd
+except ImportError:
+    pwd = None  # type: ignore[assignment]
+
+try:
+    import grp  # noqa: F401 — Unix 可选
+except ImportError:
+    grp = None  # type: ignore[assignment]
+
+try:
+    import resource as rlim
+except ImportError:
+    rlim = None  # type: ignore[assignment]
 
 from security_agent.audit import log as audit
 from security_agent.timeutil import now_iso
@@ -39,6 +52,15 @@ DEFAULT_CPU_LIMIT_SEC = 30      # CPU 时间上限
 DEFAULT_MEMORY_LIMIT_MB = 512   # 内存上限
 DEFAULT_FILE_SIZE_MB = 100      # 单文件大小上限
 DEFAULT_PROCESS_LIMIT = 50      # 子进程上限
+
+_IS_UNIX = sys.platform != "win32"
+
+
+def _exec_identity() -> tuple[str, int, int]:
+    if pwd is not None and _IS_UNIX:
+        return pwd.getpwuid(os.getuid()).pw_name, os.getuid(), os.getgid()
+    name = os.environ.get("USERNAME") or os.environ.get("USER") or "Administrator"
+    return name, 0, 0
 
 
 @dataclass
@@ -107,6 +129,10 @@ class SandboxExecutor:
 
     def _resolve_user(self) -> None:
         """解析并验证受限用户."""
+        if pwd is None or not _IS_UNIX:
+            self._user_available = False
+            return
+
         if self.restricted_user in FORBIDDEN_USERS:
             self._user_available = False
             return
@@ -195,29 +221,29 @@ class SandboxExecutor:
         executed_at = now_iso()
 
         def set_limits():
-            """preexec_fn: 在子进程中设置资源限制."""
+            """preexec_fn: 在子进程中设置资源限制 (仅 Unix)."""
+            if rlim is None:
+                return
             try:
-                # CPU 时间限制
                 rlim.setrlimit(rlim.RLIMIT_CPU, (self.cpu_limit, self.cpu_limit))
             except Exception:
                 pass
             try:
-                # 内存限制
                 mem_bytes = self.memory_limit_mb * 1024 * 1024
                 rlim.setrlimit(rlim.RLIMIT_AS, (mem_bytes, mem_bytes))
             except Exception:
                 pass
             try:
-                # 文件大小限制
                 file_bytes = self.file_size_mb * 1024 * 1024
                 rlim.setrlimit(rlim.RLIMIT_FSIZE, (file_bytes, file_bytes))
             except Exception:
                 pass
             try:
-                # 进程数限制
                 rlim.setrlimit(rlim.RLIMIT_NPROC, (self.process_limit, self.process_limit))
             except Exception:
                 pass
+
+        user_name, uid, gid = _exec_identity()
 
         try:
             proc_env = os.environ.copy()
@@ -225,16 +251,22 @@ class SandboxExecutor:
                 proc_env.update(env)
             proc_env["LANG"] = proc_env.get("LANG", "C.UTF-8")
 
-            proc = subprocess.run(
-                ["sh", "-c", command],
-                shell=False,
-                cwd=cwd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                env=proc_env,
-                preexec_fn=set_limits,
-            )
+            run_kwargs: dict[str, Any] = {
+                "cwd": cwd,
+                "capture_output": True,
+                "text": True,
+                "timeout": timeout,
+                "env": proc_env,
+            }
+            if _IS_UNIX:
+                proc = subprocess.run(
+                    ["sh", "-c", command],
+                    shell=False,
+                    preexec_fn=set_limits,
+                    **run_kwargs,
+                )
+            else:
+                proc = subprocess.run(command, shell=True, **run_kwargs)
 
             return SandboxResult(
                 ok=proc.returncode == 0,
@@ -242,11 +274,11 @@ class SandboxExecutor:
                 stdout=proc.stdout or "",
                 stderr=proc.stderr or "",
                 exit_code=proc.returncode,
-                executed_as_user=pwd.getpwuid(os.getuid()).pw_name,
-                executed_as_uid=os.getuid(),
-                executed_as_gid=os.getgid(),
-                was_isolated=True,
-                isolation_method=isolation_method,
+                executed_as_user=user_name,
+                executed_as_uid=uid,
+                executed_as_gid=gid,
+                was_isolated=_IS_UNIX,
+                isolation_method=isolation_method if _IS_UNIX else "windows_shell",
                 risk_level=risk_level,
                 executed_at=executed_at,
             )
@@ -358,6 +390,12 @@ class SandboxExecutor:
     @staticmethod
     def create_restricted_user() -> dict[str, Any]:
         """尝试创建 security-agent-op 受限用户."""
+        if pwd is None or not _IS_UNIX:
+            return {
+                "status": "unsupported",
+                "user": RESTRICTED_USER,
+                "message": "Windows 环境无需创建 Unix 受限用户",
+            }
         try:
             pwd.getpwnam(RESTRICTED_USER)
             return {"status": "exists", "user": RESTRICTED_USER}

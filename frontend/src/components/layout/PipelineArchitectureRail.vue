@@ -114,6 +114,8 @@
                 :key="ex.path"
                 type="button"
                 class="extra-link"
+                :class="{ 'is-current': isExtraActive(ex.path) }"
+                @mouseenter="prefetchRoute(ex.path)"
                 @click="goExtra(ex.path)"
               >
                 <el-icon :size="12"><component :is="ex.icon" /></el-icon>
@@ -185,6 +187,7 @@ import {
   LAYER_TRANSITION,
   SPINE_ORDER,
 } from '../../constants/pipeline-architecture'
+import { getActiveLayerForPath, normalizePath } from '../../constants/navigation'
 import { AGENT_VISUAL, agentVisual, agentColor } from '../../constants/agent-visual'
 
 const props = defineProps({
@@ -200,6 +203,16 @@ const agentStore = useAgentStore()
 const layers = SIDEBAR_LAYERS
 const transition = LAYER_TRANSITION
 const agentLegend = Object.values(AGENT_VISUAL)
+
+const PREFETCH_ROUTES = {
+  '/l5': () => import('../../views/L5Analytics.vue'),
+  '/workflow': () => import('../../views/WorkflowView.vue'),
+  '/canvas': () => import('../../views/InfiniteCanvas.vue'),
+}
+
+function prefetchRoute(path) {
+  PREFETCH_ROUTES[path]?.()
+}
 
 const spineNodes = computed(() =>
   SPINE_ORDER.map(id => {
@@ -224,19 +237,31 @@ function badgeCount(key) {
 }
 
 function goExtra(path) {
+  prefetchRoute(path)
   router.push(path)
 }
 
+function isExtraActive(path) {
+  const p = normalizePath(route.path)
+  const target = normalizePath(path)
+  return p === target || p.startsWith(`${target}/`)
+}
+
+const routeLayer = computed(() =>
+  getActiveLayerForPath(route.path, { agentMode: agentStore.mode }),
+)
+
 const activeLayer = computed(() => {
+  const fromRoute = routeLayer.value
+  if (fromRoute && route.path !== '/agent') return fromRoute
+
   const p = agentStore.dispatchPhase
   if (p === 'executed') return 'L5'
   if (p === 'execute') return 'L3'
   if (agentStore.l2Result?.verdict) return agentStore.mode === 'execute' ? 'GATE' : 'L2'
   if (agentStore.currentPlan) return 'L2'
-  if (agentStore.mode === 'plan' || route.path === '/agent') return 'L1'
-  if (route.path === '/perception') return 'L1'
-  if (route.path === '/l1/boundary') return 'L1'
-  return 'L1'
+  if (agentStore.mode === 'execute') return 'L3'
+  return fromRoute || 'L1'
 })
 
 const canSwitchExecute = computed(() => {
@@ -283,7 +308,7 @@ function runAction(actionKey) {
   switch (actionKey) {
     case 'l1PlanMode':
       agentStore.setMode('plan')
-      router.push('/agent')
+      router.push({ path: '/agent', query: { tab: 'pipeline' } })
       break
     case 'l2Safety':
       router.push('/safety')
@@ -295,12 +320,13 @@ function runAction(actionKey) {
         router.push({
           path: '/agent',
           query: {
+            tab: 'plan',
             autorun: agentStore.needsConfirm ? '0' : '1',
             toL5: '1',
           },
         })
       } else {
-        router.push('/agent')
+        router.push({ path: '/agent', query: { tab: 'pipeline' } })
       }
       break
     case 'l4Trace': {
@@ -309,6 +335,7 @@ function runAction(actionKey) {
       break
     }
     case 'l5Dashboard':
+      prefetchRoute('/l5')
       router.push('/l5')
       break
     default:
@@ -497,6 +524,12 @@ function runAction(actionKey) {
 
 .extra-link:hover {
   background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.extra-link.is-current {
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(96, 165, 250, 0.18);
   color: #fff;
 }
 

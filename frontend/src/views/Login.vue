@@ -4,7 +4,7 @@
       <template #header>
         <div class="login-header">
           <h2>🛡️ 安全运维控制台</h2>
-          <p class="sub">银河麒麟智能安全运维 Agent v0.7</p>
+          <p class="sub">银河麒麟智能安全运维 Agent v{{ APP_VERSION }}</p>
           <el-alert type="info" :closable="false" show-icon class="demo-hint">
             <template #title>演示账号</template>
             用户名 <strong>admin</strong> · 密码 <strong>admin123</strong>
@@ -40,6 +40,8 @@ import { useRouter } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useUserStore } from '../stores/user'
 import { ElMessage } from 'element-plus'
+import { buildAgentRoute } from '../constants/navigation'
+import { APP_VERSION } from '../constants/app-version'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -57,7 +59,7 @@ async function handleLogin() {
   try {
     await userStore.login(form.username, form.password)
     ElMessage.success('登录成功')
-    router.push('/agent')
+    router.push(buildAgentRoute('pipeline'))
   } catch (e) {
     ElMessage.error(
       e.response?.data?.detail

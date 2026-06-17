@@ -183,7 +183,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import * as echarts from 'echarts'
+import { initChart, getEcharts } from '../composables/useEcharts'
 import {
   chartTooltip, categoryAxis, valueAxis,
   pageChartGradient,
@@ -392,13 +392,25 @@ async function fetchTraces() {
 function renderChart() {
   if (!traceChart.value || !traces.value.length) return
   chartLoading.value = true
-  try {
+  getEcharts().then(echarts => {
     if (!chartInstance || chartInstance.isDisposed()) {
       if (chartInstance) try { chartInstance.dispose() } catch {}
-      if (!traceChart.value) return
-      chartInstance = echarts.init(traceChart.value)
+      if (!traceChart.value) { chartLoading.value = false; return }
+      initChart(traceChart.value).then(inst => {
+        chartInstance = inst
+        if (chartInstance) paintTraceChart(echarts)
+        chartLoading.value = false
+      })
+      return
     }
-    const view = chartView.value
+    paintTraceChart(echarts)
+    chartLoading.value = false
+  })
+}
+
+function paintTraceChart(echarts) {
+  if (!chartInstance) return
+  const view = chartView.value
     if (view === 'timeline') {
       const data = traces.value.slice(0, 20).reverse()
       chartInstance.setOption({
@@ -452,9 +464,6 @@ function renderChart() {
         series: [{ type: 'heatmap', data, label: { show: false }, emphasis: { itemStyle: { shadowBlur: 10 } } }],
       })
     }
-  } finally {
-    chartLoading.value = false
-  }
 }
 
 watch(chartView, () => nextTick(renderChart))

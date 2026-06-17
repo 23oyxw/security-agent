@@ -110,7 +110,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import * as echarts from 'echarts'
+import { initChart, getEcharts } from '../composables/useEcharts'
 import { chartTooltip, categoryAxis, valueAxis } from '../utils/chartTheme'
 import { useAlertsStore } from '../stores/alerts'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -176,12 +176,13 @@ function relativeTime(row) {
   return formatRelativeBeijing(raw, { assumeUtcNaive: !!assumeUtc })
 }
 
-function renderTrendChart() {
+async function renderTrendChart() {
   if (!trendChart.value) return
+  const echarts = await getEcharts()
   if (!chartInstance || chartInstance.isDisposed()) {
     if (chartInstance) try { chartInstance.dispose() } catch {}
     if (!trendChart.value) return
-    chartInstance = echarts.init(trendChart.value)
+    chartInstance = await initChart(trendChart.value)
   }
   if (!alerts.value.length) { chartInstance.clear(); return }
   const now = Date.now()

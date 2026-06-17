@@ -1,6 +1,12 @@
 <template>
   <div class="reports-view">
-    <PageHeader title="任务分析报表" subtitle="Prompt/命令分层分析 · 工作流匹配 · 学术参照 · 支持上传" layer="L1" />
+    <PageHeader
+      :title="pageMeta.label"
+      :subtitle="pageMeta.subtitle"
+      :layer="pageMeta.layer"
+      :layer-label="pageMeta.layerLabel"
+      :agent="pageMeta.agent"
+    />
     <el-row :gutter="16">
       <el-col :span="14">
         <div class="section-card">
@@ -35,7 +41,10 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import PageHeader from '../components/common/PageHeader.vue'
+import { usePageMeta } from '../composables/usePageMeta'
 import { analyzeTask, getAnalysis, listReports } from '../api/reports'
+
+const { pageMeta } = usePageMeta('reports')
 const prompt = ref('')
 const uploadFile = ref(null)
 const analyzing = ref(false)

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import sys
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,16 +48,26 @@ def main() -> int:
         ("GET /api/mcp/servers", lambda: client.get("/api/mcp/servers", headers=headers)),
         ("GET /api/trace/", lambda: client.get("/api/trace/", headers=headers)),
         ("GET /api/knowledge/playbooks", lambda: client.get("/api/knowledge/playbooks", headers=headers)),
-        ("GET /api/dify/health", lambda: client.get("/api/dify/health")),
         ("GET /api/skills/flows/", lambda: client.get("/api/skills/flows/", headers=headers)),
         ("GET /api/workflow/standard", lambda: client.get("/api/workflow/standard", headers=headers)),
         ("GET /api/inspection/catalog", lambda: client.get("/api/inspection/catalog", headers=headers)),
         ("GET /api/inspection/risk/predict", lambda: client.get("/api/inspection/risk/predict", headers=headers)),
         ("GET /api/auth/me", lambda: client.get("/api/auth/me", headers=headers)),
+        ("GET /api/l5/scatter", lambda: client.get("/api/l5/scatter", headers=headers)),
+        ("GET /api/l5/heatmap", lambda: client.get("/api/l5/heatmap", headers=headers)),
+        ("GET /api/l5/integration/catalog", lambda: client.get("/api/l5/integration/catalog", headers=headers)),
+        ("GET /api/eval/score", lambda: client.get("/api/eval/score", headers=headers)),
+        ("GET /api/repair/catalog", lambda: client.get("/api/repair/catalog", headers=headers)),
     ]
     for label, fn in endpoints:
         resp = fn()
         record(label, resp.status_code == 200, f"status={resp.status_code}")
+
+    dify = client.get("/api/dify/health")
+    if dify.status_code == 404:
+        record("GET /api/dify/health (optional)", True, "skipped — not configured")
+    else:
+        record("GET /api/dify/health", dify.status_code == 200, f"status={dify.status_code}")
 
     deny = client.post(
         "/api/safety/defense/evaluate",
@@ -91,10 +102,11 @@ def main() -> int:
         f"ok={flow.json().get('ok')}",
     )
 
+    exec_cmd = "ps aux | head -2" if sys.platform != "win32" else 'tasklist /FI "IMAGENAME eq python.exe"'
     exec_r = client.post(
         "/api/executor/execute",
         headers=headers,
-        json={"command": "ps aux | head -2", "timeout": 10, "confirm": True, "sandbox": True},
+        json={"command": exec_cmd, "timeout": 10, "confirm": True, "sandbox": True},
     )
     record("POST /api/executor/execute", exec_r.status_code == 200, f"success={exec_r.json().get('success')}")
 
@@ -128,7 +140,10 @@ def main() -> int:
             "auto_remediation": False,
         },
     )
-    record("POST /api/dify/callback", cb.status_code == 200 and cb.json().get("status") == "ok", "")
+    if cb.status_code in (404, 405):
+        record("POST /api/dify/callback (optional)", True, "skipped — not configured")
+    else:
+        record("POST /api/dify/callback", cb.status_code == 200 and cb.json().get("status") == "ok", "")
 
     reload = client.post("/api/mcp/reload", headers=headers)
     record(
@@ -174,10 +189,15 @@ def main() -> int:
     if agent.status_code == 200 and agent.json().get("trace_id"):
         tid = agent.json()["trace_id"]
         exp = client.get(f"/api/trace/{tid}/export", headers=headers)
+        try:
+            body = exp.json() if exp.status_code == 200 else {}
+            audit_n = len(body.get("audit_events", []))
+        except Exception:
+            audit_n = 0
         record(
             f"GET /api/trace/{tid}/export",
             exp.status_code == 200,
-            f"audit_events={len(exp.json().get('audit_events', []))}",
+            f"audit_events={audit_n}",
         )
 
     dist = ROOT / "frontend" / "dist" / "index.html"

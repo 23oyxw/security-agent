@@ -32,6 +32,11 @@ export function useStaggerReveal(rootRef, options = {}) {
     }
 
     root.querySelectorAll('.reveal-item:not(.is-visible)').forEach(el => observer.observe(el))
+
+    // 路由 out-in 过渡后 IO 可能未触发，兜底显示内容
+    window.setTimeout(() => {
+      root.querySelectorAll('.reveal-item:not(.is-visible)').forEach(el => el.classList.add('is-visible'))
+    }, 180)
   }
 
   onMounted(() => nextTick(observeAll))

@@ -104,7 +104,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import * as echarts from 'echarts'
+import { initChart } from '../composables/useEcharts'
 import api from '../api'
 import PageHeader from '../components/common/PageHeader.vue'
 import { chartTooltip, categoryAxis, valueAxis, metricBarData, chartGrid } from '../utils/chartTheme'
@@ -162,9 +162,9 @@ async function fetchAll() {
   }
 }
 
-function renderChart() {
+async function renderChart() {
   if (!resourceChart.value) return
-  if (!chartInstance) chartInstance = echarts.init(resourceChart.value)
+  if (!chartInstance) chartInstance = await initChart(resourceChart.value)
   const ctx = eyeCtx.value
   chartInstance.setOption({
     tooltip: chartTooltip(),

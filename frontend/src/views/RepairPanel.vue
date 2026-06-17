@@ -1,6 +1,14 @@
 <template>
   <div class="repair-page page-theme-guard">
-    <PageHeader title="环境修复" subtitle="L3 修复簇 · 经 L2 沙箱预演" layer="L3" />
+    <PageHeader
+      :title="pageMeta.label"
+      :subtitle="pageMeta.subtitle"
+      :layer="pageMeta.layer"
+      :layer-label="pageMeta.layerLabel"
+      :agent="pageMeta.agent"
+    />
+    <el-alert type="info" :closable="false" show-icon class="repair-banner"
+      title="修复走完整五层：L1 感知 → L2 沙箱 → L3 执行 → L4 审计 → L5 策略回流" />
     <section class="repair-grid">
       <article v-for="item in catalog" :key="item.id" class="repair-card">
         <h3>{{ item.title }}</h3>
@@ -24,7 +32,10 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '../components/common/PageHeader.vue'
+import { usePageMeta } from '../composables/usePageMeta'
 import { fetchRepairCatalog, fetchRepairHistory, triggerRepair } from '../api/repair'
+
+const { pageMeta } = usePageMeta('repair')
 const catalog = ref([])
 const history = ref([])
 const triggering = ref(null)
@@ -57,6 +68,7 @@ onMounted(async () => {
 </script>
 <style scoped>
 .repair-page { padding: 16px; }
+.repair-banner { margin-bottom: 16px; }
 .repair-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 12px; margin-bottom: 24px; }
 .repair-card { padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; }
 .repair-history h3 { margin: 0 0 12px; font-size: 15px; }

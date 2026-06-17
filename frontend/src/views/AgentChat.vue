@@ -3,7 +3,8 @@
     <!-- 精简顶栏 -->
     <header class="agent-bar">
       <div class="agent-bar-left">
-        <span class="agent-bar-title">智能体对话</span>
+        <span class="agent-bar-title">{{ agentPage.label }}</span>
+        <el-tag size="small" effect="plain" type="info">{{ agentPage.layerLabel }}</el-tag>
         <el-segmented v-model="agentStore.mode" :options="modeOptions" size="small" />
       </div>
       <div class="agent-bar-right">
@@ -22,6 +23,19 @@
       </div>
 
       <div class="chat-messages" ref="messagesRef">
+        <div v-if="!messages.length && !thinking" class="chat-welcome">
+          <p class="welcome-title">输入运维指令，先 L1 分析再 L3 执行</p>
+          <p class="welcome-sub">右侧「流水线 / 分析」可查看五层状态与计划详情</p>
+          <div class="quick-cmds">
+            <button
+              v-for="cmd in quickCommands"
+              :key="cmd"
+              type="button"
+              class="quick-cmd"
+              @click="applyQuick(cmd)"
+            >{{ cmd }}</button>
+          </div>
+        </div>
         <div v-for="(msg, i) in messages" :key="i" class="msg-row" :class="msg.role">
           <div class="msg-bubble" :class="msg.role">
             <div class="msg-meta">
@@ -129,6 +143,15 @@ import { useAgentStore } from '../stores/agent'
 import { useAgentWs } from '../composables/useAgentWs'
 import PipelineBtn from '../components/common/PipelineBtn.vue'
 import { AGENTS, ORCHESTRATOR } from '../constants/agents'
+import { NAV_PAGES } from '../constants/navigation'
+
+const agentPage = NAV_PAGES.agent
+const quickCommands = [
+  '查看当前系统健康状态',
+  '执行安全扫描并生成报告',
+  '分析磁盘与内存告警',
+  '列出异常进程与开放端口',
+]
 
 const OrchestratorPipeline = defineAsyncComponent(() => import('../components/agent/OrchestratorPipeline.vue'))
 const PlanPanel = defineAsyncComponent(() => import('../components/agent/PlanPanel.vue'))
@@ -154,7 +177,7 @@ const thinkingLabel = ref('')
 const messagesRef = ref(null)
 const batchProcessing = ref(false)
 const autoExecute = ref(false)
-const drawerOpen = ref(false)
+const drawerOpen = ref(true)
 const sideTab = ref('pipeline')
 
 const { connect: connectWs, disconnect: disconnectWs } = useAgentWs()
@@ -171,6 +194,11 @@ function scrollToBottom() {
   nextTick(() => {
     if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
   })
+}
+
+function applyQuick(text) {
+  input.value = text
+  if (agentStore.mode === 'plan') sendAnalyze()
 }
 
 watch(messages, scrollToBottom, { deep: true })
@@ -403,6 +431,49 @@ onUnmounted(() => disconnectWs())
   flex-direction: column;
   gap: var(--space-2);
   background: var(--color-neutral-50);
+}
+
+.chat-welcome {
+  margin: auto;
+  max-width: 520px;
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+}
+
+.welcome-title {
+  margin: 0 0 6px;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.welcome-sub {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.quick-cmds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.quick-cmd {
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-default);
+  background: #fff;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.quick-cmd:hover {
+  border-color: var(--color-primary-400);
+  color: var(--color-primary-600);
 }
 
 .msg-row.user { align-self: flex-end; max-width: 85%; }

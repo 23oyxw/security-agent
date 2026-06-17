@@ -1,5 +1,5 @@
 <template>
-  <div class="sa-page-header reveal-item">
+  <div class="sa-page-header reveal-item is-visible">
     <div class="sa-page-header-main">
       <div class="sa-page-tags">
         <el-tag v-if="layer" size="small" :type="layerTagType" effect="plain">{{ layerLabel || layer }}</el-tag>

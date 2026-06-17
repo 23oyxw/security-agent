@@ -14,10 +14,11 @@
         <span class="theme-pill-dot" aria-hidden="true"></span>
         {{ themeLabel }}
       </span>
+      <span v-if="backendStore.version" class="version-pill" title="后端版本">v{{ backendStore.version }}</span>
     </div>
 
     <div class="topbar-right">
-      <button class="chat-entry-btn" type="button" title="打开智能体对话" @click="router.push('/agent')">
+      <button class="chat-entry-btn" type="button" title="打开智能体对话" @click="router.push(buildAgentRoute('pipeline'))">
         <el-icon :size="15"><ChatDotRound /></el-icon>
         <span>智能体对话</span>
       </button>
@@ -88,7 +89,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../../stores/user'
 import { useAlertsStore } from '../../stores/alerts'
 import { useMetricsStore } from '../../stores/metrics'
-import { getPageLabel, getThemeLabel, normalizePath } from '../../constants/navigation'
+import { useBackendStore } from '../../stores/backend'
+import { getPageLabel, getThemeLabel, normalizePath, buildAgentRoute } from '../../constants/navigation'
 
 defineProps({ collapsed: Boolean })
 defineEmits(['toggle-sidebar', 'logout'])
@@ -98,6 +100,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const alertsStore = useAlertsStore()
 const metricsStore = useMetricsStore()
+const backendStore = useBackendStore()
 
 const currentPageName = computed(() => getPageLabel(route.path))
 const themeLabel = computed(() => getThemeLabel(route.meta.theme))
@@ -178,6 +181,17 @@ function handleAlert(cmd) {
 .breadcrumb-nav :deep(.el-breadcrumb__inner.is-link) {
   color: var(--color-primary-500) !important;
   font-weight: var(--weight-medium);
+}
+
+.version-pill {
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-neutral-100);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-subtle);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- 图标按钮 ---- */

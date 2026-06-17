@@ -36,6 +36,10 @@ if [[ -f "${API_PID_FILE}" ]]; then
 fi
 pkill -f "uvicorn security_agent.api.app:app" 2>/dev/null || true
 
+if [[ ! -f "${SEC_ROOT}/frontend/dist/index.html" ]]; then
+  log "警告: 缺少 frontend/dist — 请在 x86 执行 cd frontend && npm run build 后同步"
+fi
+
 export PYTHONPATH="${SEC_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 log "启动 API http://${API_HOST}:${API_PORT} ..."
 nohup "${PY}" -m uvicorn security_agent.api.app:app \
@@ -45,7 +49,8 @@ echo $! >"${API_PID_FILE}"
 sleep 2
 
 if curl -sf "http://127.0.0.1:${API_PORT}/api/health" >/dev/null 2>&1; then
-  log "健康检查通过"
+  ver="$(curl -sf "http://127.0.0.1:${API_PORT}/api/health" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p')"
+  log "健康检查通过 · 版本 ${ver:-unknown}"
 else
   log "启动中或失败，查看: tail -f ${LOG_DIR}/api.log"
 fi

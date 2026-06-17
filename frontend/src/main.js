@@ -32,6 +32,7 @@ const usedIcons = [
   'Grid', 'InfoFilled', 'List', 'Loading', 'Lock', 'MagicStick', 'Monitor',
   'Odometer', 'Promotion', 'Reading', 'Refresh', 'Search', 'SetUp', 'Share',
   'SwitchButton', 'Terminal', 'TrendCharts', 'User', 'UserFilled', 'View', 'WarningFilled',
+  'Finished',
 ]
 usedIcons.forEach(name => {
   if (ElementPlusIconsVue[name]) {

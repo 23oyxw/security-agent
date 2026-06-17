@@ -33,7 +33,7 @@
       <!-- 内容区（顶栏 PillarWorkflowRail 已移除，五层导航仅在侧栏） -->
       <main ref="contentRef" class="content" :class="{ 'content--agent': isAgentRoute }">
         <router-view v-slot="{ Component, route: viewRoute }">
-          <transition :name="transitionName" mode="out-in">
+          <transition :name="transitionName" mode="default" @after-enter="onPageEntered">
             <component :is="Component" :key="viewRoute.fullPath" />
           </transition>
         </router-view>
@@ -110,6 +110,10 @@ watch(
     if (route.path !== '/agent') refreshReveal()
   },
 )
+
+function onPageEntered() {
+  refreshReveal()
+}
 
 watch(
   () => route.path,
@@ -256,13 +260,13 @@ function logout() {
 /* 2. 左滑（进入子页面） */
 .slide-left-enter-active {
   transition:
-    opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide-left-leave-active {
   transition:
-    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity 0.12s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.12s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide-left-enter-from {
   opacity: 0;
@@ -276,13 +280,13 @@ function logout() {
 /* 3. 右滑（返回上级） */
 .slide-right-enter-active {
   transition:
-    opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide-right-leave-active {
   transition:
-    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity 0.12s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.12s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide-right-enter-from {
   opacity: 0;

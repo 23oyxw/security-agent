@@ -1,23 +1,20 @@
 <template>
   <div class="l5-page page-theme-ops">
-    <header class="l5-hero">
-      <div>
-        <h1 class="l5-title">L5 链路量化分析</h1>
-        <p class="l5-core">
-          依托统计模型识别链路异常，散点图定位单点偶发故障、热力图锁定批量区域故障，联动链路追踪拆解调用栈，精准定位故障位置、自动追溯链路根源。
-        </p>
-      </div>
-      <div class="l5-hero-meta">
-        <el-tag type="info" effect="plain">模型：3σ + IQR · DBSCAN · HTN 0-1</el-tag>
-        <el-tag type="success" effect="plain">绘图：ECharts</el-tag>
+    <PageHeader
+      :title="pageMeta.label"
+      :subtitle="pageMeta.subtitle"
+      :layer="pageMeta.layer"
+      :layer-label="pageMeta.layerLabel"
+      :agent="pageMeta.agent"
+    >
+      <template #tags>
+        <el-tag type="info" effect="plain">3σ + IQR · DBSCAN · HTN 0-1</el-tag>
+        <el-tag type="success" effect="plain">ECharts</el-tag>
         <el-tag v-if="scatter?.anomaly_count != null" type="danger" effect="plain">
           异常 {{ scatter.anomaly_count }} 点
         </el-tag>
-        <el-tag v-for="m in mathModels" :key="m.id" size="small" effect="plain" type="info">
-          {{ m.layer }} · {{ m.name }}
-        </el-tag>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <section v-if="mathModels.length" class="l5-metrics-row">
       <article class="l5-card l5-card--wide">
@@ -51,6 +48,12 @@
         <ul v-if="evolutionHints.length" class="evolve-hints">
           <li v-for="(h, i) in evolutionHints" :key="i">{{ h }}</li>
         </ul>
+        <div v-if="clusterSummary.length" class="cluster-row">
+          <span class="cluster-label">DBSCAN 聚类</span>
+          <el-tag v-for="c in clusterSummary" :key="c.label" size="small" effect="plain" type="info">
+            {{ c.label }} · {{ c.count }}
+          </el-tag>
+        </div>
         <div class="policy-row">
           <el-button size="small" @click="loadPolicyHints">L5→L1 策略建议</el-button>
           <el-button size="small" type="primary" plain @click="applyPolicy">反写 L1 调优</el-button>
@@ -78,7 +81,8 @@
           <h2>散点图 · 单点/偶发异常</h2>
           <span class="card-sub">{{ scatter?.definition || '加载中…' }}</span>
         </header>
-        <div ref="scatterRef" class="chart-box" />
+        <div v-if="scatterHasData" ref="scatterRef" class="chart-box" />
+        <el-empty v-else description="暂无 Trace 散点数据，请先完成 L1→L3 对话产生 trace" :image-size="56" />
         <p v-if="selectedTrace" class="trace-hint">
           选中 <code>{{ selectedTrace.trace_id }}</code> · 路径 {{ selectedTrace.path_id }}
           <el-button link type="primary" size="small" @click="loadRootCause(selectedTrace.trace_id)">溯源</el-button>
@@ -90,7 +94,8 @@
           <h2>热力图 · 时段/集群异常</h2>
           <span class="card-sub">{{ heatmap?.definition || '加载中…' }}</span>
         </header>
-        <div ref="heatmapRef" class="chart-box" />
+        <div v-if="heatmapHasData" ref="heatmapRef" class="chart-box" />
+        <el-empty v-else description="暂无时段热力数据" :image-size="56" />
       </article>
     </section>
 
@@ -165,7 +170,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import * as echarts from 'echarts'
+import { useAgentStore } from '../stores/agent'
 import { ElMessage } from 'element-plus'
 import {
   fetchL5Scatter,
@@ -177,8 +182,11 @@ import {
   runL5External,
   fetchL5PolicyFeedback,
   applyL5PolicyFeedback,
+  fetchL5Clusters,
 } from '../api/l5'
 import api from '../api'
+import { initChart } from '../composables/useEcharts'
+import { chartGrid, chartTooltip, l5ValueAxis, L5_CHART } from '../utils/chartTheme'
 import {
   L5_FORMULA,
   L5_LAYER_CROSS,
@@ -186,6 +194,10 @@ import {
   buildEvolutionHints,
 } from '../constants/l5-metrics'
 import { MATH_MODEL_CATALOG } from '../constants/pipeline-architecture'
+import PageHeader from '../components/common/PageHeader.vue'
+import { usePageMeta } from '../composables/usePageMeta'
+
+const { pageMeta } = usePageMeta('l5')
 
 const integrationTab = ref('internal')
 const externalCatalog = ref(null)
@@ -199,8 +211,8 @@ const activeTests = computed(() => {
   return catalog.value?.tests || []
 })
 
-const agentStore = useAgentStore()
 const router = useRouter()
+const agentStore = useAgentStore()
 
 const scatter = ref(null)
 const heatmap = ref(null)
@@ -214,6 +226,10 @@ const selectedTrace = ref(null)
 const route = useRoute()
 const metricValues = ref(buildL5MetricValues({}))
 const evolutionHints = ref([])
+const clusterSummary = ref([])
+
+const scatterHasData = computed(() => (scatter.value?.points?.length || 0) > 0)
+const heatmapHasData = computed(() => (heatmap.value?.matrix?.length || 0) > 0)
 
 const waterfallRef = ref(null)
 const scatterRef = ref(null)
@@ -251,9 +267,10 @@ async function loadRootCause(traceId) {
   renderWaterfall()
 }
 
-function renderWaterfall() {
+async function renderWaterfall() {
   if (!waterfallRef.value || !rootCause.value?.spans?.length) return
-  if (!waterfallChart) waterfallChart = echarts.init(waterfallRef.value)
+  if (!waterfallChart) waterfallChart = await initChart(waterfallRef.value)
+  if (!waterfallChart) return
   const spans = rootCause.value.spans
   waterfallChart.setOption({
     tooltip: { trigger: 'axis' },
@@ -278,36 +295,38 @@ async function loadEvalMetrics() {
   } catch { /* mock/offline */ }
 }
 
-function renderScatter() {
-  if (!scatterRef.value || !scatter.value?.points?.length) return
-  if (!scatterChart) scatterChart = echarts.init(scatterRef.value)
+async function renderScatter() {
+  if (!scatterRef.value || !scatterHasData.value) return
+  if (!scatterChart) scatterChart = await initChart(scatterRef.value)
+  if (!scatterChart) return
   const pts = scatter.value.points
   const normal = pts.filter(p => !p.is_anomaly).map(p => [p.latency_ms, p.error_rate, p.jitter_ms, p.trace_id, p.path_id])
   const anomaly = pts.filter(p => p.is_anomaly).map(p => [p.latency_ms, p.error_rate, p.jitter_ms, p.trace_id, p.path_id])
 
   scatterChart.setOption({
     tooltip: {
+      ...chartTooltip({ trigger: 'item' }),
       formatter(p) {
         const d = p.data
         return `Trace ${d[3]}<br/>耗时 ${d[0]}ms · 错误率 ${d[1]}%<br/>抖动 ${d[2]}ms · 路径 ${d[4]}`
       },
     },
-    grid: { left: 48, right: 24, top: 32, bottom: 40 },
-    xAxis: { name: '耗时(ms)', type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } } },
-    yAxis: { name: '错误率(%)', type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } } },
+    grid: chartGrid({ left: 52, right: 24, top: 36, bottom: 44 }),
+    xAxis: l5ValueAxis('耗时(ms)'),
+    yAxis: l5ValueAxis('错误率(%)'),
     series: [
       {
         name: '正常',
         type: 'scatter',
         symbolSize: d => Math.max(8, Math.min(28, d[2] / 8)),
-        itemStyle: { color: '#3b82f6', opacity: 0.75 },
+        itemStyle: { color: L5_CHART.normal, opacity: 0.8 },
         data: normal,
       },
       {
         name: '离群/异常',
         type: 'scatter',
         symbolSize: d => Math.max(10, Math.min(32, d[2] / 6)),
-        itemStyle: { color: '#ef4444', borderColor: '#fecaca', borderWidth: 1 },
+        itemStyle: { color: L5_CHART.anomaly, borderColor: '#fecaca', borderWidth: 1 },
         data: anomaly,
       },
     ],
@@ -320,9 +339,10 @@ function renderScatter() {
   })
 }
 
-function renderHeatmap() {
-  if (!heatmapRef.value || !heatmap.value?.matrix?.length) return
-  if (!heatmapChart) heatmapChart = echarts.init(heatmapRef.value)
+async function renderHeatmap() {
+  if (!heatmapRef.value || !heatmapHasData.value) return
+  if (!heatmapChart) heatmapChart = await initChart(heatmapRef.value)
+  if (!heatmapChart) return
   const { x_labels: xl, y_labels: yl, matrix } = heatmap.value
   const data = []
   matrix.forEach((row, yi) => {
@@ -333,8 +353,8 @@ function renderHeatmap() {
   heatmapChart.setOption({
     tooltip: { position: 'top' },
     grid: { left: 80, right: 24, top: 24, bottom: 48 },
-    xAxis: { type: 'category', data: xl, splitArea: { show: true } },
-    yAxis: { type: 'category', data: yl, splitArea: { show: true } },
+    xAxis: { type: 'category', data: xl, splitArea: { show: true }, axisLabel: { color: '#475569', fontSize: 10 } },
+    yAxis: { type: 'category', data: yl, splitArea: { show: true }, axisLabel: { color: '#475569', fontSize: 10 } },
     visualMap: {
       min: 0,
       max: maxVal,
@@ -342,7 +362,7 @@ function renderHeatmap() {
       orient: 'horizontal',
       left: 'center',
       bottom: 0,
-      inRange: { color: ['#0f172a', '#0369a1', '#f59e0b', '#ef4444'] },
+      inRange: { color: L5_CHART.heatRange },
     },
     series: [{
       type: 'heatmap',
@@ -353,12 +373,28 @@ function renderHeatmap() {
   })
 }
 
+async function loadClusters() {
+  try {
+    const c = await fetchL5Clusters()
+    const items = []
+    for (const block of [c.boundary, c.traces]) {
+      for (const g of block?.clusters || []) {
+        items.push({
+          label: g.cluster_id != null ? `簇${g.cluster_id}` : (g.label || '簇'),
+          count: g.size ?? g.count ?? '—',
+        })
+      }
+    }
+    clusterSummary.value = items.slice(0, 6)
+  } catch { clusterSummary.value = [] }
+}
+
 async function loadCharts() {
   scatter.value = await fetchL5Scatter()
   heatmap.value = await fetchL5Heatmap()
   await nextTick()
-  renderScatter()
-  renderHeatmap()
+  await renderScatter()
+  await renderHeatmap()
   const qTrace = route.query.trace
     || agentStore.lastExecute?.trace_id
     || agentStore.lastAudit?.trace_id
@@ -419,7 +455,7 @@ function onResize() {
 onMounted(async () => {
   window.addEventListener('resize', onResize)
   try {
-    await Promise.all([loadCharts(), loadCatalog(), loadEvalMetrics()])
+    await Promise.all([loadCharts(), loadCatalog(), loadEvalMetrics(), loadClusters()])
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || e.message || 'L5 数据加载失败')
   }
@@ -494,8 +530,25 @@ watch(() => route.query.trace, tid => {
 .l5-card {
   padding: var(--space-4);
   border-radius: var(--radius-lg);
-  background: rgba(15, 23, 42, 0.55);
-  border: 1px solid var(--color-border-default);
+  background: var(--glass-surface, #fff);
+  border: 1px solid var(--glass-border, var(--color-border-default));
+  box-shadow: var(--glass-shadow, var(--shadow-sm));
+}
+
+.cluster-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--color-border-subtle);
+}
+
+.cluster-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
 }
 
 .card-head h2 {

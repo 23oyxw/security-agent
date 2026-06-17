@@ -80,3 +80,14 @@ export function metricBarData(values) {
     },
   }))
 }
+
+/** L5 散点/热力 — 与 ops 主题白底图表一致 */
+export const L5_CHART = {
+  normal: METRIC_COLORS.cpu,
+  anomaly: METRIC_COLORS.load,
+  heatRange: ['#f0f9ff', '#0ea5e9', '#f59e0b', '#ef4444'],
+}
+
+export function l5ValueAxis(name, extra = {}) {
+  return valueAxis({ name, nameTextStyle: { color: '#64748b', fontSize: 11 }, ...extra })
+}

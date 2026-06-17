@@ -17,13 +17,17 @@
 
 from __future__ import annotations
 
-import grp
 import os
-import pwd
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from typing import Any
+
+try:
+    import pwd
+except ImportError:  # Windows 无 pwd/grp
+    pwd = None  # type: ignore[assignment]
 
 from security_agent.audit import log as audit
 from security_agent.audit.trace import TraceContext
@@ -38,8 +42,6 @@ DEFAULT_RESTRICTED_USER = "agent_ops"
 # 系统级安全豁免用户：root 和这些用户不允许作为受限账号
 FORBIDDEN_RESTRICTED_USERS = frozenset({"root", "admin", "Administrator"})
 
-# 哪些命令前缀即使在高风险下也允许用当前用户执行（因为它们需要 root 才能工作）
-# 例如：systemctl restart 需要 root，在受限用户下无法执行，应提示用户手动操作
 PRIVILEGE_REQUIRED_PREFIXES = frozenset({
     "systemctl restart",
     "systemctl stop",
@@ -62,6 +64,22 @@ PRIVILEGE_REQUIRED_PREFIXES = frozenset({
     "fdisk ",
     "parted ",
 })
+
+
+def _has_unix_accounts() -> bool:
+    return pwd is not None and sys.platform != "win32"
+
+
+def _current_username() -> str:
+    if _has_unix_accounts():
+        return pwd.getpwuid(os.getuid()).pw_name
+    return os.environ.get("USERNAME") or os.environ.get("USER") or "Administrator"
+
+
+def _is_root_user() -> bool:
+    if _has_unix_accounts():
+        return os.getuid() == 0
+    return False
 
 
 @dataclass
@@ -115,14 +133,18 @@ class PrivilegeBroker:
         self._restricted_available: bool = False
         self._timeout = timeout_sec
         self._cwd = cwd
-        self._current_user = pwd.getpwuid(os.getuid()).pw_name
-        self._is_root = os.getuid() == 0
+        self._current_user = _current_username()
+        self._is_root = _is_root_user()
         self._resolve_restricted_user()
 
     # ---- 受限用户解析 ----
 
     def _resolve_restricted_user(self) -> None:
         """解析受限用户是否存在."""
+        if not _has_unix_accounts():
+            self._restricted_available = False
+            return
+
         if self._restricted_user in FORBIDDEN_RESTRICTED_USERS:
             self._restricted_available = False
             audit.append_audit(
@@ -479,6 +501,12 @@ class PrivilegeBroker:
         在麒麟/Linux 系统上执行：sudo useradd -r -s /sbin/nologin -M agent_ops
         """
         user_name = DEFAULT_RESTRICTED_USER
+        if not _has_unix_accounts():
+            return {
+                "status": "unsupported",
+                "user": user_name,
+                "message": "Windows 环境请使用当前用户执行；受限账户仅在 Linux/麒麟创建",
+            }
         try:
             pwd.getpwnam(user_name)
             return {"status": "exists", "user": user_name, "message": f"用户 {user_name} 已存在"}

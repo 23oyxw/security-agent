@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { buildAgentRoute } from '../constants/navigation'
 // 页面名称/主题见 constants/navigation.js — meta.theme 与 Topbar 主题 pill 对齐
 
 const routes = [
@@ -10,7 +11,7 @@ const routes = [
     children: [
       { path: 'agent', name: 'Agent', component: () => import('../views/AgentChat.vue'), meta: { theme: 'intel', title: '智能体对话' } },
       { path: '', name: 'Dashboard', component: () => import('../views/Dashboard.vue'), meta: { theme: 'ops', title: '运维概览' } },
-      { path: 'l5', name: 'L5Analytics', component: () => import('../views/L5Analytics.vue'), meta: { theme: 'ops', title: 'L5 链路分析' } },
+      { path: 'l5', name: 'L5Analytics', component: () => import('../views/L5Analytics.vue'), meta: { theme: 'ops', title: 'L5 链路量化' } },
       { path: 'safety', name: 'Safety', component: () => import('../views/SafetyGate.vue'), meta: { theme: 'guard' } },
       { path: 'alerts', name: 'Alerts', component: () => import('../views/Alerts.vue'), meta: { theme: 'alert' } },
       { path: 'repair', name: 'Repair', component: () => import('../views/RepairPanel.vue'), meta: { theme: 'guard', title: '环境修复' } },
@@ -55,8 +56,8 @@ router.beforeEach(async (to, from, next) => {
   // 无 token 且非公开页面 → 登录
   if (!to.meta.public && !token) return next('/login')
 
-  // 已登录用户访问登录页 → 进入对话页
-  if (to.meta.public && token) return next('/agent')
+  // 已登录用户访问登录页 → 进入对话页并打开流水线面板
+  if (to.meta.public && token) return next(buildAgentRoute('pipeline'))
 
   if (!authInitialized() && token && !to.meta.public) {
     try {

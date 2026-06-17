@@ -87,15 +87,15 @@
     <!-- 主内容 -->
     <main class="main-content">
       <PageHeader
-        title="运维概览"
-        subtitle="系统健康 · 资源监控 · 快捷运维入口"
-        layer=""
-        layer-label="运维总览"
+        :title="pageMeta.label"
+        :subtitle="pageMeta.subtitle"
+        :layer="pageMeta.layer || ''"
+        :layer-label="pageMeta.layerLabel"
       >
         <template #actions>
-          <el-button size="small" type="primary" @click="$router.push('/l5')">L5 链路分析</el-button>
+          <el-button size="small" type="primary" @click="$router.push('/l5')">L5 链路量化</el-button>
           <el-button size="small" @click="$router.push('/canvas')">架构画布</el-button>
-          <el-button size="small" @click="$router.push('/agent')">L1 对话</el-button>
+          <el-button size="small" @click="$router.push(buildAgentRoute('pipeline'))">L1 对话</el-button>
           <el-button size="small" @click="$router.push('/trace')">L4 Trace</el-button>
         </template>
       </PageHeader>
@@ -106,7 +106,7 @@
           v-for="step in pipelineSteps"
           :key="step.id"
           class="l5-pipeline-step motion-lift"
-          @click="$router.push(step.path)"
+          @click="$router.push(step.to)"
         >
           <span class="l5-step-badge">{{ step.id }}</span>
           <span class="l5-step-label">{{ step.label }}</span>
@@ -294,7 +294,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { Monitor, DataAnalysis, BellFilled, MagicStick, Document } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import { initChart } from '../composables/useEcharts'
 import {
   chartGrid, chartTooltip, categoryAxis, valueAxis,
   metricBarData,
@@ -302,6 +302,8 @@ import {
 import api from '../api'
 import { useAlertsStore } from '../stores/alerts'
 import PageHeader from '../components/common/PageHeader.vue'
+import { buildAgentRoute } from '../constants/navigation'
+import { usePageMeta } from '../composables/usePageMeta'
 import { SIDEBAR_LAYERS } from '../constants/pipeline-architecture'
 import {
   L5_LAYER_CROSS,
@@ -310,6 +312,7 @@ import {
 } from '../constants/l5-metrics'
 
 const alertsStore = useAlertsStore()
+const { pageMeta } = usePageMeta('dashboard')
 
 /* ---- Refs ---- */
 const resourceBar = ref(null)
@@ -342,7 +345,13 @@ const layerCross = L5_LAYER_CROSS
 const pipelineSteps = SIDEBAR_LAYERS.map(l => ({
   id: l.id,
   label: l.name,
-  path: l.id === 'L1' || l.id === 'L3' ? '/agent' : l.id === 'L2' ? '/safety' : l.id === 'L4' ? '/trace' : '/',
+  to: l.id === 'L1' || l.id === 'L3'
+    ? buildAgentRoute('pipeline')
+    : l.id === 'L2'
+      ? { path: '/safety' }
+      : l.id === 'L4'
+        ? { path: '/trace' }
+        : { path: '/l5' },
 }))
 
 const l5MetricCards = computed(() => {
@@ -472,9 +481,10 @@ async function runAllTests() { testAllLoading.value = true; for (const tc of tes
 
 /* ---- ECharts ---- */
 let chartInstance = null
-function renderChart() {
+async function renderChart() {
   if (!resourceBar.value) return
-  if (!chartInstance) chartInstance = echarts.init(resourceBar.value)
+  if (!chartInstance) chartInstance = await initChart(resourceBar.value)
+  if (!chartInstance) return
   chartInstance.setOption({
     tooltip: chartTooltip(),
     grid: chartGrid(),

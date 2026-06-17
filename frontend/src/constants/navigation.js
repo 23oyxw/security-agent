@@ -7,6 +7,8 @@ export const NAV_GROUPS = []
 
 /** 侧栏底部辅助入口（非五层主按钮，避免与 PipelineRail 重复） */
 export const SIDEBAR_FOOTER_LINKS = [
+  { id: 'dashboard', path: '/', label: '运维概览', icon: 'Odometer' },
+  { id: 'workflow', path: '/workflow', label: '流水线观测', icon: 'SetUp' },
   { id: 'guide', path: '/guide', label: '架构导引', icon: 'Document' },
   { id: 'users', path: '/users', label: '用户管理', icon: 'User', admin: true },
 ]
@@ -130,6 +132,19 @@ export const NAV_PAGES = {
     subtitle: '用例编排 · 命令执行 · 断言 · 报告 · 修复后自动复测',
     agent: 'core_dispatch',
   },
+  repair: {
+    id: 'repair',
+    path: '/repair',
+    name: 'Repair',
+    label: '环境修复',
+    shortLabel: '修复',
+    icon: 'SetUp',
+    theme: 'guard',
+    layer: 'L2',
+    layerLabel: 'L2/L3 修复簇',
+    subtitle: '磁盘清理 · 健康修复 · 安全扫描 · L2 沙箱闸门',
+    agent: 'core_dispatch',
+  },
   mcp: {
     id: 'mcp',
     path: '/mcp',
@@ -215,6 +230,48 @@ export const NAV_PAGES = {
     layer: null,
     admin: true,
   },
+  executor: {
+    id: 'executor',
+    path: '/executor',
+    name: 'Executor',
+    label: 'L3 终端执行',
+    shortLabel: '终端',
+    icon: 'Terminal',
+    theme: 'guard',
+    layer: 'L3',
+    layerLabel: 'CLI 终端',
+    subtitle: '命令历史 · 语法高亮 · 安全执行（GitHub CLI-Anything 风格）',
+    agent: 'core_dispatch',
+    hidden: true,
+  },
+  skillFlows: {
+    id: 'skillFlows',
+    path: '/flows',
+    name: 'SkillFlows',
+    label: 'Skill 流程编排',
+    shortLabel: 'Skill',
+    icon: 'SetUp',
+    theme: 'mesh',
+    layer: 'L3',
+    layerLabel: 'L3 Skill Flow',
+    subtitle: 'Skill 封装 · 流程定义 · MCP 热插拔',
+    agent: 'core_dispatch',
+    hidden: true,
+  },
+  blueTeam: {
+    id: 'blueTeam',
+    path: '/blue-team',
+    name: 'BlueTeam',
+    label: '蓝队防御演练',
+    shortLabel: '蓝队',
+    icon: 'Lock',
+    theme: 'guard',
+    layer: 'L2',
+    layerLabel: 'L2 蓝队联动',
+    subtitle: '防御知识库 · 审计事件 · 演练场景',
+    agent: 'safety_sandbox',
+    hidden: true,
+  },
 }
 
 /** 五层快捷轨 — PillarWorkflowRail */
@@ -266,8 +323,8 @@ export const THEME_LABELS = {
 
 const LAYER_ACTIVE_MAP = {
   L1: ['/agent', '/knowledge', '/perception', '/l1/boundary', '/reports'],
-  L2: ['/safety', '/alerts', '/executor', '/blue-team'],
-  L3: ['/agent', '/mcp', '/flows'],
+  L2: ['/safety', '/alerts', '/repair', '/executor', '/blue-team'],
+  L3: ['/agent', '/mcp', '/flows', '/inspection'],
   L4: ['/trace'],
   L5: ['/l5'],
   'L1-L5': ['/canvas', '/workflow'],
@@ -285,6 +342,25 @@ export function getPageByPath(path) {
 
 export function getPageLabel(path) {
   return getPageByPath(path)?.label || '页面'
+}
+
+/** 当前路由对应侧栏高亮层（含 L1-L5 / L1+L3 复合层） */
+export function getActiveLayerForPath(path, { agentMode = 'plan' } = {}) {
+  const p = normalizePath(path)
+  const page = getPageByPath(p)
+  if (page?.layer === 'L1+L3') return agentMode === 'execute' ? 'L3' : 'L1'
+  if (page?.layer === 'L1-L5') return 'L5'
+  if (page?.layer) return page.layer
+  for (const [layer, paths] of Object.entries(LAYER_ACTIVE_MAP)) {
+    if (layer === 'L1-L5') continue
+    if (paths.some(prefix => p === prefix || p.startsWith(`${prefix}/`))) return layer
+  }
+  return null
+}
+
+/** 智能体对话页 — 默认打开流水线抽屉 */
+export function buildAgentRoute(tab = 'pipeline') {
+  return tab ? { path: '/agent', query: { tab } } : { path: '/agent' }
 }
 
 export function getThemeLabel(theme) {
