@@ -23,12 +23,12 @@ export const CHART_PALETTE = [
 
 const AXIS = {
   axisLine: { lineStyle: { color: '#cbd5e1' } },
-  axisLabel: { color: '#475569', fontSize: 11 },
+  axisLabel: { color: '#475569', fontSize: 13 },
   splitLine: { lineStyle: { color: '#e2e8f0', type: 'dashed' } },
 }
 
 export function chartGrid(extra = {}) {
-  return { top: 8, bottom: 24, left: 40, right: 12, ...extra }
+  return { top: 8, bottom: 28, left: 48, right: 16, ...extra }
 }
 
 export function categoryAxis(data, extra = {}) {
@@ -44,7 +44,7 @@ export function chartTooltip(extra = {}) {
     trigger: 'axis',
     backgroundColor: 'rgba(255, 255, 255, 0.96)',
     borderColor: '#e2e8f0',
-    textStyle: { color: '#334155', fontSize: 12 },
+    textStyle: { color: '#334155', fontSize: 14 },
     ...extra,
   }
 }

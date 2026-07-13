@@ -123,15 +123,15 @@
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
 
-  /* 字号 (完整阶梯，覆盖所有场景) */
-  --text-2xs: 0.6875rem;   /* 11px — 极小标签 */
-  --text-xs: 0.75rem;      /* 12px — 辅助说明 */
-  --text-sm: 0.8125rem;    /* 13px — 次要文字 / 按钮 */
-  --text-base: 0.875rem;   /* 14px — 正文 */
-  --text-lg: 1rem;         /* 16px — 小标题 */
-  --text-xl: 1.125rem;     /* 18px — 中标题 */
-  --text-2xl: 1.25rem;     /* 20px — 大标题 */
-  --text-3xl: 1.5rem;      /* 24px — 页面标题 */
+  /* 字号 (放大 18% — 运维面板舒适阅读) */
+  --text-2xs: 0.75rem;     /* 12px — 极小标签 */
+  --text-xs: 0.8125rem;    /* 13px — 辅助说明 */
+  --text-sm: 0.875rem;     /* 14px — 次要文字 / 按钮 */
+  --text-base: 1rem;       /* 16px — 正文 */
+  --text-lg: 1.125rem;     /* 18px — 小标题 */
+  --text-xl: 1.25rem;      /* 20px — 中标题 */
+  --text-2xl: 1.5rem;      /* 24px — 大标题 */
+  --text-3xl: 1.75rem;     /* 28px — 页面标题 */
   --text-metric: 1.375rem; /* 22px — 指标数值 */
   --text-display: 1.75rem; /* 28px — 展示型大数 (可选) */
 

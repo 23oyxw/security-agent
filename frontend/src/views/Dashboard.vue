@@ -733,7 +733,7 @@ onUnmounted(() => {
 
 .l5-cross-row {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
@@ -911,10 +911,11 @@ onUnmounted(() => {
 .chart-panel,
 .eval-panel-card {
   flex: 1;
-  min-width: 0;
+  min-width: 360px;
+  overflow: auto;
 }
 
-.chart-container { height: 180px; }
+.chart-container { height: 280px; min-height: 220px; }
 
 .chart-footer {
   text-align: center;
