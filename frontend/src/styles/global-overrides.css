@@ -37,6 +37,16 @@ body {
   color: var(--color-text-primary);
   background: var(--gradient-page-bg, var(--gradient-content-bg));
   background-attachment: fixed;
+  zoom: 1.25;
+}
+
+/* Element Plus 全局字号覆盖 */
+:root {
+  --el-font-size-base: 1rem;
+  --el-font-size-small: 0.9rem;
+  --el-font-size-extra-small: 0.85rem;
+  --el-font-size-large: 1.1rem;
+  --el-font-size-extra-large: 1.25rem;
 }
 
 /* ---- Element Plus 主题覆盖 ---- */

@@ -3,7 +3,7 @@
     <el-card class="login-card" shadow="always">
       <template #header>
         <div class="login-header">
-          <h2><span aria-hidden="true" class="login-icon">&#x1F6E1;</span> 安全运维控制台</h2>
+          <h2><span aria-hidden="true" class="login-icon">&#x1F6E1;</span> 安全运维控制台 <span style="font-size:0.6em;color:#10b981;font-weight:400">v0.9.0 · Zoom 1.25x</span></h2>
           <p class="sub">银河麒麟智能安全运维 Agent v{{ APP_VERSION }}</p>
           <el-alert v-if="sessionExpired" type="warning" :closable="false" show-icon class="demo-hint" role="alert">
             <template #title>登录已过期</template>
