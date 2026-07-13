@@ -127,7 +127,7 @@
 
           <div v-if="layer.id === 'L2'" class="gate-connector">
             <div class="connector-line" />
-            <div class="gate-card" :class="{ 'is-active': activeLayer === 'GATE' }">
+            <div class="gate-card" :class="{ 'is-active': gateActive }">
               <div class="gate-head">
                 <span
                   class="layer-spine-dot gate-dot"
@@ -160,18 +160,28 @@
   </div>
 
   <div v-else class="pipeline-mini">
-    <button
-      v-for="l in layers"
-      :key="l.id"
-      type="button"
-      class="mini-layer"
-      :class="{ active: activeLayer === l.id }"
-      :style="{ borderColor: l.accent }"
-      :title="l.name"
-      @click="$emit('expand')"
-    >
-      {{ l.badge }}
-    </button>
+    <template v-for="item in miniLayers" :key="item.id">
+      <button
+        type="button"
+        class="mini-layer"
+        :class="{ active: activeLayer === item.id }"
+        :style="{ '--mini-accent': item.accent, borderColor: item.accent }"
+        :title="item.name"
+        @click="onMiniClick(item)"
+      >
+        {{ item.badge }}
+      </button>
+      <button
+        v-if="item.id === 'L2'"
+        type="button"
+        class="mini-gate"
+        :class="{ active: gateActive, unlocked: canSwitchExecute }"
+        title="层间门禁 · plan+L2→execute（非独立层）"
+        @click="runAction('gateExecute')"
+      >
+        ⇒
+      </button>
+    </template>
   </div>
 </template>
 
@@ -188,6 +198,8 @@ import {
   SPINE_ORDER,
 } from '../../constants/pipeline-architecture'
 import { getActiveLayerForPath, normalizePath } from '../../constants/navigation'
+import { LAYER_ACCENTS } from '../../constants/layer-colors'
+import { buildAgentQuery, buildL5Query, buildSafetyQuery, buildTraceQuery } from '../../utils/pipeline-context'
 import { AGENT_VISUAL, agentVisual, agentColor } from '../../constants/agent-visual'
 
 const props = defineProps({
@@ -203,6 +215,12 @@ const agentStore = useAgentStore()
 const layers = SIDEBAR_LAYERS
 const transition = LAYER_TRANSITION
 const agentLegend = Object.values(AGENT_VISUAL)
+
+const miniLayers = computed(() => layers)
+
+function onMiniClick(item) {
+  if (item.action) runAction(item.action)
+}
 
 const PREFETCH_ROUTES = {
   '/l5': () => import('../../views/L5Analytics.vue'),
@@ -257,15 +275,20 @@ const activeLayer = computed(() => {
 
   const p = agentStore.dispatchPhase
   if (p === 'executed') return 'L5'
-  if (p === 'execute') return 'L3'
-  if (agentStore.l2Result?.verdict) return agentStore.mode === 'execute' ? 'GATE' : 'L2'
+  if (p === 'execute' || agentStore.mode === 'execute') return 'L3'
   if (agentStore.currentPlan) return 'L2'
-  if (agentStore.mode === 'execute') return 'L3'
   return fromRoute || 'L1'
 })
 
 const canSwitchExecute = computed(() => {
   return Boolean(agentStore.currentPlan?.plan_id) && agentStore.canExecute
+})
+
+const gateActive = computed(() => {
+  if (!agentStore.currentPlan || agentStore.isBlocked) return false
+  if (!canSwitchExecute.value) return false
+  const p = agentStore.dispatchPhase
+  return agentStore.mode === 'execute' && !['execute', 'executed'].includes(p)
 })
 
 const gateSummary = computed(() => {
@@ -282,14 +305,14 @@ function actionDef(key) {
 
 function isLayerDone(id) {
   const order = ['L1', 'L2', 'L3', 'L4', 'L5']
-  const ai = order.indexOf(activeLayer.value === 'GATE' ? 'L3' : activeLayer.value)
+  const ai = order.indexOf(activeLayer.value)
   const li = order.indexOf(id)
   return li >= 0 && ai > li
 }
 
 function layerStatus(id) {
   if (id === 'GATE') {
-    if (activeLayer.value === 'GATE') return 'running'
+    if (gateActive.value) return 'running'
     if (canSwitchExecute.value) return 'done'
     return ''
   }
@@ -308,10 +331,10 @@ function runAction(actionKey) {
   switch (actionKey) {
     case 'l1PlanMode':
       agentStore.setMode('plan')
-      router.push({ path: '/agent', query: { tab: 'pipeline' } })
+      router.push({ path: '/agent', query: buildAgentQuery(agentStore, { tab: 'pipeline' }) })
       break
     case 'l2Safety':
-      router.push('/safety')
+      router.push({ path: '/safety', query: buildSafetyQuery(agentStore) })
       break
     case 'l3ExecuteMode':
     case 'gateExecute':
@@ -319,24 +342,22 @@ function runAction(actionKey) {
       if (agentStore.currentPlan?.plan_id && agentStore.canExecute) {
         router.push({
           path: '/agent',
-          query: {
+          query: buildAgentQuery(agentStore, {
             tab: 'plan',
             autorun: agentStore.needsConfirm ? '0' : '1',
             toL5: '1',
-          },
+          }),
         })
       } else {
-        router.push({ path: '/agent', query: { tab: 'pipeline' } })
+        router.push({ path: '/agent', query: buildAgentQuery(agentStore, { tab: 'pipeline' }) })
       }
       break
-    case 'l4Trace': {
-      const tid = agentStore.lastExecute?.trace_id || agentStore.currentPlan?.trace_id
-      router.push({ path: '/trace', query: tid ? { id: tid } : {} })
+    case 'l4Trace':
+      router.push({ path: '/trace', query: buildTraceQuery(agentStore) })
       break
-    }
     case 'l5Dashboard':
       prefetchRoute('/l5')
-      router.push('/l5')
+      router.push({ path: '/l5', query: buildL5Query(agentStore) })
       break
     default:
       break
@@ -799,26 +820,58 @@ function runAction(actionKey) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: var(--space-2) 0;
   flex: 1;
+  overflow-y: auto;
 }
 
 .mini-layer {
-  width: 28px;
-  height: 22px;
-  border: 1px solid;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.2);
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 8px;
+  width: 40px;
+  height: 32px;
+  border: 2px solid;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 9px;
   font-weight: 800;
+  font-family: var(--font-mono);
   cursor: pointer;
   padding: 0;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.mini-layer:hover {
+  background: color-mix(in srgb, var(--mini-accent) 28%, rgba(0, 0, 0, 0.3));
+  transform: scale(1.05);
 }
 
 .mini-layer.active {
-  background: rgba(255, 255, 255, 0.15);
+  background: color-mix(in srgb, var(--mini-accent) 45%, rgba(0, 0, 0, 0.2));
   color: #fff;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mini-accent) 35%, transparent);
+}
+
+.mini-gate {
+  width: 28px;
+  height: 22px;
+  border: 1px dashed rgba(251, 146, 60, 0.45);
+  border-radius: 4px;
+  background: rgba(251, 146, 60, 0.1);
+  color: #fdba74;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.mini-gate.unlocked {
+  border-style: solid;
+}
+
+.mini-gate.active {
+  background: rgba(251, 146, 60, 0.28);
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.35);
 }
 </style>

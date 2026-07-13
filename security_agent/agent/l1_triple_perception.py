@@ -103,7 +103,9 @@ async def run_adversarial_boundary_perception(message: str) -> dict[str, Any]:
             "type": "terminal",
             "input": cmd,
             "verdict": r.verdict.value,
-            "reasons": list(r.reasons or []),
+            "reason": r.reason,
+            "reasons": [r.reason] if r.reason else [],
+            "rule_id": r.rule_id,
             "source": "rule_engine",
         })
 

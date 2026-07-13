@@ -19,6 +19,24 @@ class KnowledgeRagRequest(BaseModel):
     include_grounding: bool = True
 
 
+@router.get("/wiki-status")
+async def wiki_status(user: User = Depends(get_current_user)):
+    """Wiki 索引与同步状态."""
+    from security_agent.knowledge.gitee_wiki.sync import get_wiki_sync_status
+    return get_wiki_sync_status()
+
+
+@router.post("/refresh")
+async def refresh_knowledge(user: User = Depends(get_current_user)):
+    """同步 Wiki（Gitee 优先，否则本地 wiki_export + 种子）并重建索引."""
+    from security_agent.knowledge.gitee_wiki.sync import sync_wiki_hybrid
+
+    result = await sync_wiki_hybrid()
+    if not result.get("ok") and result.get("error"):
+        return {"ok": False, **result}
+    return {"ok": True, **result}
+
+
 @router.get("/search")
 async def search_get(q: str = "", top_k: int = 8, risk_level: str = "", scenario: str = "", user: User = Depends(get_current_user)):
     """检索知识库（GET方式 — 支持 facet 过滤）"""

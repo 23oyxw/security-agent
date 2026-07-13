@@ -238,6 +238,38 @@ class TraceStorage:
                 traces.append(trace)
             
             return traces
+
+    def list_traces_summary(self, limit: int = 50, status: str | None = None) -> List[Dict[str, Any]]:
+        """列出追踪并附带阶段数/阶段耗时合计（L4/L5 共享）."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            query = """
+                SELECT t.trace_id, t.user_message, t.created_at, t.completed_at, t.status, t.metadata,
+                       COUNT(s.id) AS stage_count,
+                       COALESCE(SUM(s.duration_ms), 0) AS stage_ms
+                FROM traces t
+                LEFT JOIN trace_stages s ON t.trace_id = s.trace_id
+            """
+            params: list[Any] = []
+            if status:
+                query += " WHERE t.status = ?"
+                params.append(status)
+            query += " GROUP BY t.trace_id ORDER BY t.created_at DESC LIMIT ?"
+            params.append(limit)
+            cursor = conn.execute(query, params)
+            traces: list[dict[str, Any]] = []
+            for row in cursor.fetchall():
+                traces.append({
+                    "trace_id": row["trace_id"],
+                    "user_message": row["user_message"],
+                    "created_at": row["created_at"],
+                    "completed_at": row["completed_at"],
+                    "status": row["status"],
+                    "metadata": json.loads(row["metadata"]) if row["metadata"] else None,
+                    "stage_count": int(row["stage_count"] or 0),
+                    "stage_ms": float(row["stage_ms"] or 0),
+                })
+            return traces
     
     def get_trace_stats(self) -> Dict[str, Any]:
         """

@@ -1,6 +1,8 @@
 {
   "version": "1.0",
-  "updated": "2026-06-11",
+  "schema_note": "契约格式版本，独立于项目版本号。变更主版本=breaking change，次版本=新增字段向后兼容。",
+  "project_version": "0.9.0",
+  "updated": "2026-07-13",
   "formula": "1调度 + 1安全 + 1迭代",
   "main_line": [
     "L1",

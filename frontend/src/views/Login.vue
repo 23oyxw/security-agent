@@ -5,7 +5,11 @@
         <div class="login-header">
           <h2>🛡️ 安全运维控制台</h2>
           <p class="sub">银河麒麟智能安全运维 Agent v{{ APP_VERSION }}</p>
-          <el-alert type="info" :closable="false" show-icon class="demo-hint">
+          <el-alert v-if="sessionExpired" type="warning" :closable="false" show-icon class="demo-hint">
+            <template #title>登录已过期</template>
+            后端重启或 Token 失效，请重新登录（admin / admin123）。
+          </el-alert>
+          <el-alert v-else type="info" :closable="false" show-icon class="demo-hint">
             <template #title>演示账号</template>
             用户名 <strong>admin</strong> · 密码 <strong>admin123</strong>
             <br />登录后 Token 会保留；要重新登录请在控制台右上角「退出登录」。
@@ -35,8 +39,8 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { reactive, ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useUserStore } from '../stores/user'
 import { ElMessage } from 'element-plus'
@@ -44,9 +48,11 @@ import { buildAgentRoute } from '../constants/navigation'
 import { APP_VERSION } from '../constants/app-version'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const loading = ref(false)
 const form = reactive({ username: '', password: '' })
+const sessionExpired = computed(() => route.query.expired === '1')
 
 function fillDemo() {
   form.username = 'admin'

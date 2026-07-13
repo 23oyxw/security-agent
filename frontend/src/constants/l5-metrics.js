@@ -8,9 +8,9 @@ export const L5_FORMULA = '各层数据共享 · 对照分析 · 策略自进化
 export const L5_METRICS = [
   {
     key: 'intent_accuracy',
-    label: '意图准确率',
+    label: '知识/意图相关',
     sourceLayer: 'L1',
-    desc: 'L1 三感知 · 意图匹配与 plan 质量',
+    desc: '知识库引用覆盖（每步引用占比，上限 100%）',
     color: 'var(--color-primary-500)',
   },
   {
@@ -50,14 +50,33 @@ export const L5_METRICS = [
   },
 ]
 
-/** API dimension_scores → L5 键映射（兼容旧 eval 字段） */
+/** API 中文维度 → L5 六维键 */
+export const EVAL_CN_MAP = {
+  成功率: 'fix_success_rate',
+  安全合规: 'boundary_recall',
+  效率比: 'schedule_utilization',
+  步骤效率: 'tool_hit_rate',
+  稳定性: 'batch_compliance',
+  知识相关: 'intent_accuracy',
+}
+
+/** API dimension_scores → L5 键映射（兼容旧 eval 字段 + 中文） */
 export const L5_DIM_ALIASES = {
-  intent_accuracy: ['intent_accuracy', 'performance', 'success_rate'],
-  boundary_recall: ['boundary_recall', 'compliance', 'security', 'safety_compliance'],
-  fix_success_rate: ['fix_success_rate', 'reliability', 'success_rate'],
-  schedule_utilization: ['schedule_utilization', 'efficiency', 'efficiency_ratio'],
-  batch_compliance: ['batch_compliance', 'compliance', 'stability'],
-  tool_hit_rate: ['tool_hit_rate', 'step_efficiency', 'efficiency'],
+  intent_accuracy: ['intent_accuracy', 'knowledge_relevance', '知识相关'],
+  boundary_recall: ['boundary_recall', 'safety_compliance', '安全合规', 'compliance', 'security'],
+  fix_success_rate: ['fix_success_rate', 'reliability', '成功率'],
+  schedule_utilization: ['schedule_utilization', 'efficiency', 'efficiency_ratio', '效率比'],
+  batch_compliance: ['batch_compliance', 'compliance', 'stability', '稳定性'],
+  tool_hit_rate: ['tool_hit_rate', 'step_efficiency', '步骤效率'],
+}
+
+export function normalizeDimScores(dimScores) {
+  if (!dimScores || typeof dimScores !== 'object') return {}
+  const out = { ...dimScores }
+  for (const [cn, key] of Object.entries(EVAL_CN_MAP)) {
+    if (dimScores[cn] != null && out[key] == null) out[key] = dimScores[cn]
+  }
+  return out
 }
 
 export function pickL5Score(dimScores, key) {
@@ -65,21 +84,31 @@ export function pickL5Score(dimScores, key) {
   const aliases = L5_DIM_ALIASES[key] || [key]
   for (const alias of aliases) {
     const v = dimScores[alias]
-    if (v != null && !Number.isNaN(Number(v))) return Math.round(Number(v))
+    if (v != null && !Number.isNaN(Number(v))) {
+      return Math.max(0, Math.min(100, Math.round(Number(v))))
+    }
   }
   return null
 }
 
 export function buildL5MetricValues(dimScores, fallbacks = {}) {
+  const normalized = normalizeDimScores(dimScores)
   return L5_METRICS.map(m => ({
     ...m,
-    value: pickL5Score(dimScores, m.key) ?? fallbacks[m.key] ?? null,
+    value: pickL5Score(normalized, m.key) ?? fallbacks[m.key] ?? null,
   }))
 }
 
-/** L5 策略自进化建议（基于弱项） */
+/** 六维均值（有值项） */
+export function l5MetricsAverage(metricValues) {
+  const nums = metricValues.map(m => m.value).filter(v => v != null && !Number.isNaN(v))
+  if (!nums.length) return null
+  return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length)
+}
+
+/** L5 策略自进化建议（基于弱项；Trace 背书维度不过度告警） */
 export function buildEvolutionHints(metricValues) {
-  const weak = metricValues.filter(m => m.value != null && m.value < 75)
+  const weak = metricValues.filter(m => m.value != null && m.value < 70)
   if (!weak.length) {
     return ['各 L5 指标处于健康区间，维持当前规则/权重/阈值配置。']
   }

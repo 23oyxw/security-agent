@@ -1,9 +1,7 @@
-# 架构 v0.8.0
+# 架构 v0.8.0（已归并）
 
-> **非技术人员**请先读 [PLAIN_GUIDE.md](../user/PLAIN_GUIDE.md)  
-> **五层智能体流水线（权威）** → [FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md)  
-> **完整技术架构** → [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)  
-> **Vue 前端**见 [../../frontend/ARCHITECTURE.md](../../frontend/ARCHITECTURE.md)
+> ⚠️ **本文档已归并至终版权威论述** → **[FINAL_ARCHITECTURE.md](FINAL_ARCHITECTURE.md)**  
+> 本文保留用于 Streamlit 九页 UI 细节参考，架构定义以 FINAL_ARCHITECTURE.md 为准。
 
 ## 部署入口
 

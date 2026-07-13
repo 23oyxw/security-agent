@@ -51,6 +51,29 @@ class DefenseLayer(str, Enum):
     RESTRICTED_EXEC = "restricted_exec"    # 第三层：受限执行环境(35%)
 
 
+# 与前端 constants/three-layer-defense.js · trace_chart_metrics 对齐
+LAYER_META: Dict[DefenseLayer, Dict[str, Any]] = {
+    DefenseLayer.STATIC_RISK: {
+        "name_zh": "第1层 · 静态风险评估",
+        "short_zh": "静态规则",
+        "weight_pct": 30,
+        "desc": "规则引擎 + 注入扫描 · 高危命令四级判定",
+    },
+    DefenseLayer.DYNAMIC_INTENT: {
+        "name_zh": "第2层 · 动态意图审计",
+        "short_zh": "意图一致",
+        "weight_pct": 35,
+        "desc": "用户运维意图 vs 拟执行命令交叉校验",
+    },
+    DefenseLayer.RESTRICTED_EXEC: {
+        "name_zh": "第3层 · 受限执行环境",
+        "short_zh": "沙箱/权限",
+        "weight_pct": 35,
+        "desc": "最小权限 · 沙箱隔离 · 备份回滚 · 平台可行性",
+    },
+}
+
+
 class OverallVerdict(str, Enum):
     """综合判决."""
     ALLOW = "allow"                       # 完全放行
@@ -74,13 +97,19 @@ class LayerScore:
     duration_ms: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
+        meta = LAYER_META.get(self.layer, {})
         return {
             "layer": self.layer.value,
+            "name": meta.get("name_zh", self.layer.value),
+            "name_zh": meta.get("name_zh", self.layer.value),
+            "short_zh": meta.get("short_zh", ""),
             "weight": self.weight,
+            "weight_pct": meta.get("weight_pct", int(self.weight * 100)),
+            "desc": meta.get("desc", ""),
             "score": round(self.score, 2),
             "passed": self.passed,
             "verdict": self.verdict,
-            "detail": self.detail[:200],
+            "detail": self.detail[:300],
             "duration_ms": round(self.duration_ms, 2),
         }
 
@@ -106,6 +135,7 @@ class ThreeLayerDefenseResult:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        feasibility = (self.metadata or {}).get("execution_feasibility") or {}
         return {
             "trace_id": self.trace_id,
             "target_type": self.target_type,
@@ -113,11 +143,21 @@ class ThreeLayerDefenseResult:
             "overall_verdict": self.overall_verdict.value,
             "overall_score": round(self.overall_score, 2),
             "layers": [l.to_dict() for l in self.layers],
+            "layer_definitions": [
+                {"id": layer.value, **LAYER_META.get(layer, {})}
+                for layer in DefenseLayer
+            ],
             "decision_path": self.decision_path,
             "message": self.message,
             "requires_user_confirmation": self.requires_user_confirmation,
             "requires_human_approval": self.requires_human_approval,
             "requires_sandbox": self.requires_sandbox,
+            "execution_feasibility": feasibility,
+            "eval_note": (
+                "评估通过仅表示安全策略允许；实际执行还受本机 OS、权限、沙箱与命令语法影响。"
+                if feasibility.get("ok") is False
+                else ""
+            ),
             "auto_backup_triggered": self.auto_backup_triggered,
             "rollback_available": self.rollback_available,
             "timestamp": self.timestamp,
@@ -288,6 +328,22 @@ class ThreeLayerDefenseEngine:
         )
         result.requires_human_approval = verdict == OverallVerdict.APPROVE
         result.requires_sandbox = verdict == OverallVerdict.QUARANTINE and self.enable_sandbox
+
+        # 执行可行性（与安全 verdict 独立 — 避免「评估通过但本机执行失败」无解释）
+        if target_type == "terminal" and target.strip():
+            from security_agent.safety_gate.execution_feasibility import check_execution_feasibility
+
+            feasibility = check_execution_feasibility(target, target_type=target_type)
+            result.metadata["execution_feasibility"] = feasibility
+            if not feasibility.get("ok"):
+                for layer in result.layers:
+                    if layer.layer == DefenseLayer.RESTRICTED_EXEC:
+                        layer.detail = (
+                            f"{layer.detail} | 平台提示: {feasibility.get('reason', '')}"
+                        )[:300]
+                        if layer.verdict == "pass":
+                            layer.verdict = "warn"
+                        break
 
         # 备份触发
         if verdict in (OverallVerdict.CONFIRM, OverallVerdict.APPROVE, OverallVerdict.QUARANTINE):

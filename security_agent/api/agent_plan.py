@@ -145,7 +145,7 @@ async def run_l2_precheck(plan_id: str) -> dict[str, Any]:
         try:
             from security_agent.safety_gate.three_layer_defense import ThreeLayerDefenseEngine
             engine = ThreeLayerDefenseEngine()
-            ev = engine.evaluate(
+            ev = await engine.evaluate(
                 target=cmd,
                 target_type="terminal",
                 user_message=plan.get("message") or "",

@@ -40,17 +40,53 @@ async def evaluate_boundary(req: BoundaryEvaluateRequest, user: User = Depends(g
 
 @router.get("/boundary/calibration")
 async def boundary_calibration_matrix(user: User = Depends(get_current_user)):
-    """对抗训练校准矩阵 — 101 条终端/工具边界用例."""
-    from security_agent.demo.boundary import run_terminal_boundary_tests, summarize_boundary
+    """对抗训练校准矩阵 — 终端/工具边界用例 + PE 跃迁探针."""
+    from security_agent.demo.boundary import (
+        export_boundary_to_wiki,
+        get_privilege_escalation_probes,
+        run_terminal_boundary_tests,
+        summarize_boundary,
+    )
 
     rows = run_terminal_boundary_tests()
     summary = summarize_boundary(rows)
+    probes = get_privilege_escalation_probes()
+    wiki = export_boundary_to_wiki()
     return {
         "layer": "L1",
         "module": "adversarial_calibration",
         "summary": summary,
         "rows": rows,
+        "probe_count": len(probes),
+        "privilege_escalation_probes": probes,
+        "total_cases": summary["total"] + len(probes),
+        "wiki": wiki,
         "resistance_training": "权限跃迁阻力对抗训练集",
+    }
+
+
+@router.post("/boundary/export-wiki")
+async def boundary_export_wiki(user: User = Depends(get_current_user)):
+    """导出边界对抗集到 Wiki Markdown 并触发本地索引更新."""
+    from security_agent.demo.boundary import export_boundary_to_wiki
+    from security_agent.knowledge.gitee_wiki.sync import sync_local_wiki_bundle
+
+    exported = export_boundary_to_wiki()
+    synced = sync_local_wiki_bundle(include_seed=True)
+    return {"exported": exported, "wiki_sync": synced}
+
+
+@router.get("/boundary/wiki-status")
+async def boundary_wiki_status(user: User = Depends(get_current_user)):
+    from security_agent.demo.boundary import boundary_wiki_path, get_privilege_escalation_probes
+    from security_agent.knowledge.gitee_wiki.sync import get_wiki_sync_status
+
+    bp = boundary_wiki_path()
+    return {
+        "wiki_path": str(bp),
+        "wiki_exists": bp.exists(),
+        "probe_count": len(get_privilege_escalation_probes()),
+        "sync": get_wiki_sync_status(),
     }
 
 

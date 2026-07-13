@@ -12,20 +12,21 @@ router = APIRouter()
 async def eval_score(user: User = Depends(get_current_user)):
     """最新评估得分 + Trace 性能指标."""
     from security_agent.agent.evaluation import get_evaluator
-    from security_agent.audit.spine import incident_spine
 
     ev = get_evaluator()
     latest = ev.latest_score()
     dims = ev.dimension_scores()
     trends = ev.trends(last_n=10)
 
-    # 融合 Trace 数据
+    # 融合 Trace 数据（与 L4/L5 共用 trace_storage）
     trace_metrics = {"total_traces": 0, "avg_stages": 0, "avg_duration_ms": 0}
     try:
-        traces = incident_spine.recent_traces(50)
+        from security_agent.storage.trace_catalog import load_shared_traces
+
+        traces = load_shared_traces(limit=50)
         if traces:
-            stages = [t.get("stages", 0) for t in traces if t.get("stages")]
-            durations = [t.get("duration_ms", 0) for t in traces if t.get("duration_ms")]
+            stages = [t.get("stage_count") or t.get("stages") or 0 for t in traces]
+            durations = [t.get("duration_ms") or 0 for t in traces if t.get("duration_ms")]
             trace_metrics = {
                 "total_traces": len(traces),
                 "avg_stages": round(sum(stages) / len(stages), 1) if stages else 0,
@@ -37,9 +38,10 @@ async def eval_score(user: User = Depends(get_current_user)):
     return {
         "latest": latest,
         "dimension_scores": dims,
+        "l5_dimensions": ev.l5_dimension_report(),
         "efficiency_ratio": ev.efficiency_ratio(),
         "total_evaluations": len(ev._records),
-        "trend_points": trends.get("trend_points", []),
+        "trend_points": trends.get("points", []),
         "grade_distribution": trends.get("grade_distribution", {}),
         "trace_metrics": trace_metrics,
     }

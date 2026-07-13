@@ -11,6 +11,8 @@ export const useMetricsStore = defineStore('metrics', {
     raw: {},
     loading: false,
     error: null,
+    lastUpdated: '',
+    serverTimestamp: 0,
   }),
   getters: {
     systemHealthy: (s) => s.cpuPercent < 80 && s.memoryPercent < 85,
@@ -25,6 +27,8 @@ export const useMetricsStore = defineStore('metrics', {
         this.cpuPercent = Math.round(res.cpu_percent || 0)
         this.memoryPercent = Math.round(res.memory_percent || 0)
         this.diskPercent = Math.round(res.disk_percent || 0)
+        this.serverTimestamp = res.timestamp || Date.now() / 1000
+        this.lastUpdated = new Date().toLocaleTimeString('zh-CN', { hour12: false })
       } catch (e) {
         this.error = e.response?.status || e.code || 'unknown'
         this.raw = {}

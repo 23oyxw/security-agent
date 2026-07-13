@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import time
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
@@ -193,10 +195,114 @@ async def get_trace(trace_id: str, user: User = Depends(get_current_user)):
     )
 
 
+@router.get("/{trace_id}/memo")
+async def trace_memo(trace_id: str, user: User = Depends(get_current_user)):
+    """Trace memo + stage durations for agent side panel."""
+    nodes: list[dict[str, Any]] = []
+    summary: dict[str, Any] = {}
+    memo = ""
+    try:
+        from security_agent.audit.spine import export_incident_bundle
+        from security_agent.audit.trace_report import bundle_to_text
+
+        bundle = export_incident_bundle(trace_id)
+        if bundle.get("sqlite_trace") or bundle.get("reasoning_report"):
+            memo = bundle_to_text(bundle)
+    except Exception:
+        pass
+    try:
+        from security_agent.storage.trace_storage import get_trace_storage
+
+        row = get_trace_storage().get_trace(trace_id) or {}
+        for i, s in enumerate(row.get("stages") or []):
+            nodes.append({
+                "name": s.get("name", f"stage-{i}"),
+                "duration_ms": int(s.get("duration_ms") or 0),
+            })
+        summary = {"status": row.get("status"), "user_message": (row.get("user_message") or "")[:200]}
+        if not memo:
+            memo = f"Trace {trace_id} recorded. Open Trace page for full export."
+    except Exception:
+        if not memo:
+            memo = f"Trace {trace_id} not found yet."
+    chart = [{"label": str(n.get("name", ""))[:24], "duration_ms": n.get("duration_ms", 0)} for n in nodes[:20]]
+    return {"trace_id": trace_id, "memo": memo, "summary": summary, "chart": chart, "nodes_count": len(nodes)}
+
+
+def _chart_spec_dict(spec: Any) -> dict[str, Any]:
+    return {
+        "chart_id": spec.chart_id,
+        "title": spec.title,
+        "definition": spec.definition,
+        "unit": spec.unit,
+        "chart_type": spec.chart_type,
+        "y_max": spec.y_max,
+        "bars": [
+            {"label": b.label, "value": b.value, "color": b.color}
+            for b in (spec.bars or [])
+        ],
+    }
+
+
+@router.get("/{trace_id}/viz")
+async def trace_viz(trace_id: str, user: User = Depends(get_current_user)):
+    """在线分析数据 — 阶段瀑布 + 业务图表规格（供前端 ECharts 渲染）."""
+    from security_agent.audit.spine import export_incident_bundle
+    from security_agent.audit.trace_chart_metrics import build_chart_specs
+    from security_agent.audit.trace_report import extract_facts
+
+    bundle = export_incident_bundle(trace_id)
+    nodes: list[dict[str, Any]] = []
+    stage_waterfall: list[dict[str, Any]] = []
+    summary: dict[str, Any] = {}
+
+    row = bundle.get("sqlite_trace") or {}
+    for i, s in enumerate(row.get("stages") or []):
+        name = str(s.get("name") or s.get("stage") or f"stage-{i}")
+        dur = float(s.get("duration_ms") or 0)
+        data = s.get("data") or {}
+        if isinstance(data, str):
+            try:
+                import json as _json
+                data = _json.loads(data)
+            except Exception:
+                data = {}
+        nodes.append({"name": name, "duration_ms": dur})
+        stage_waterfall.append({
+            "label": name[:32],
+            "title": name,
+            "duration_ms": round(dur, 1),
+            "layer": (data.get("layer") if isinstance(data, dict) else None) or "",
+            "tool": (data.get("tool") if isinstance(data, dict) else None) or "",
+        })
+
+    summary = {
+        "status": row.get("status"),
+        "user_message": (row.get("user_message") or "")[:300],
+    }
+
+    facts = extract_facts(bundle) if bundle.get("sqlite_trace") or bundle.get("reasoning_report") else {}
+    charts = [_chart_spec_dict(s) for s in build_chart_specs(facts, bundle) if s.bars or s.chart_type == "table"]
+
+    if not nodes and not charts:
+        raise HTTPException(404, f"trace not found: {trace_id}")
+
+    return {
+        "trace_id": trace_id,
+        "summary": summary,
+        "facts": {k: facts.get(k) for k in ("flow", "verdict", "score", "tools", "llm_calls") if k in facts},
+        "stage_waterfall": stage_waterfall,
+        "chart": [{"label": n["name"][:24], "duration_ms": n["duration_ms"]} for n in nodes[:24]],
+        "charts": charts,
+        "chart_count": len(charts),
+    }
+
+
 @router.get("/{trace_id}/export")
 async def export_trace(
     trace_id: str,
     format: str = Query("text", alias="format", pattern="^(text|html|json)$"),
+    inline: bool = Query(False, description="html 时 true 则浏览器内联预览而非下载"),
     user: User = Depends(get_current_user),
 ):
     """导出 Trace：text=执行纪要(txt)，html=matplotlib 可视化分析；json=调试."""
@@ -219,10 +325,11 @@ async def export_trace(
         media = "text/plain; charset=utf-8"
         filename = f"{trace_id}-minutes.txt"
 
+    disposition = "inline" if inline and format == "html" else "attachment"
     return Response(
         content=content,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'{disposition}; filename="{filename}"'},
     )
 
 
@@ -235,34 +342,9 @@ def _trace_ts_key(item: dict) -> str:
 
 
 def _embedded_sub_trace_ids(scan_limit: int = 120) -> set[str]:
-    """skill_flow_end 里引用的短 trace_id，列表中不再单独展示."""
-    import json
+    from security_agent.storage.trace_catalog import embedded_sub_trace_ids
 
-    from security_agent.storage.trace_storage import get_trace_storage
-
-    sub_ids: set[str] = set()
-    try:
-        storage = get_trace_storage()
-        for row in storage.list_traces(limit=scan_limit):
-            full = storage.get_trace(row.get("trace_id", "")) or {}
-            for stage in full.get("stages") or []:
-                data = stage.get("data")
-                if isinstance(data, str):
-                    try:
-                        data = json.loads(data)
-                    except json.JSONDecodeError:
-                        data = {}
-                if not isinstance(data, dict):
-                    continue
-                inner = str(data.get("trace_id") or "").strip()
-                outer = str(full.get("trace_id") or "").strip()
-                if inner and inner != outer:
-                    sub_ids.add(inner)
-                    if not inner.startswith("trace-") and len(inner) >= 8:
-                        sub_ids.add(f"trace-{inner[:12]}")
-    except Exception:
-        pass
-    return sub_ids
+    return embedded_sub_trace_ids(scan_limit)
 
 
 @router.get("/")
@@ -277,7 +359,7 @@ async def list_traces(limit: int = 20, user: User = Depends(get_current_user)):
     try:
         from security_agent.storage.trace_storage import get_trace_storage
 
-        for row in get_trace_storage().list_traces(limit=limit * 2):
+        for row in get_trace_storage().list_traces_summary(limit=limit * 2):
             tid = row.get("trace_id", "")
             if not tid or tid in seen or tid in sub_trace_ids:
                 continue
@@ -301,6 +383,8 @@ async def list_traces(limit: int = 20, user: User = Depends(get_current_user)):
                 "risk_score": 0.0,
                 "outcome": status,
                 "degradation_level": (meta or {}).get("degradation_level"),
+                "stage_count": int(row.get("stage_count") or 0),
+                "stage_ms": float(row.get("stage_ms") or 0),
             })
     except Exception:
         pass

@@ -135,6 +135,27 @@ def build_tool_args(tool_name: str, user_message: str) -> dict[str, Any]:
     return {}
 
 
+def expand_health_tool_chain(message: str, chain: list[str] | None = None) -> list[str]:
+    """按用户话术扩展健康类工具链（CPU/内存/磁盘/进程/端口）."""
+    t = (message or "").lower()
+    out: list[str] = list(chain or ["get_system_health"])
+    if "get_system_health" not in out:
+        out.insert(0, "get_system_health")
+    if any(k in t for k in ("进程", "process", "可疑")) and "list_processes" not in out:
+        out.append("list_processes")
+    if any(k in t for k in ("端口", "port", "暴露", "监听")) and "check_exposed_ports" not in out:
+        out.append("check_exposed_ports")
+    if any(k in t for k in ("扫描", "风险", "安全", "汇总")) and "query_security_scan_json" not in out:
+        if any(k in t for k in ("进程", "端口", "汇总", "指标")):
+            pass  # 健康汇总不强制全扫
+    # 「汇总…指标」类话术默认带上进程与端口
+    if any(k in t for k in ("汇总", "关键指标", "全面", "体检")):
+        for name in ("list_processes", "check_exposed_ports"):
+            if name not in out:
+                out.append(name)
+    return out
+
+
 def build_plan(
     user_message: str,
     history: list[dict[str, Any]] | None = None,
@@ -151,6 +172,8 @@ def build_plan(
     if follow and follow.get("skill_flow"):
         skill_flow = follow["skill_flow"]
     chain = [] if skill_flow else INTENT_TOOL_CHAINS.get(intent, [])
+    if intent == "health":
+        chain = expand_health_tool_chain(user_message, chain)
     tool_args: dict[str, dict[str, Any]] = {}
     for name in chain:
         args = build_tool_args(name, msg)

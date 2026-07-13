@@ -19,9 +19,9 @@
   position: relative;
   background: var(--glass-surface, var(--gradient-panel-surface)) !important;
   border: 1px solid var(--border-glass-outer) !important;
-  box-shadow: var(--shadow-cinematic) !important;
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-sm) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   overflow: hidden;
   transition:
     box-shadow var(--duration-normal) var(--ease-out),
@@ -32,8 +32,8 @@
 /* 指标卡背景由各页语义 class 控制，不在此统一染色 */
 .metric-card {
   position: relative;
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   overflow: hidden;
   transition:
     box-shadow var(--duration-normal) var(--ease-out),
@@ -67,21 +67,7 @@
 .sidebar-section::before,
 .result-card::before,
 .el-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 8%;
-  right: 8%;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--glass-highlight, rgba(255, 255, 255, 0.95)) 35%,
-    var(--glass-highlight, rgba(255, 255, 255, 0.95)) 65%,
-    transparent 100%
-  );
-  pointer-events: none;
-  z-index: 2;
+  display: none;
 }
 
 .cinema-panel::after,
@@ -95,19 +81,7 @@
 .sidebar-section::after,
 .result-card::after,
 .el-card::after {
-  content: '';
-  position: absolute;
-  top: -35%;
-  right: -18%;
-  width: 60%;
-  height: 75%;
-  background: radial-gradient(
-    circle at center,
-    var(--glass-spotlight, rgba(255, 255, 255, 0.35)) 0%,
-    transparent 68%
-  );
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 .panel-card:hover,
@@ -117,8 +91,9 @@
 .stat-card:hover,
 .metric-card:hover,
 .swimlane:hover {
-  box-shadow: var(--shadow-cinematic-hover) !important;
-  border-color: var(--color-primary-200) !important;
+  box-shadow: var(--shadow-md) !important;
+  border-color: var(--color-border-strong) !important;
+  transform: none;
 }
 
 /* ---- Element Plus 卡片 ---- */
@@ -126,14 +101,14 @@
   --el-card-bg-color: transparent;
   background: var(--glass-surface, var(--gradient-panel-surface)) !important;
   border: 1px solid var(--border-glass-outer) !important;
-  box-shadow: var(--shadow-cinematic) !important;
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-sm) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .el-card:hover {
-  box-shadow: var(--shadow-cinematic-hover) !important;
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-md) !important;
+  transform: none;
 }
 
 .el-card__header {

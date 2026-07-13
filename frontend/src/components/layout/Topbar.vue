@@ -15,10 +15,22 @@
         {{ themeLabel }}
       </span>
       <span v-if="backendStore.version" class="version-pill" title="后端版本">v{{ backendStore.version }}</span>
+      <button
+        v-if="pipelineCtx"
+        type="button"
+        class="pipeline-ctx"
+        title="当前流水线任务（点击回到智能助手）"
+        @click="goPipelineHome"
+      >
+        <span class="pipeline-ctx-phase">{{ pipelineCtx.phase }}</span>
+        <span v-if="pipelineCtx.l2" class="pipeline-ctx-l2">L2 {{ pipelineCtx.l2 }}</span>
+        <code>plan {{ pipelineCtx.planId }}</code>
+        <code v-if="pipelineCtx.trace">trace {{ pipelineCtx.trace }}</code>
+      </button>
     </div>
 
     <div class="topbar-right">
-      <button class="chat-entry-btn" type="button" title="打开智能体对话" @click="router.push(buildAgentRoute('pipeline'))">
+      <button class="chat-entry-btn" type="button" title="打开智能体对话" @click="goPipelineHome">
         <el-icon :size="15"><ChatDotRound /></el-icon>
         <span>智能体对话</span>
       </button>
@@ -84,13 +96,15 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../../stores/user'
 import { useAlertsStore } from '../../stores/alerts'
 import { useMetricsStore } from '../../stores/metrics'
 import { useBackendStore } from '../../stores/backend'
-import { getPageLabel, getThemeLabel, normalizePath, buildAgentRoute } from '../../constants/navigation'
+import { useAgentStore } from '../../stores/agent'
+import { getPageLabel, getThemeLabel, normalizePath } from '../../constants/navigation'
+import { activePlanId, activeTraceId, buildAgentQuery } from '../../utils/pipeline-context'
 
 defineProps({ collapsed: Boolean })
 defineEmits(['toggle-sidebar', 'logout'])
@@ -101,11 +115,47 @@ const userStore = useUserStore()
 const alertsStore = useAlertsStore()
 const metricsStore = useMetricsStore()
 const backendStore = useBackendStore()
+const agentStore = useAgentStore()
+
+const pipelineCtx = computed(() => {
+  const planId = activePlanId(agentStore)
+  if (!planId) return null
+  const phaseMap = {
+    idle: '待命',
+    analyze: 'L1 分析',
+    analyzed: 'L1/L2',
+    execute: 'L3 执行',
+    executed: '全流程',
+  }
+  return {
+    planId: planId.slice(0, 8),
+    trace: activeTraceId(agentStore)?.slice(0, 8) || '',
+    phase: phaseMap[agentStore.dispatchPhase] || agentStore.dispatchPhase,
+    l2: agentStore.l2Result?.verdict || agentStore.currentPlan?.l2_verdict || '',
+  }
+})
+
+function goPipelineHome() {
+  router.push({ path: '/agent', query: buildAgentQuery(agentStore, { tab: 'pipeline' }) })
+}
 
 const currentPageName = computed(() => getPageLabel(route.path))
 const themeLabel = computed(() => getThemeLabel(route.meta.theme))
 
-const isNarrow = computed(() => window.innerWidth < 1100)
+const isNarrow = ref(false)
+let narrowMq = null
+let onNarrowChange = null
+
+onMounted(() => {
+  narrowMq = window.matchMedia('(max-width: 1100px)')
+  onNarrowChange = () => { isNarrow.value = narrowMq.matches }
+  onNarrowChange()
+  narrowMq.addEventListener('change', onNarrowChange)
+})
+
+onUnmounted(() => {
+  if (narrowMq && onNarrowChange) narrowMq.removeEventListener('change', onNarrowChange)
+})
 
 /* 指标状态 */
 const cpuStatus = computed(() => {
@@ -192,6 +242,39 @@ function handleAlert(cmd) {
   color: var(--color-text-muted);
   border: 1px solid var(--color-border-subtle);
   font-variant-numeric: tabular-nums;
+}
+
+.pipeline-ctx {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(360px, 42vw);
+  overflow: hidden;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  background: rgba(14, 165, 233, 0.08);
+  border-radius: var(--radius-full);
+  padding: 2px 10px;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.pipeline-ctx-phase {
+  font-weight: 700;
+  color: #0369a1;
+  white-space: nowrap;
+}
+
+.pipeline-ctx-l2 {
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.pipeline-ctx code {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 /* ---- 图标按钮 ---- */

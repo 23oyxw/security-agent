@@ -1,5 +1,8 @@
 # LiteLLM 代理集成实战 — 项目功能应用指南
 
+> ⚠️ **已归并**：本文为历史实施记录，最新 LiteLLM 使用指南请参阅 **[LITELLM_GUIDE.md](LITELLM_GUIDE.md)**。  
+> ⚠️ **麒麟 LoongArch 注意**：LiteLLM Docker 在龙架构上不可用（无对应镜像），目标平台直连 API。
+
 ## 概述
 
 本文档展示如何在安全运维 Agent 的各个功能模块中应用 LiteLLM 代理，实现企业级的多模型智能路由。

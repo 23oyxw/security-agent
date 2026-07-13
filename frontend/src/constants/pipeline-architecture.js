@@ -3,6 +3,8 @@
  * agentId 对齐三 Agent；extras 为层内辅助页（不重复顶栏旧导航）
  */
 
+import { LAYER_ACCENTS } from './layer-colors'
+
 export const PIPELINE_FORMULA = '1 调度 + 1 安全 + 1 迭代'
 
 export const LAYER_TRANSITION = {
@@ -20,7 +22,7 @@ export const SIDEBAR_LAYERS = [
     name: '分析计划',
     agentId: 'core_dispatch',
     agent: '核心调度 · analyze',
-    accent: '#3b82f6',
+    accent: LAYER_ACCENTS.L1,
     important: '最先启动、最易忽略。必须先完成分析计划，禁止跳过直执行。',
     constraint: '零工具 · 零执行',
     action: 'l1PlanMode',
@@ -64,7 +66,7 @@ export const SIDEBAR_LAYERS = [
     name: '安全防护栏',
     agentId: 'safety_sandbox',
     agent: '安全防护沙箱',
-    accent: '#10b981',
+    accent: LAYER_ACCENTS.L2,
     important: '唯一刚性闸门。只校验拦截，不参与执行决策。',
     constraint: '零执行 · 零决策',
     action: 'l2Safety',
@@ -83,7 +85,7 @@ export const SIDEBAR_LAYERS = [
     name: '推理分发调用',
     agentId: 'core_dispatch',
     agent: '核心调度 · execute',
-    accent: '#f59e0b',
+    accent: LAYER_ACCENTS.L3,
     important: '唯一允许 MCP/工具写操作。需 L2 通过后解锁。',
     action: 'l3ExecuteMode',
     extras: [
@@ -100,7 +102,7 @@ export const SIDEBAR_LAYERS = [
     roleTag: '审计追溯',
     agentId: 'audit_iteration',
     agent: '审计迭代 · 只做卷宗',
-    accent: '#8b5cf6',
+    accent: LAYER_ACCENTS.L4,
     important: 'append-only 全链路 trace · 时序/拓扑绘图 · 案例打标 → Wiki 回流。',
     constraint: '不可篡改 · 不做量化',
     action: 'l4Trace',
@@ -113,7 +115,7 @@ export const SIDEBAR_LAYERS = [
     roleTag: '统计迭代',
     agentId: 'audit_iteration',
     agent: '审计迭代 · 只做分析',
-    accent: '#0ea5e9',
+    accent: LAYER_ACCENTS.L5,
     important: '散点/热力/溯源 · 六维指标 · 模块集成测试 · 策略反写 L1。',
     constraint: '只读分析 · 不替代 L4 卷宗',
     action: 'l5Dashboard',

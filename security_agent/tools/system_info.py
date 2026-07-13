@@ -14,7 +14,11 @@ from security_agent.scanner.engine import is_elevated
 
 def get_system_health() -> dict[str, Any]:
     mem = psutil.virtual_memory()
-    disk = psutil.disk_usage("/")
+    disk_path = "C:\\" if config.IS_WINDOWS else "/"
+    try:
+        disk = psutil.disk_usage(disk_path)
+    except OSError:
+        disk = psutil.disk_usage("/")
     return {
         "platform": config.platform_label(),
         "elevated": is_elevated(),

@@ -175,3 +175,61 @@ def summarize_boundary(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "pass_rate": round(100.0 * passed / total, 1) if total else 0.0,
         "by_category": by_cat,
     }
+
+
+BOUNDARY_WIKI_SLUG = "boundary-adversarial"
+
+
+def boundary_wiki_path() -> "Path":
+    from pathlib import Path
+    from security_agent import config
+    return config.DATA_DIR / "wiki_export" / f"{BOUNDARY_WIKI_SLUG}.md"
+
+
+def get_privilege_escalation_probes() -> list[dict[str, str]]:
+    from security_agent.agent.l1_triple_perception import _PRIVILEGE_ESCALATION_PROBES
+    return [{"probe_id": p, "label": l, "pattern": r} for p, l, r in _PRIVILEGE_ESCALATION_PROBES]
+
+
+def export_boundary_to_wiki() -> dict[str, Any]:
+    """导出校准矩阵 + PE 探针到 data/wiki_export/boundary-adversarial.md."""
+    import time
+    from pathlib import Path
+
+    rows = run_terminal_boundary_tests()
+    summary = summarize_boundary(rows)
+    probes = get_privilege_escalation_probes()
+    out: Path = boundary_wiki_path()
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    lines = [
+        "---",
+        "category: boundary",
+        "tags: [boundary, L1, adversarial]",
+        f"updated_at: {time.strftime('%Y-%m-%dT%H:%M:%S')}",
+        "---",
+        "",
+        "# L1 Boundary Adversarial Set",
+        "",
+        f"Matrix cases: {summary['total']} | PE probes: {len(probes)} | Pass rate: {summary['pass_rate']}%",
+        "",
+        "## Matrix",
+        "",
+        "| case_id | category | input | expected |",
+        "|---------|----------|-------|----------|",
+    ]
+    for r in rows:
+        inp = str(r.get("input", "")).replace("|", "/")[:100]
+        lines.append(f"| {r['case_id']} | {r['category']} | `{inp}` | {r['expected']} |")
+    lines.extend(["", "## PE Probes", "", "| probe_id | label |", "|----------|-------|"])
+    for p in probes:
+        lines.append(f"| {p['probe_id']} | {p['label']} |")
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return {
+        "path": str(out),
+        "matrix_cases": summary["total"],
+        "probe_count": len(probes),
+        "total_cases": summary["total"] + len(probes),
+        "pass_rate": summary["pass_rate"],
+        "exported_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }

@@ -74,11 +74,12 @@
             :class="nodeTierClass(props.data)"
             :style="{ borderColor: props.data.accent }"
           >
-            <div class="cv-node-ring" :style="{ '--pct': props.data.percent || 0 }"></div>
+            <div class="cv-node-ring" :style="{ '--pct': props.data.percent || 0, '--ring-accent': props.data.accent }"></div>
             <div class="cv-node-body">
+              <span v-if="props.data.encapsulation" class="cv-node-tier">{{ props.data.encapsulation }}</span>
               <span class="cv-node-label">{{ props.data.label }}</span>
               <span v-if="props.data.labelEn" class="cv-node-label-en">{{ props.data.labelEn }}</span>
-              <span class="cv-node-value" :class="{ 'is-danger': props.data.alert }">{{ props.data.value }}</span>
+              <span class="cv-node-value" :class="valueTone(props.data)">{{ props.data.value }}</span>
               <span class="cv-node-sub">{{ props.data.sub }}</span>
             </div>
             <div class="cv-node-bar">
@@ -86,7 +87,7 @@
                 class="cv-node-bar-fill"
                 :style="{
                   width: (props.data.percent || 0) + '%',
-                  background: props.data.alert ? 'var(--color-danger)' : 'var(--color-success)'
+                  background: props.data.alert ? 'var(--color-danger)' : (props.data.accent || 'var(--color-success)')
                 }"
               ></div>
             </div>
@@ -98,7 +99,7 @@
         <!-- 技能节点 (Skill) -->
         <template #node-skill="props">
           <div class="cv-node cv-node--skill" :class="nodeTierClass(props.data)" :style="{ borderColor: props.data.accent }">
-            <div class="cv-node-icon"><el-icon :size="16"><Connection /></el-icon></div>
+            <div class="cv-node-icon" :style="iconTone(props.data)"><el-icon :size="16"><Connection /></el-icon></div>
             <div class="cv-node-body">
               <span class="cv-node-label">{{ props.data.label }}</span>
               <span v-if="props.data.labelEn" class="cv-node-label-en">{{ props.data.labelEn }}</span>
@@ -163,7 +164,7 @@
               <span v-if="props.data.labelEn" class="cv-node-label-en">{{ props.data.labelEn }}</span>
               <code class="cv-node-cmd">{{ props.data.command }}</code>
             </div>
-            <span class="cv-node-status" :class="props.data.status === 'success' ? 'is-success' : 'is-danger'">{{ props.data.statusText || props.data.status }}</span>
+            <span class="cv-node-status" :class="executorStatusClass(props.data.status)">{{ props.data.statusText || props.data.status }}</span>
             <Handle type="target" :position="Position.Left" id="in" />
             <Handle type="source" :position="Position.Right" id="out" />
           </div>
@@ -231,10 +232,33 @@ const drawerActions = ref([])
 
 const canvasMeta = ref({ ...CANVAS_META })
 const layerBands = CANVAS_LAYER_BANDS
-const layerMeta = CANVAS_LAYER_META
 const activeBand = ref('L1')
 const spineHint = ref('主线 Main · 辅线 Rail · Trace 驱动高亮')
 const activeAgents = ref([])
+
+function valueTone(data) {
+  if (data?.alert) return 'is-danger'
+  if (data?.percent >= 70) return 'is-good'
+  return ''
+}
+
+function iconTone(data) {
+  const c = data?.accent || 'var(--color-primary-500)'
+  return { background: `color-mix(in srgb, ${c} 14%, white)`, color: c }
+}
+
+function executorStatusClass(status) {
+  const map = {
+    success: 'is-success',
+    entry: 'is-entry',
+    active: 'is-active',
+    gate: 'is-gate',
+    locked: 'is-locked',
+    ready: 'is-ready',
+    cycle: 'is-cycle',
+  }
+  return map[status] || 'is-neutral'
+}
 
 function nodeTierClass(data) {
   const tier = data?.tier || 'rail'
@@ -363,9 +387,11 @@ async function fetchLiveData() {
       mcp.slice(0, 4).forEach((s, i) => {
         const nd = nodes.value.find(n => n.id === clusterIds[i])
         if (nd) {
+          const count = s.tools_count ?? s.tool_count ?? s.tools ?? nd.data.tools
           nd.data = {
             ...nd.data,
-            tools: s.tools_count || s.tool_count || s.tools || nd.data.tools,
+            tools: count,
+            toolsLabel: `${count} 工具`,
           }
         }
       })
@@ -373,13 +399,19 @@ async function fetchLiveData() {
     const latest = (traceList?.traces || [])[0]
     if (latest?.trace_id) {
       const viz = await api.get(`/trace/${latest.trace_id}`).catch(() => null)
-      applySpineHighlight(viz?.nodes || [])
+      const stageNodes = viz?.nodes || []
+      applySpineHighlight(stageNodes)
       const traceNd = nodes.value.find(n => n.id === 'spine-l4-trace')
       if (traceNd && viz?.trace_id) {
+        const total = stageNodes.length || 6
+        const ok = stageNodes.filter(s => s.status !== 'failed' && s.status !== 'error').length
         traceNd.data = {
           ...traceNd.data,
           sub: `trace ${String(viz.trace_id).slice(0, 8)}`,
-          stages: `${(viz.nodes || []).length} stages`,
+          stages: `${total} stages`,
+          stageCount: total,
+          okStages: ok,
+          ok: ok >= total,
         }
       }
     } else {
@@ -532,10 +564,10 @@ onUnmounted(() => {
   min-height: 0;
   position: relative;
   background:
-    radial-gradient(ellipse 70% 55% at 18% 78%, rgba(59, 130, 246, 0.45) 0%, transparent 58%),
-    radial-gradient(ellipse 60% 48% at 82% 18%, rgba(168, 85, 247, 0.38) 0%, transparent 55%),
-    radial-gradient(ellipse 45% 38% at 50% 50%, rgba(34, 211, 238, 0.18) 0%, transparent 60%),
-    linear-gradient(160deg, #1e293b 0%, #1a2744 38%, #0f172a 100%);
+    radial-gradient(ellipse 70% 55% at 18% 78%, rgba(59, 130, 246, 0.32) 0%, transparent 58%),
+    radial-gradient(ellipse 60% 48% at 82% 18%, rgba(14, 165, 233, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 38% at 50% 50%, rgba(16, 185, 129, 0.12) 0%, transparent 60%),
+    linear-gradient(160deg, #1e293b 0%, #172554 38%, #0f172a 100%);
 }
 
 .canvas-layer-bands {
@@ -577,9 +609,12 @@ onUnmounted(() => {
 }
 
 .canvas-band-id {
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 13px;
   font-weight: 800;
+  letter-spacing: 0.04em;
   color: var(--band-accent);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--band-accent) 45%, transparent);
 }
 
 .canvas-band-cn { font-size: 10px; color: rgba(255, 255, 255, 0.9); }
@@ -611,15 +646,17 @@ onUnmounted(() => {
 }
 
 .layer-nav-btn {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
   border: 2px solid var(--nav-accent, #64748b);
-  background: rgba(15, 23, 42, 0.85);
-  color: #fff;
-  font-size: 10px;
+  background: rgba(15, 23, 42, 0.88);
+  color: var(--nav-accent, #fff);
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 800;
   cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
 }
 
 .layer-nav-btn.active,
@@ -751,7 +788,7 @@ onUnmounted(() => {
   height: 38px;
   border-radius: 50%;
   background: conic-gradient(
-    var(--color-primary-500) calc(var(--pct, 0) * 3.6deg),
+    var(--ring-accent, var(--color-primary-500)) calc(var(--pct, 0) * 3.6deg),
     var(--color-neutral-100) calc(var(--pct, 0) * 3.6deg)
   );
   mask: radial-gradient(circle, transparent 55%, #000 58%);
@@ -774,7 +811,19 @@ onUnmounted(() => {
 .cv-node-label {
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
-  color: #0f172a;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.cv-node-tier {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-primary-500) 12%, white);
+  color: var(--color-primary-600);
+  margin-bottom: 2px;
 }
 
 /* 指标数值 — 使用 --text-metric (22px) */
@@ -782,18 +831,23 @@ onUnmounted(() => {
   font-family: var(--font-mono);
   font-size: var(--text-metric);
   font-weight: var(--weight-bold);
-  color: #0f172a;
+  color: var(--color-text-primary, #0f172a);
   line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
 }
 
 .cv-node-value.is-danger {
   color: var(--color-danger);
 }
 
+.cv-node-value.is-good {
+  color: var(--color-success);
+}
+
 /* 辅助说明文字 — 使用 --text-2xs (11px) 替代原来的 10px */
 .cv-node-sub {
   font-size: var(--text-2xs);
-  color: #64748b;
+  color: var(--color-text-secondary, #64748b);
 }
 
 /* 进度条 */
@@ -918,6 +972,13 @@ onUnmounted(() => {
 
 .cv-node-status.is-success { color: var(--color-success); background: var(--color-success-bg); }
 .cv-node-status.is-danger { color: var(--color-danger); background: var(--color-danger-bg); }
+.cv-node-status.is-entry { color: var(--color-layer-l1); background: color-mix(in srgb, var(--color-layer-l1) 12%, white); }
+.cv-node-status.is-active { color: var(--color-layer-l3); background: color-mix(in srgb, var(--color-layer-l3) 12%, white); }
+.cv-node-status.is-gate { color: var(--color-layer-gate); background: color-mix(in srgb, var(--color-layer-gate) 12%, white); }
+.cv-node-status.is-locked { color: var(--color-text-secondary); background: var(--color-neutral-100); }
+.cv-node-status.is-ready { color: var(--color-primary-600); background: var(--color-primary-50); }
+.cv-node-status.is-cycle { color: var(--color-layer-l5); background: color-mix(in srgb, var(--color-layer-l5) 12%, white); }
+.cv-node-status.is-neutral { color: var(--color-text-secondary); background: var(--color-neutral-100); }
 
 /* ============================================================
    Drawer 详情抽屉

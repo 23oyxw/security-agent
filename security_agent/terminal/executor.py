@@ -417,6 +417,285 @@ async def run_readonly(
     )
 
 
+# ---- 增强沙箱会话（v0.9 SandboxSession） ----
+
+def run_with_sandbox_session(
+    command: str,
+    *,
+    cwd: str | None = None,
+    risk_level: str | None = None,
+    user_confirmed: bool = False,
+    timeout_sec: float = 30.0,
+) -> dict[str, Any]:
+    """使用增强沙箱会话执行 — preview → execute → changes → commit/rollback.
+
+    这是 v0.9 SandboxSession 的入口：
+      - 执行前自动预览影响范围
+      - 执行中提供 OverlayFS 写时复制保护
+      - 执行后返回文件变更清单
+      - 支持一键回滚
+
+    Returns:
+        {
+            "preview": {...},     # PreviewCard.to_dict()
+            "execution": {...},   # ExecutionCard.to_dict()
+            "changes": {...},     # ChangeReport.to_dict()
+            "session_status": "committed" | "rolled_back",
+        }
+    """
+    from security_agent.sandbox import SandboxSession
+
+    work_dir = cwd or str(config.PROJECT_ROOT)
+    assessed_risk = risk_level or assess_terminal_risk(command).name.upper()
+
+    with SandboxSession(work_dir=work_dir, risk_level=assessed_risk) as session:
+        # 1. 预览
+        preview = session.preview(command)
+
+        # 2. CRITICAL 拒绝
+        if preview.risk_level == "CRITICAL" and not user_confirmed:
+            return {
+                "preview": preview.to_dict(),
+                "execution": {"ok": False, "error": "CRITICAL 需人工审批"},
+                "changes": None,
+                "session_status": "denied",
+            }
+
+        # 3. 执行
+        result = session.execute(command, confirmed=user_confirmed)
+
+        # 4. 变更
+        changes = session.changes()
+
+        # 5. 自动决策：安全则提交，否则保持待确认
+        if result.ok and changes.is_safe:
+            session.commit()
+            session_status = "committed"
+        elif not result.ok and changes.can_rollback:
+            session.rollback()
+            session_status = "rolled_back"
+        else:
+            session_status = "pending_review"
+
+        return {
+            "preview": preview.to_dict(),
+            "execution": result.to_dict(),
+            "changes": changes.to_dict(),
+            "session_status": session_status,
+        }
+
+
+async def run_with_sandbox_session_async(
+    command: str,
+    *,
+    cwd: str | None = None,
+    risk_level: str | None = None,
+    user_confirmed: bool = False,
+    timeout_sec: float = 30.0,
+) -> dict[str, Any]:
+    """异步封装."""
+    return await asyncio.to_thread(
+        run_with_sandbox_session,
+        command,
+        cwd=cwd,
+        risk_level=risk_level,
+        user_confirmed=user_confirmed,
+        timeout_sec=timeout_sec,
+    )
+
+
+# ---- v0.9 智能终端：IntelligentExecutor ----
+
+def intelligent_execute(
+    command: str,
+    *,
+    intent: str = "",
+    cwd: str | None = None,
+    risk_level: str | None = None,
+    user_confirmed: bool = False,
+    timeout_sec: float = 30.0,
+    learn: bool = True,
+) -> dict[str, Any]:
+    """智能终端执行 — 五阶段闭环.
+
+    阶段:
+        1. 上下文采集 (TerminalContext.gather)
+        2. 预执行分析 (PreExecutionAnalyzer.analyze) → 风险+建议
+        3. 安全执行 (SandboxSession) → 沙箱隔离
+        4. 后执行验证 (PostExecutionVerifier.verify) → 幻觉检测
+        5. 学习归档 (ExecutionLearner.learn) → 意图记忆
+
+    Returns:
+        {
+            "context": {...},       # ContextSnapshot
+            "pre_analysis": {...},  # PreExecReport
+            "execution": {...},     # ExecutionCard
+            "changes": {...},       # ChangeReport
+            "verification": {...},  # VerifyReport
+            "learning": {...},      # 学习统计
+            "session_status": str,
+        }
+    """
+    from security_agent.sandbox import SandboxSession
+    from security_agent.terminal.context import get_terminal_context
+    from security_agent.terminal.pre_analyzer import PreExecutionAnalyzer
+    from security_agent.terminal.post_verifier import PostExecutionVerifier
+    from security_agent.terminal.learner import get_learner
+
+    work_dir = cwd or str(config.PROJECT_ROOT)
+    assessed_risk = risk_level or assess_terminal_risk(command).name.upper()
+
+    # ---- 阶段 1: 上下文采集 ----
+    ctx = get_terminal_context()
+    snapshot = ctx.gather()
+
+    # ---- 阶段 2: 预执行分析 ----
+    analyzer = PreExecutionAnalyzer()
+    pre = analyzer.analyze(command, snapshot)
+
+    # 尝试理解意图
+    intent_analysis = None
+    if intent:
+        intent_analysis = analyzer.understand_intent(intent)
+    elif command and not command.startswith(("ls", "cd", "pwd", "echo", "cat", "head")):
+        # 自动检测：命令看起来像是某种意图的结果
+        intent_analysis = {"intent": "", "suggestions": [], "note": "auto-detected from command"}
+
+    # ---- 阶段 3: 安全执行 ----
+    with SandboxSession(work_dir=work_dir, risk_level=assessed_risk) as session:
+        preview = session.preview(command)
+
+        if preview.risk_level == "CRITICAL" and not user_confirmed:
+            return {
+                "context": snapshot.to_dict(),
+                "pre_analysis": pre.to_dict(),
+                "intent": intent_analysis,
+                "execution": {"ok": False, "error": "CRITICAL 需人工审批"},
+                "changes": None,
+                "verification": None,
+                "session_status": "denied",
+            }
+
+        result = session.execute(command, confirmed=user_confirmed)
+        changes = session.changes()
+
+        if result.ok and changes.is_safe:
+            session.commit()
+            session_status = "committed"
+        elif not result.ok and changes.can_rollback:
+            session.rollback()
+            session_status = "rolled_back"
+        else:
+            session_status = "pending_review"
+
+    # 记录上下文
+    ctx.record_command(command)
+    if result.ok:
+        ctx.record_success()
+        ctx.record_output(result.stdout[:500])
+    else:
+        ctx.record_failure()
+
+    # ---- 阶段 4: 后执行验证 ----
+    verifier = PostExecutionVerifier()
+    verify_report = verifier.verify(
+        stdout=result.stdout,
+        stderr=result.stderr,
+        exit_code=result.exit_code,
+        command=command,
+        expected_paths=pre.affected_paths if pre else None,
+    )
+
+    # ---- 阶段 5: 学习归档 ----
+    learning_result = None
+    if learn:
+        learner = get_learner()
+        learner.learn(
+            intent=intent,
+            command=command,
+            ok=result.ok,
+            cmd_type=pre.command_type if pre else "",
+            risk_score=pre.risk_score if pre else 0.0,
+            trace_id=session.trace_id,
+        )
+        analyzer.record_execution(command, result.ok, pre.command_type if pre else "")
+        learning_result = learner.stats()
+
+    return {
+        "context": snapshot.to_dict(),
+        "pre_analysis": pre.to_dict(),
+        "intent": intent_analysis,
+        "execution": result.to_dict(),
+        "changes": changes.to_dict(),
+        "verification": verify_report.to_dict(),
+        "learning": learning_result,
+        "session_status": session_status,
+    }
+
+
+def understand_and_suggest(intent: str) -> dict[str, Any]:
+    """理解用户意图并返回命令建议.
+
+    组合两个来源:
+        1. PreExecutionAnalyzer: 静态意图映射（硬编码知识）
+        2. ExecutionLearner: 动态学习映射（历史上成功过的命令）
+    """
+    from security_agent.terminal.pre_analyzer import PreExecutionAnalyzer
+    from security_agent.terminal.learner import get_learner
+
+    analyzer = PreExecutionAnalyzer()
+    static = analyzer.understand_intent(intent)
+
+    learner = get_learner()
+    learned = learner.suggest(intent)
+
+    # 合并（learned 优先）
+    seen = set()
+    merged = []
+    for s in learned:
+        if s["command"] not in seen:
+            merged.append(s)
+            seen.add(s["command"])
+
+    for s in static.get("suggestions", []):
+        if s["command"] not in seen:
+            merged.append(s)
+            seen.add(s["command"])
+
+    return {
+        "intent": intent,
+        "suggestions": merged[:5],
+        "source": {
+            "static_match": static.get("matched_keyword"),
+            "static_score": static.get("match_score"),
+            "learned_count": len(learned),
+        },
+    }
+
+
+async def intelligent_execute_async(
+    command: str,
+    *,
+    intent: str = "",
+    cwd: str | None = None,
+    risk_level: str | None = None,
+    user_confirmed: bool = False,
+    timeout_sec: float = 30.0,
+    learn: bool = True,
+) -> dict[str, Any]:
+    """异步封装."""
+    return await asyncio.to_thread(
+        intelligent_execute,
+        command,
+        intent=intent,
+        cwd=cwd,
+        risk_level=risk_level,
+        user_confirmed=user_confirmed,
+        timeout_sec=timeout_sec,
+        learn=learn,
+    )
+
+
 # ---- 获取权限代理状态（供 UI/健康检查） ----
 
 def get_privilege_status() -> dict[str, Any]:

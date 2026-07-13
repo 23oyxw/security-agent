@@ -26,10 +26,11 @@ async def run_external_simulation(scenario_ids=None):
         try:
             r = check_terminal(probe, user_confirmed=False)
             detail["terminal_verdict"] = r.verdict.value
-            detail["reasons"] = list(r.reasons or [])
-            if r.verdict.value in ("DENY", "QUARANTINE"):
+            detail["reason"] = r.reason
+            detail["reasons"] = [r.reason] if r.reason else []
+            if r.verdict.value == "deny":
                 l2_verdict = "deny"
-            elif r.verdict.value == "NEED_CONFIRM":
+            elif r.verdict.value == "confirm":
                 l2_verdict = "confirm"
         except Exception as e:
             detail["error"] = str(e)

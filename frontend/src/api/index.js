@@ -20,14 +20,16 @@ api.interceptors.response.use(
 
     const status = response?.status
 
-    // 401 仅认证接口触发登出；业务 API 401/403 不踢（避免 Mock token 打真实后端误退出）
+    // 401：登录接口外一律清 token 并回登录页（后端重启换密钥 / token 过期）
     if (status === 401) {
       const url = String(config?.url || '')
-      if (/\/auth\//.test(url)) {
+      const isLogin = /\/auth\/login\b/.test(url)
+      if (!isLogin) {
         const store = useUserStore()
         store.logout()
         if (router.currentRoute.value.path !== '/login') {
-          router.push('/login')
+          const expired = /无效|过期|invalid/i.test(String(response?.data?.detail || ''))
+          router.push(expired ? { path: '/login', query: { expired: '1' } } : '/login')
         }
       }
       return Promise.reject(err)

@@ -12,8 +12,8 @@
 }
 
 @keyframes orb-float {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.45; }
-  50% { transform: translate(12px, -18px) scale(1.08); opacity: 0.65; }
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.12; }
+  50% { transform: translate(8px, -10px) scale(1.03); opacity: 0.18; }
 }
 
 @keyframes flow-pulse {
@@ -31,7 +31,7 @@
   100% { transform: translateX(120%); }
 }
 
-/* 主题背景 Aurora 叠加 */
+/* 主题背景 Aurora 叠加 — 护眼：极淡，避免整屏染色 */
 .app-shell[class*='page-theme-']::before {
   content: '';
   position: fixed;
@@ -39,13 +39,12 @@
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 55% 45% at 20% 80%, var(--page-accent-glow, rgba(37, 99, 235, 0.18)) 0%, transparent 58%),
-    radial-gradient(ellipse 50% 40% at 85% 15%, color-mix(in srgb, var(--page-secondary, #06b6d4) 35%, transparent) 0%, transparent 55%),
-    radial-gradient(ellipse 40% 35% at 50% 50%, color-mix(in srgb, var(--page-accent-light, #60a5fa) 20%, transparent) 0%, transparent 60%);
-  background-size: 200% 200%, 180% 180%, 160% 160%;
-  animation: aurora-drift 16s ease-in-out infinite;
-  mix-blend-mode: soft-light;
-  opacity: 0.75;
+    radial-gradient(ellipse 55% 45% at 20% 80%, var(--page-accent-glow, rgba(37, 99, 235, 0.06)) 0%, transparent 58%),
+    radial-gradient(ellipse 50% 40% at 85% 15%, color-mix(in srgb, var(--page-secondary, #06b6d4) 8%, transparent) 0%, transparent 55%);
+  background-size: 200% 200%, 180% 180%;
+  animation: none;
+  mix-blend-mode: normal;
+  opacity: 1;
 }
 
 .app-shell.page-theme-canvas::before {
@@ -71,9 +70,10 @@
 .ambient-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
-  animation: orb-float 14s ease-in-out infinite;
-  will-change: transform, opacity;
+  filter: blur(72px);
+  animation: none;
+  opacity: 0.14;
+  will-change: auto;
 }
 
 .ambient-orb--1 {

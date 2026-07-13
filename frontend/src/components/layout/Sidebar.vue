@@ -1,8 +1,8 @@
 <template>
-  <aside class="sidebar" :class="{ collapsed }" :style="sidebarStyle">
+  <aside class="sidebar" :class="{ collapsed, overlay }">
     <div class="sidebar-accent"></div>
 
-    <div class="sidebar-header" @click="$emit('toggle')">
+    <div class="sidebar-header">
       <div class="brand-mark">
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
           <rect width="28" height="28" rx="6" fill="url(#sg-brand)"/>
@@ -72,7 +72,7 @@ import PipelineArchitectureRail from './PipelineArchitectureRail.vue'
 
 defineProps({
   collapsed: Boolean,
-  width: { type: Number, default: 360 },
+  overlay: Boolean,
 })
 defineEmits(['toggle', 'navigate', 'resize-start'])
 
@@ -83,10 +83,6 @@ const backendStore = useBackendStore()
 const userStore = useUserStore()
 
 const footerLinks = computed(() => buildSidebarFooterLinks(userStore.role))
-
-const sidebarStyle = computed(() => ({
-  width: 'var(--sidebar-width)',
-}))
 
 const statusClass = computed(() => {
   if (!backendStore.online) return 'danger'
@@ -120,12 +116,29 @@ const statusText = computed(() => {
   box-shadow: var(--shadow-lg);
   position: relative;
   z-index: 2;
+  transition:
+    width var(--duration-normal) var(--ease-out),
+    min-width var(--duration-normal) var(--ease-out),
+    max-width var(--duration-normal) var(--ease-out);
+}
+
+body.sidebar-resizing .sidebar {
+  transition: none;
 }
 
 .sidebar.collapsed {
   width: var(--sidebar-collapsed-width);
   min-width: var(--sidebar-collapsed-width);
   max-width: var(--sidebar-collapsed-width);
+}
+
+.sidebar.overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 11;
+  max-width: min(var(--sidebar-width), 88vw);
 }
 
 .sidebar-accent {
@@ -161,12 +174,13 @@ const statusText = computed(() => {
   position: absolute;
   top: 0;
   right: 0;
-  width: 5px;
+  width: 8px;
   height: 100%;
   cursor: col-resize;
-  z-index: 5;
+  z-index: 20;
   background: transparent;
   transition: background 0.15s;
+  touch-action: none;
 }
 
 .sidebar-resize-handle:hover,

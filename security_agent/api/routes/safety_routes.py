@@ -74,6 +74,21 @@ async def assess_risk(req: RiskAssessmentRequest, user: User = Depends(get_curre
         )
 
 
+@router.get("/defense/layers")
+async def defense_layer_catalog(user: User = Depends(get_current_user)):
+    """三层防御层定义 — 与 three_layer_defense.LAYER_META 对齐."""
+    from security_agent.safety_gate.three_layer_defense import DefenseLayer, LAYER_META
+
+    return {
+        "formula": "静态 30% + 意图 35% + 受限执行 35%",
+        "layers": [
+            {"id": layer.value, **LAYER_META.get(layer, {})}
+            for layer in DefenseLayer
+        ],
+        "note": "评估通过表示安全策略允许；实际执行还受 OS、权限与沙箱影响。",
+    }
+
+
 @router.post("/defense/evaluate")
 async def evaluate_three_layer_defense(req: DefenseEvaluateRequest, user: User = Depends(get_current_user)):
     from security_agent.safety_gate.three_layer_defense import ThreeLayerDefenseEngine

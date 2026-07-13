@@ -1,17 +1,19 @@
 
-> 智能安全运维代理系统 · 中国软件设计 A2 赛题
+> 智能安全运维代理系统 · 中国软件设计 A2 赛题  
+> 🎯 **目标平台**：麒麟高级服务器 V11 · LoongArch（同时兼容 Windows/x86 Linux）  
+> 📐 **开发方法论**：[9 份规范文档](docs/INDEX.md) → 契约驱动 → AI 编码 → 自动校验
 
 **答辩文档入口（必读）**：[docs/INDEX.md](docs/INDEX.md)  
 **仓库结构规范**：[docs/REPO_STRUCTURE.md](docs/REPO_STRUCTURE.md)  
 **提交清单（避免 disqualify）**：[docs/competitions/SUBMISSION_CHECKLIST.md](docs/competitions/SUBMISSION_CHECKLIST.md)
 
-**总控计划**：[docs/architecture/MASTER_PLAN.md](docs/architecture/MASTER_PLAN.md)  
-**终版架构（权威）**：[docs/architecture/FINAL_ARCHITECTURE.md](docs/architecture/FINAL_ARCHITECTURE.md)  
-**五层流水线**：[docs/architecture/FIVE_LAYER_PIPELINE.md](docs/architecture/FIVE_LAYER_PIPELINE.md)  
-**技术架构**：[docs/architecture/TECHNICAL_ARCHITECTURE.md](docs/architecture/TECHNICAL_ARCHITECTURE.md) · [docs/architecture/MASTER_PLAN.md](docs/architecture/MASTER_PLAN.md)  
+**终版架构（唯一权威）**：[docs/architecture/FINAL_ARCHITECTURE.md](docs/architecture/FINAL_ARCHITECTURE.md) — 3 Agent + 5 层流水线  
+**五层流水线细节**：[docs/architecture/FIVE_LAYER_PIPELINE.md](docs/architecture/FIVE_LAYER_PIPELINE.md)  
+**技术架构**：[docs/architecture/TECHNICAL_ARCHITECTURE.md](docs/architecture/TECHNICAL_ARCHITECTURE.md) · **总控计划**：[docs/architecture/MASTER_PLAN.md](docs/architecture/MASTER_PLAN.md)  
+**三方统一契约**：[docs/architecture/TRIPLE_UNIFY.md](docs/architecture/TRIPLE_UNIFY.md)  
 **答辩演示**：[docs/competitions/DEMO_SCRIPT.md](docs/competitions/DEMO_SCRIPT.md)  
 **启动**：Windows `START_WIN.bat` · Linux `bash scripts/boot_start_loongarch.sh` → http://127.0.0.1:**8900**  
-**版本**：根目录 `VERSION`（当前 0.8.0）· 校验 `python scripts/check_version.py` · 详见 [docs/RELEASE.md](docs/RELEASE.md)
+**版本**：根目录 `VERSION`（当前 **0.9.0**）· 校验 `python scripts/check_version.py` · 详见 [docs/RELEASE.md](docs/RELEASE.md)
 
 ## 📁 项目结构
 
@@ -226,14 +228,38 @@ bash boot_start.sh
 | 推理链路可追溯性 | 50% |
 | **总分** | **75-90 分** |
 
+## 🚫 明确不做什么（需求边界）
+
+> AI 辅助开发的关键约束：明确边界，防范围蔓延。
+
+| 不做 | 原因 |
+|------|------|
+| ❌ Dify 工作流集成 | P2 可选，性价比低 |
+| ❌ qt01 多 Agent 迁移 | 单 Brain 架构已够用 |
+| ❌ Qt 流程图编辑器 | 已被 Vue Flow 只读版替代 |
+| ❌ AIFlowy 平台接入 | 仅作参考，不并入主干 |
+| ❌ 麒麟环境跑 LiteLLM Docker | 龙架构无对应镜像 |
+| ❌ 麒麟上 `npm run build` | dist 可从 x86 打包带走 |
+| ❌ Streamlit 作答辩主前端 | 与赛题 B/S 要求一致，以 Vue3 :8900 为准 |
+
+## 🧪 自动化验证链
+
+```bash
+python scripts/verify_triple_unify.py    # 三方统一漂移检测
+.venv/bin/python tests/test_three_layer_defense.py  # 三层防御 6 场景
+PYTHONPATH=. .venv/bin/python scripts/e2e_api_smoke.py  # E2E API 冒烟
+bash scripts/run_regression.sh           # 一键回归
+python scripts/check_version.py          # 版本一致性校验
+```
+
 ## 📚 文档
 
-- **[文档总索引（答辩入口）](docs/INDEX.md)**
+- **[📖 文档总索引（答辩/入职入口）](docs/INDEX.md)** — 9 份规范文档体系
 - [仓库结构规范](docs/REPO_STRUCTURE.md)
 - [提交规范清单](docs/competitions/SUBMISSION_CHECKLIST.md)
 - [架构文档](docs/architecture/)
 - [A2 赛题](docs/competitions/)
-- [部署（含 Windows）](docs/deploy/)
+- [部署 — Windows](docs/deploy/) · [麒麟 LoongArch](docs/DEPLOY_KYLIN_LOONGARCH.md) · [离线](docs/DEPLOY_OFFLINE.md)
 - [用户文档](docs/user/)
 
 ---

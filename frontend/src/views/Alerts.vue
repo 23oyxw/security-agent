@@ -110,7 +110,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { initChart, getEcharts } from '../composables/useEcharts'
+import { initChart, getEcharts, scheduleChartResize } from '../composables/useEcharts'
 import { chartTooltip, categoryAxis, valueAxis } from '../utils/chartTheme'
 import { useAlertsStore } from '../stores/alerts'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -219,6 +219,7 @@ async function renderTrendChart() {
       itemStyle: { color: '#ef4444' },
     }],
   })
+  scheduleChartResize(chartInstance)
 }
 
 async function fetchAlerts() {

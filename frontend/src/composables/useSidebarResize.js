@@ -8,6 +8,7 @@ const MAX = 520
 export function useSidebarResize() {
   const width = ref(DEFAULT)
   const isResizing = ref(false)
+  const start = { x: 0, w: DEFAULT }
 
   function loadWidth() {
     const raw = Number(localStorage.getItem(STORAGE_KEY))
@@ -22,7 +23,7 @@ export function useSidebarResize() {
 
   function onPointerMove(e) {
     if (!isResizing.value) return
-    const next = Math.min(MAX, Math.max(MIN, e.clientX))
+    const next = Math.min(MAX, Math.max(MIN, start.w + (e.clientX - start.x)))
     width.value = next
     document.documentElement.style.setProperty('--sidebar-width', `${next}px`)
   }
@@ -38,8 +39,12 @@ export function useSidebarResize() {
 
   function startResize(e) {
     e.preventDefault()
+    e.stopPropagation?.()
+    start.x = e.clientX
+    start.w = width.value
     isResizing.value = true
     document.body.classList.add('sidebar-resizing')
+    try { e.currentTarget?.setPointerCapture?.(e.pointerId) } catch {}
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', stopResize)
   }

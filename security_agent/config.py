@@ -11,25 +11,54 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _env(key: str, default: str = "") -> str:
+    """读取环境变量并 strip，避免 .env 中 `KEY= value` 导致鉴权失败."""
+    return (os.getenv(key, default) or default).strip()
+
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = PROJECT_ROOT / "data"
 AUDIT_LOG_PATH = DATA_DIR / "audit.log"
 REPORTS_DIR = DATA_DIR / "reports"
 
+
+def _load_jwt_secret() -> str:
+    """JWT 密钥：环境变量 > data/.jwt_secret 持久文件 > 首次生成并落盘（避免重启后全员掉线）"""
+    env = os.getenv("JWT_SECRET", "").strip()
+    if env:
+        return env
+    secret_file = DATA_DIR / ".jwt_secret"
+    try:
+        if secret_file.is_file():
+            text = secret_file.read_text(encoding="utf-8").strip()
+            if text:
+                return text
+    except OSError:
+        pass
+    import secrets
+    secret = secrets.token_hex(32)
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        secret_file.write_text(secret, encoding="utf-8")
+    except OSError:
+        pass
+    return secret
+
+
+JWT_SECRET = _load_jwt_secret()
+JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
+
 IS_WINDOWS = sys.platform == "win32"
 IS_LINUX = sys.platform.startswith("linux")
 
 # 通用 LLM（OpenAI 兼容）— 优先 LLM_*，回退 DEEPSEEK_*
-LLM_API_KEY = (
-    os.getenv("LLM_API_KEY", "")
-    or os.getenv("DEEPSEEK_API_KEY", "")
-    or ""
-)
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "") or os.getenv(
+LLM_API_KEY = _env("LLM_API_KEY") or _env("DEEPSEEK_API_KEY")
+LLM_BASE_URL = _env("LLM_BASE_URL") or _env(
     "DEEPSEEK_BASE_URL", "https://token-plan-cn.xiaomimimo.com/v1"
 )
 # 直连 MiMo 时推荐 mimo-v2.5；Pro 需 Key 支持。经 LiteLLM 请 USE_LITELLM_PROXY=true 且 LLM_MODEL=mimo-chat
-LLM_MODEL = os.getenv("LLM_MODEL", "") or os.getenv("DEEPSEEK_MODEL", "mimo-v2.5")
+LLM_MODEL = _env("LLM_MODEL") or _env("DEEPSEEK_MODEL", "mimo-v2.5")
 
 
 def using_litellm_proxy() -> bool:
@@ -54,15 +83,36 @@ LITELLM_MODEL_ALIASES: dict[str, str] = {
 }
 
 
+# 直连厂商 API 时，将 LiteLLM 别名映射为真实 model id
+DIRECT_MODEL_ALIASES: dict[str, str] = {
+    "mimo-chat": "mimo-v2.5",
+    "mimo-fast": "mimo-v2.5",
+    "deepseek-chat": "deepseek-v4-flash",
+    "deepseek-reasoner": "deepseek-v4-pro",
+}
+
+
+def _using_deepseek_direct() -> bool:
+    return "deepseek" in (LLM_BASE_URL or "").lower()
+
+
 def resolve_llm_model(model: str | None = None) -> str:
     """解析直连 MiMo/DeepSeek 的 model id；Pro 在 Key 不支持时自动降为 v2.5."""
     m = (model or LLM_MODEL or "mimo-v2.5").strip().lower()
     if using_litellm_proxy():
         return LITELLM_MODEL_ALIASES.get(m, m)
+    if _using_deepseek_direct():
+        deepseek_direct = {
+            "deepseek-v4-flash": "deepseek-chat",
+            "deepseek-v4-pro": "deepseek-reasoner",
+            "deepseek-chat": "deepseek-chat",
+            "deepseek-reasoner": "deepseek-reasoner",
+        }
+        return deepseek_direct.get(m, m)
     if m == "mimo-v2.5-pro":
-        if os.getenv("LLM_USE_PRO", "").lower() not in ("1", "true", "yes"):
+        if _env("LLM_USE_PRO").lower() not in ("1", "true", "yes"):
             return "mimo-v2.5"
-    return m
+    return DIRECT_MODEL_ALIASES.get(m, m)
 
 
 def resolve_agent_model(model: str | None = None) -> str:
@@ -85,30 +135,28 @@ DEEPSEEK_BASE_URL = LLM_BASE_URL
 DEEPSEEK_MODEL = LLM_MODEL
 
 # 自主任务 Agent（DeepSeek V4 Pro — 深度规划/分析/决策）
-AUTONOMOUS_API_KEY = os.getenv("AUTONOMOUS_API_KEY", "") or os.getenv("DEEPSEEK_REASONER_API_KEY", "")
-AUTONOMOUS_BASE_URL = os.getenv("AUTONOMOUS_BASE_URL", "") or os.getenv(
+AUTONOMOUS_API_KEY = _env("AUTONOMOUS_API_KEY") or _env("DEEPSEEK_REASONER_API_KEY")
+AUTONOMOUS_BASE_URL = _env("AUTONOMOUS_BASE_URL") or _env(
     "DEEPSEEK_REASONER_BASE_URL", "https://api.deepseek.com/v1"
 )
-AUTONOMOUS_MODEL = os.getenv("AUTONOMOUS_MODEL", "") or os.getenv(
+AUTONOMOUS_MODEL = _env("AUTONOMOUS_MODEL") or _env(
     "DEEPSEEK_REASONER_MODEL", "deepseek-v4-pro"
 )
 
 # RAG 向量嵌入（OpenAI text-embedding-3-small 或 DeepSeek 等兼容接口）
 # 注意：text-embedding-3-small 是 OpenAI 模型，需要 OpenAI API Key；
 #       如果用 DeepSeek API，请改 EMBEDDING_MODEL 为 DeepSeek 支持的嵌入模型。
-EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "") or os.getenv(
-    "DEEPSEEK_EMBEDDING_API_KEY", ""
-)
-EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", "") or os.getenv(
+EMBEDDING_API_KEY = _env("EMBEDDING_API_KEY") or _env("DEEPSEEK_EMBEDDING_API_KEY")
+EMBEDDING_BASE_URL = _env("EMBEDDING_BASE_URL") or _env(
     "DEEPSEEK_EMBEDDING_BASE_URL", "https://api.openai.com/v1"
 )
 
 # 批量/高频任务 Agent — DeepSeek V4 Flash（性价比之王，批量生成/测试用例/文档）
-BUDGET_API_KEY = os.getenv("BUDGET_API_KEY", "") or os.getenv("DEEPSEEK_API_KEY", "")
-BUDGET_BASE_URL = os.getenv("BUDGET_BASE_URL", "") or os.getenv(
+BUDGET_API_KEY = _env("BUDGET_API_KEY") or _env("DEEPSEEK_API_KEY")
+BUDGET_BASE_URL = _env("BUDGET_BASE_URL") or _env(
     "DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
 )
-BUDGET_MODEL = os.getenv("BUDGET_MODEL", "") or os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")
+BUDGET_MODEL = _env("BUDGET_MODEL") or _env("DEEPSEEK_MODEL", "deepseek-v4-flash")
 
 # ---- LiteLLM Proxy 统一路由 ----
 # 使用 LiteLLM 集中管理多模型路由、fallback、成本追踪

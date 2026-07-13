@@ -88,27 +88,27 @@
   /* ============================== */
 
   /* ---- 表面层级（中性底 + 组件语义色协调） ---- */
-  --color-surface-canvas: #dce6f2;
-  --color-surface: #ffffff;
+  --color-surface-canvas: #f1f5f9;
+  --color-surface: #fafbfc;
   --color-surface-raised: #f8fafc;
-  --color-surface-overlay: rgba(255, 255, 255, 0.82);
-  --color-surface-sidebar: #111827;
+  --color-surface-overlay: rgba(250, 251, 252, 0.94);
+  --color-surface-sidebar: #1e293b;
 
-  /* 中性玻璃（全站组件默认，page-theme 不覆盖） */
-  --glass-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.86) 100%);
-  --glass-header: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.88) 100%);
-  --glass-topbar: rgba(255, 255, 255, 0.78);
-  --glass-chip: rgba(241, 245, 249, 0.92);
-  --glass-highlight: rgba(255, 255, 255, 0.95);
-  --glass-spotlight: rgba(255, 255, 255, 0.42);
-  --glass-stripe: rgba(248, 250, 252, 0.85);
+  /* 中性玻璃（低对比、少反光） */
+  --glass-surface: #fafbfc;
+  --glass-header: #f8fafc;
+  --glass-topbar: rgba(250, 251, 252, 0.92);
+  --glass-chip: #f1f5f9;
+  --glass-highlight: rgba(255, 255, 255, 0.65);
+  --glass-spotlight: rgba(255, 255, 255, 0.25);
+  --glass-stripe: #f8fafc;
   --glass-border: var(--color-border-default);
   --glass-shadow: var(--shadow-md);
 
-  /* ---- 文字层级 ---- */
-  --color-text-primary: #0f172a;
+  /* ---- 文字层级（护眼：正文不用过浅灰） ---- */
+  --color-text-primary: #1e293b;
   --color-text-secondary: #475569;
-  --color-text-muted: #94a3b8;
+  --color-text-muted: #64748b;
   --color-text-inverse: #ffffff;
 
   /* ---- 边框 ---- */
@@ -184,10 +184,10 @@
   /* 阴影系统 (4 级 tinted)          */
   /* ============================== */
 
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
-  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.03);
+  --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 8px 20px rgba(15, 23, 42, 0.06);
+  --shadow-xl: 0 16px 32px rgba(15, 23, 42, 0.08);
 
   /* ============================== */
   /* 渐变系统 (统一使用主色调)        */
@@ -200,15 +200,10 @@
   --gradient-sidebar: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
   --gradient-brand-mark: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
 
-  /* 主内容区 — 多层 mesh（蓝 / 青 / 绿微光 + 斜向底色） */
-  /* 主内容区 — 多层 mesh（加强对比，一眼可辨） */
-  --gradient-content-bg:
-    radial-gradient(ellipse 100% 80% at 0% 100%, rgba(37, 99, 235, 0.22) 0%, transparent 58%),
-    radial-gradient(ellipse 90% 65% at 100% 0%, rgba(6, 182, 212, 0.16) 0%, transparent 52%),
-    radial-gradient(ellipse 55% 45% at 68% 55%, rgba(16, 185, 129, 0.08) 0%, transparent 55%),
-    linear-gradient(155deg, #dbeafe 0%, #bfdbfe 38%, #93c5fd 72%, #7cb3f0 100%);
+  /* 主内容区 — 柔和中性底（主题色仅作轻点缀，见 page-themes） */
+  --gradient-content-bg: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 55%, #eef2f6 100%);
 
-  --pattern-dot: radial-gradient(rgba(15, 23, 42, 0.09) 1px, transparent 1px);
+  --pattern-dot: radial-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px);
   --pattern-dot-size: 22px 22px;
 
   /* ============================== */
@@ -232,16 +227,16 @@
   /* 辉光阴影 (功能状态指示)          */
   /* ============================== */
 
-  --shadow-glow-primary: 0 0 12px rgba(59, 130, 246, 0.25);
-  --shadow-glow-success: 0 0 12px rgba(16, 185, 129, 0.25);
-  --shadow-glow-danger: 0 0 12px rgba(239, 68, 68, 0.25);
-  --shadow-glow-warning: 0 0 12px rgba(245, 158, 11, 0.25);
+  --shadow-glow-primary: 0 0 0 1px rgba(59, 130, 246, 0.12);
+  --shadow-glow-success: 0 0 0 1px rgba(16, 185, 129, 0.12);
+  --shadow-glow-danger: 0 0 0 1px rgba(239, 68, 68, 0.12);
+  --shadow-glow-warning: 0 0 0 1px rgba(245, 158, 11, 0.12);
 
   /* ============================== */
   /* 影视级光影 (Cinematic)          */
   /* ============================== */
 
-  --glass-blur: 20px;
+  --glass-blur: 8px;
 
   /* 中性玻璃面板（与 Element Plus 语义色协调） */
   --gradient-panel-surface: var(--glass-surface);
@@ -287,6 +282,14 @@
   --sidebar-collapsed-width: 64px;
   --topbar-height: 56px;
   --content-max-width: 1440px;
+
+  /* 五层 + GATE 层级色（与 layer-colors.js 同步） */
+  --color-layer-l1: #3b82f6;
+  --color-layer-l2: #10b981;
+  --color-layer-gate: #fb923c;
+  --color-layer-l3: #ca8a04;
+  --color-layer-l4: #8b5cf6;
+  --color-layer-l5: #0ea5e9;
 }
 
 /* ============================================================ */
@@ -382,81 +385,6 @@
 }
 
 /* ============================================================ */
-/* 暗色模式                                                      */
+/* 暗色模式 — 已禁用（B2B 仪表盘统一浅色，避免 OS 深色导致面板发黑） */
 /* ============================================================ */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* 中性色反转 */
-    --color-neutral-50: #0f172a;
-    --color-neutral-100: #1e293b;
-    --color-neutral-200: #334155;
-    --color-neutral-300: #475569;
-    --color-neutral-400: #64748b;
-    --color-neutral-500: #94a3b8;
-    --color-neutral-600: #cbd5e1;
-    --color-neutral-700: #e2e8f0;
-    --color-neutral-800: #f1f5f9;
-    --color-neutral-900: #f8fafc;
-
-    /* 表面反转 */
-    --color-surface-canvas: #0f172a;
-    --color-surface: #1e293b;
-    --color-surface-raised: #232d3f;
-    --color-surface-overlay: rgba(30, 41, 59, 0.88);
-    --color-surface-sidebar: #0a0f1a;
-
-    --gradient-content-bg:
-      radial-gradient(ellipse 90% 70% at 0% 100%, rgba(37, 99, 235, 0.18) 0%, transparent 58%),
-      radial-gradient(ellipse 75% 55% at 100% 0%, rgba(6, 182, 212, 0.14) 0%, transparent 52%),
-      radial-gradient(ellipse 55% 45% at 72% 68%, rgba(16, 185, 129, 0.08) 0%, transparent 55%),
-      linear-gradient(160deg, #0f172a 0%, #131c2e 45%, #0d1524 100%);
-
-    --pattern-dot: radial-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px);
-
-    /* 文字反转 */
-    --color-text-primary: #f1f5f9;
-    --color-text-secondary: #cbd5e1;
-    --color-text-muted: #64748b;
-    --color-text-inverse: #0f172a;
-
-    /* 边框调整 */
-    --color-border-default: #334155;
-    --color-border-subtle: #1e293b;
-    --color-border-strong: #475569;
-
-    /* 语义背景调整 */
-    --color-success-bg: #022c22;
-    --color-warning-bg: #451a03;
-    --color-danger-bg: #450a0a;
-    --color-info-bg: #172554;
-
-    /* 阴影加深 */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
-    --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.6);
-
-    --gradient-panel-surface: linear-gradient(
-      155deg,
-      rgba(35, 45, 63, 0.95) 0%,
-      rgba(30, 41, 59, 0.88) 50%,
-      rgba(22, 32, 50, 0.92) 100%
-    );
-    --gradient-panel-header: linear-gradient(180deg, rgba(45, 55, 72, 0.6) 0%, transparent 100%);
-    --border-glass-outer: rgba(148, 163, 184, 0.12);
-    --border-glass-inner: rgba(255, 255, 255, 0.08);
-    --shadow-cinematic:
-      0 1px 0 rgba(255, 255, 255, 0.06) inset,
-      0 0 0 1px rgba(0, 0, 0, 0.2),
-      0 8px 24px rgba(0, 0, 0, 0.35),
-      0 20px 40px -12px rgba(37, 99, 235, 0.15);
-    --shadow-cinematic-hover:
-      0 1px 0 rgba(255, 255, 255, 0.1) inset,
-      0 0 0 1px rgba(59, 130, 246, 0.25),
-      0 12px 32px rgba(0, 0, 0, 0.4);
-    --shadow-cinematic-lg:
-      0 1px 0 rgba(255, 255, 255, 0.08) inset,
-      0 16px 48px rgba(0, 0, 0, 0.5),
-      0 32px 64px -16px rgba(37, 99, 235, 0.2);
-  }
-}
+/* @media (prefers-color-scheme: dark) { ... } — intentionally removed */

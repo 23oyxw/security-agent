@@ -59,6 +59,12 @@ data/traces/
 data/snapshots/
 data/mcp/*
 !data/mcp/workflow_manifest.json
+data/*.jsonl
+data/*.log
+data/knowledge_drafts/
+data/versions/
+data/document_index/
+data/.jwt_secret
 
 # GitHub Actions
 .github/

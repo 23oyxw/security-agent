@@ -22,8 +22,10 @@ async def try_rule_fallback(
     *,
     plan: dict[str, Any] | None = None,
     trace_id: str = "",
+    tool_trace: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     """S2：无 LLM 时的确定性兜底。成功返回与 chat() 兼容的 dict."""
+    from security_agent.agent.health_format import format_tool_outputs_for_user
     from security_agent.agent.orchestrator import (
         INTENT_SKILL_FLOWS,
         build_plan,
@@ -32,6 +34,33 @@ async def try_rule_fallback(
     )
 
     plan = plan or build_plan(user_message)
+    intent = plan.get("intent", detect_intent(user_message))
+
+    if tool_trace:
+        formatted = format_tool_outputs_for_user(
+            intent,
+            tool_trace=tool_trace,
+            trace_id=trace_id,
+            degraded=True,
+        )
+        if formatted:
+            return {
+                "reply": formatted,
+                "tool_trace": tool_trace + [{"degraded": True, "formatted": True}],
+                "plan": plan,
+                "auto_warn": False,
+                "citations": [],
+                "token_usage": {},
+                "model_used": "tool_fallback",
+                "fallback_used": True,
+                "degradation_level": DegradationLevel.S2_RULE.value,
+                "trace_id": trace_id,
+            }
+
+    tool_fb = await _try_tool_chain_fallback(plan, trace_id)
+    if tool_fb:
+        return tool_fb
+
     flow = plan.get("skill_flow") or INTENT_SKILL_FLOWS.get(plan.get("intent", ""))
 
     if flow:
@@ -57,13 +86,12 @@ async def try_rule_fallback(
     if not hits:
         return None
 
-    grounding = format_grounding_block(hits)
     cites = ", ".join(f"[{h['id']}]" for h in hits[:3])
     reply = (
-        f"【规则模式 · 未调用大模型】trace: {trace_id or '—'}\n"
-        f"意图: {plan.get('intent', detect_intent(user_message))}\n\n"
-        f"{grounding}\n"
-        f"请依据上述 Playbook 编号 {cites} 处理；如需自动执行请改用 Skill 流程或重新连接模型。"
+        f"【离线提示】大模型暂不可用，未能自动采集系统指标。\n"
+        f"意图: {intent} · trace: {trace_id or '—'}\n\n"
+        f"相关 Playbook: {cites}\n"
+        f"建议：使用「查看系统健康」类指令触发本地工具；或检查 .env 中 LLM 配置后重试。"
     )
     return {
         "reply": reply,
@@ -73,6 +101,76 @@ async def try_rule_fallback(
         "citations": hits[:3],
         "token_usage": {},
         "model_used": "playbook_only",
+        "fallback_used": True,
+        "degradation_level": DegradationLevel.S2_RULE.value,
+        "trace_id": trace_id,
+    }
+
+
+async def _try_tool_chain_fallback(
+    plan: dict[str, Any],
+    trace_id: str,
+) -> dict[str, Any] | None:
+    """按计划中的只读 tool_chain 直接采集数据，无需 LLM."""
+    import json
+
+    from security_agent.agent.parallel import PARALLEL_SAFE_TOOLS, run_tools_parallel
+
+    chain = plan.get("tool_chain") or []
+    readonly = [t for t in chain if t in PARALLEL_SAFE_TOOLS]
+    if not readonly:
+        return None
+
+    tool_calls = [(name, {}) for name in readonly]
+    result = await run_tools_parallel(tool_calls, max_concurrency=len(tool_calls))
+    if result.get("errors") and not result.get("results"):
+        return None
+
+    blocks: list[str] = []
+    for name in readonly:
+        payload = result.get("results", {}).get(name)
+        if payload is None:
+            continue
+        text = json.dumps(payload, ensure_ascii=False, indent=2)
+        if len(text) > 4000:
+            text = text[:4000] + "\n…(截断)"
+        blocks.append(f"### {name}\n```json\n{text}\n```")
+
+    if not blocks:
+        return None
+
+    from security_agent.agent.health_format import format_tool_outputs_for_user
+
+    formatted = format_tool_outputs_for_user(
+        plan.get("intent", "general"),
+        tool_trace=[
+            {"tool": name, "output": result.get("results", {}).get(name)}
+            for name in readonly
+        ],
+        trace_id=trace_id,
+        degraded=True,
+        parallel_result=result,
+    )
+    reply = formatted or (
+        f"【工具模式 · 未调用大模型】trace: {trace_id or '—'}\n"
+        f"意图: {plan.get('intent', '—')}\n\n"
+        + "\n\n".join(blocks)
+    )
+    return {
+        "reply": reply,
+        "tool_trace": [
+            {
+                "degraded": True,
+                "tools": readonly,
+                "results": result.get("results", {}),
+                "errors": result.get("errors", {}),
+            }
+        ],
+        "plan": plan,
+        "auto_warn": False,
+        "citations": [],
+        "token_usage": {},
+        "model_used": "tool_fallback",
         "fallback_used": True,
         "degradation_level": DegradationLevel.S2_RULE.value,
         "trace_id": trace_id,

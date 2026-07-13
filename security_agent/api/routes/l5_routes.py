@@ -9,42 +9,22 @@ from security_agent.auth.models import User
 router = APIRouter()
 
 
-def _load_traces(limit: int = 80) -> list[dict]:
-    try:
-        from datetime import datetime
+def _load_traces(limit: int = 200) -> list[dict]:
+    from security_agent.storage.trace_catalog import load_shared_traces
 
-        from security_agent.storage.trace_storage import get_trace_storage
+    return load_shared_traces(limit=limit)
 
-        storage = get_trace_storage()
-        rows = storage.list_traces(limit=limit)
-        out: list[dict] = []
-        for row in rows:
-            dur = 0.0
-            if row.get("created_at") and row.get("completed_at"):
-                try:
-                    c = datetime.fromisoformat(str(row["created_at"]).replace("Z", ""))
-                    d = datetime.fromisoformat(str(row["completed_at"]).replace("Z", ""))
-                    dur = max(0.0, (d - c).total_seconds() * 1000)
-                except ValueError:
-                    pass
-            full = storage.get_trace(row["trace_id"]) or {}
-            stages = full.get("stages") or []
-            stage_ms = sum(float(s.get("duration_ms") or 0) for s in stages)
-            out.append({
-                "trace_id": row["trace_id"],
-                "duration_ms": dur or stage_ms or len(stages) * 80,
-                "stages": len(stages),
-                "stage_count": len(stages),
-                "failed": row.get("status") == "failed",
-                "status": row.get("status"),
-                "timestamp": row.get("created_at"),
-                "intent": (row.get("user_message") or "")[:48],
-                "service": "agent",
-                "error_rate": 100.0 if row.get("status") == "failed" else 0.0,
-            })
-        return out
-    except Exception:
-        return []
+
+@router.get("/sync")
+async def l5_sync_status(user: User = Depends(get_current_user)):
+    """L5 与 L4 共用 Trace 目录状态."""
+    traces = _load_traces(limit=200)
+    return {
+        "trace_count": len(traces),
+        "latest_trace_id": traces[0].get("trace_id") if traces else None,
+        "source": "trace_catalog",
+        "l4_list": "/api/trace/",
+    }
 
 
 @router.get("/scatter")
@@ -52,14 +32,6 @@ async def l5_scatter(user: User = Depends(get_current_user)):
     from security_agent.l5.analytics import build_scatter_from_traces
 
     traces = _load_traces()
-    if not traces:
-        traces = [
-            {"trace_id": "demo-1", "duration_ms": 420, "intent": "health", "service": "agent", "error_rate": 0},
-            {"trace_id": "demo-2", "duration_ms": 890, "intent": "repair", "service": "mcp", "error_rate": 12},
-            {"trace_id": "demo-3", "duration_ms": 2100, "intent": "scan", "service": "flow", "failed": True},
-            {"trace_id": "demo-4", "duration_ms": 380, "intent": "health", "service": "agent", "error_rate": 0},
-            {"trace_id": "demo-5", "duration_ms": 5200, "intent": "batch", "service": "agent", "error_rate": 5},
-        ]
     return build_scatter_from_traces(traces)
 
 
@@ -68,13 +40,30 @@ async def l5_heatmap(user: User = Depends(get_current_user)):
     from security_agent.l5.analytics import build_heatmap_from_traces
 
     traces = _load_traces()
-    if not traces:
-        traces = [
-            {"trace_id": "h1", "duration_ms": 300, "intent": "health", "service": "agent", "timestamp": "2026-06-11T08:00:00"},
-            {"trace_id": "h2", "duration_ms": 1200, "intent": "repair", "service": "mcp", "timestamp": "2026-06-11T08:30:00"},
-            {"trace_id": "h3", "duration_ms": 800, "intent": "scan", "service": "flow", "failed": True, "timestamp": "2026-06-11T12:00:00"},
-        ]
     return build_heatmap_from_traces(traces)
+
+
+@router.get("/distributions")
+async def l5_distributions(user: User = Depends(get_current_user)):
+    from security_agent.l5.analytics import build_distributions_from_traces
+
+    traces = _load_traces()
+    return build_distributions_from_traces(traces)
+
+
+@router.get("/layer-cross")
+async def l5_layer_cross(user: User = Depends(get_current_user)):
+    from security_agent.l5.analytics import build_layer_cross_report
+
+    traces = _load_traces()
+    l5_dims = None
+    try:
+        from security_agent.agent.evaluation import get_evaluator
+
+        l5_dims = get_evaluator().l5_dimension_report()
+    except Exception:
+        pass
+    return build_layer_cross_report(traces, l5_dims_report=l5_dims)
 
 
 @router.get("/root-cause/{trace_id}")
@@ -83,11 +72,20 @@ async def l5_root_cause(trace_id: str, user: User = Depends(get_current_user)):
 
     detail = None
     try:
+        from security_agent.audit.spine import export_incident_bundle
         from security_agent.storage.trace_storage import get_trace_storage
 
-        detail = get_trace_storage().get_trace(trace_id)
+        bundle = export_incident_bundle(trace_id)
+        detail = bundle.get("sqlite_trace") or get_trace_storage().get_trace(trace_id)
+        if detail and bundle.get("sqlite_trace"):
+            detail = {**detail, "trace_id": trace_id}
     except Exception:
-        pass
+        try:
+            from security_agent.storage.trace_storage import get_trace_storage
+
+            detail = get_trace_storage().get_trace(trace_id)
+        except Exception:
+            detail = None
     if not detail:
         detail = {
             "trace_id": trace_id,

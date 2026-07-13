@@ -4,6 +4,7 @@
 
 import { PIPELINE_FORMULA } from './pipeline-architecture'
 import { L1_TRIPLE_PERCEPTION, TOOL_CLUSTERS } from './agents'
+import { LAYER_ACCENTS } from './layer-colors'
 
 export const CANVAS_META = {
   title: '五层分割 · 主线 + 辅线',
@@ -13,23 +14,23 @@ export const CANVAS_META = {
 
 /** 五层水平分割带（背景 + 跳转） */
 export const CANVAS_LAYER_BANDS = [
-  { layer: 'L1', y: 0, h: 250, accent: '#3b82f6', label: 'L1 分析计划', labelEn: 'Analyze', route: '/agent' },
-  { layer: 'L2', y: 250, h: 170, accent: '#10b981', label: 'L2 安全防护', labelEn: 'Safety', route: '/safety' },
-  { layer: 'GATE', y: 420, h: 70, accent: '#f59e0b', label: '层间门禁', labelEn: 'Gate', route: '/agent' },
-  { layer: 'L3', y: 490, h: 230, accent: '#f59e0b', label: 'L3 推理执行', labelEn: 'Execute', route: '/agent' },
-  { layer: 'L4', y: 720, h: 190, accent: '#8b5cf6', label: 'L4 Trace 卷宗', labelEn: 'Audit', route: '/trace' },
-  { layer: 'L5', y: 910, h: 260, accent: '#0ea5e9', label: 'L5 链路量化', labelEn: 'Analytics', route: '/l5' },
+  { layer: 'L1', y: 0, h: 250, accent: LAYER_ACCENTS.L1, label: 'L1 分析计划', labelEn: 'Analyze', route: '/agent' },
+  { layer: 'L2', y: 250, h: 170, accent: LAYER_ACCENTS.L2, label: 'L2 安全防护', labelEn: 'Safety', route: '/safety' },
+  { layer: 'GATE', y: 420, h: 70, accent: LAYER_ACCENTS.GATE, label: '层间门禁', labelEn: 'Gate', route: '/agent' },
+  { layer: 'L3', y: 490, h: 230, accent: LAYER_ACCENTS.L3, label: 'L3 推理执行', labelEn: 'Execute', route: '/agent' },
+  { layer: 'L4', y: 720, h: 190, accent: LAYER_ACCENTS.L4, label: 'L4 Trace 卷宗', labelEn: 'Audit', route: '/trace' },
+  { layer: 'L5', y: 910, h: 260, accent: LAYER_ACCENTS.L5, label: 'L5 链路量化', labelEn: 'Analytics', route: '/l5' },
 ]
 
 export const CANVAS_LAYERS = ['L1', 'L2', 'L3', 'L4', 'L5']
 
 export const CANVAS_LAYER_META = {
-  L1: { label: 'L1 分析计划', labelEn: 'Analyze', agent: 'core_dispatch', accent: '#3b82f6' },
-  L2: { label: 'L2 安全防护', labelEn: 'Safety', agent: 'safety_sandbox', accent: '#10b981' },
-  GATE: { label: '层间门禁', labelEn: 'Gate', agent: 'core_dispatch', accent: '#f59e0b' },
-  L3: { label: 'L3 推理执行', labelEn: 'Execute', agent: 'core_dispatch', accent: '#f59e0b' },
-  L4: { label: 'L4 Trace 卷宗', labelEn: 'Audit', agent: 'audit_iteration', accent: '#8b5cf6' },
-  L5: { label: 'L5 链路量化', labelEn: 'Analytics', agent: 'audit_iteration', accent: '#0ea5e9' },
+  L1: { label: 'L1 分析计划', labelEn: 'Analyze', agent: 'core_dispatch', accent: LAYER_ACCENTS.L1 },
+  L2: { label: 'L2 安全防护', labelEn: 'Safety', agent: 'safety_sandbox', accent: LAYER_ACCENTS.L2 },
+  GATE: { label: '层间门禁', labelEn: 'Gate', agent: 'core_dispatch', accent: LAYER_ACCENTS.GATE },
+  L3: { label: 'L3 推理执行', labelEn: 'Execute', agent: 'core_dispatch', accent: LAYER_ACCENTS.L3 },
+  L4: { label: 'L4 Trace 卷宗', labelEn: 'Audit', agent: 'audit_iteration', accent: LAYER_ACCENTS.L4 },
+  L5: { label: 'L5 链路量化', labelEn: 'Analytics', agent: 'audit_iteration', accent: LAYER_ACCENTS.L5 },
 }
 
 const SPINE_X = 520

@@ -3,6 +3,7 @@
  */
 import { ref, onUnmounted } from 'vue'
 import { getWsChatUrl } from '../api/base'
+import { getAuthToken } from '../utils/auth-token'
 
 export function useAgentWs() {
   const transport = ref('rest')
@@ -11,7 +12,7 @@ export function useAgentWs() {
   let pendingChat = null
 
   function connect() {
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     if (!token || socket) return
 
     try {

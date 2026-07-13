@@ -33,6 +33,8 @@ from security_agent.memory import get_conversation_memory
 from security_agent.utils import get_token_manager
 from security_agent.safety_gate import SafetyGate
 
+SUMMARY_FIRST_INTENTS = frozenset({"health", "monitor_status", "processes"})
+
 SYSTEM_PROMPT = (
     """你是「安全运维智能助手」，擅长主机安全运维与工具编排。
 
@@ -324,6 +326,8 @@ class AgentBrain:
                 return dict(tool_args[name])
             return build_tool_args(name, user_message)
 
+        from security_agent.agent.health_format import parse_tool_payload
+
         trace: list[dict[str, Any]] = []
 
         # 判断是否可以使用并行：所有工具都是只读安全的
@@ -342,13 +346,17 @@ class AgentBrain:
             for name in chain:
                 if name in parallel_result.get("results", {}):
                     out = parallel_result["results"][name]
-                    trace.append({
+                    parsed = parse_tool_payload(out)
+                    entry: dict[str, Any] = {
                         "tool": name,
                         "args": _args_for(name),
                         "output": out[:2000],
                         "parallel": True,
                         "duration_ms": parallel_result.get("timing", {}).get(name, 0),
-                    })
+                    }
+                    if isinstance(parsed, (dict, list)):
+                        entry["parsed"] = parsed
+                    trace.append(entry)
                     parts.append(f"### {name}\n{out[:1500]}")
                 elif name in parallel_result.get("errors", {}):
                     err = parallel_result["errors"][name]
@@ -368,7 +376,11 @@ class AgentBrain:
         for name in chain:
             args = _args_for(name)
             out = await self.executor.call_tool(name, args)
-            trace.append({"tool": name, "args": args, "output": out[:2000], "parallel": False})
+            parsed = parse_tool_payload(out)
+            entry = {"tool": name, "args": args, "output": out[:2000], "parallel": False}
+            if isinstance(parsed, (dict, list)):
+                entry["parsed"] = parsed
+            trace.append(entry)
             parts.append(f"### {name}\n{out[:1500]}")
         summary = "\n\n".join(parts)
         return summary, trace
@@ -390,7 +402,7 @@ class AgentBrain:
             from security_agent.agent.evaluation import get_evaluator
             tool_trace = resp.get("tool_trace", [])
             tools_called = len(tool_trace)
-            tools_useful = sum(1 for t in tool_trace if t.get("result"))
+            tools_useful = sum(1 for t in tool_trace if t.get("result") and not t.get("error"))
             steps = resp.get("plan", {}).get("tool_chain", [])
             errors = sum(1 for t in tool_trace if t.get("error"))
             knowledge_hits = len(resp.get("citations", []))
@@ -425,6 +437,97 @@ class AgentBrain:
             pass
         return resp
 
+    def _reply_from_tool_outputs(
+        self,
+        plan: dict[str, Any],
+        tool_out: str,
+        tool_trace: list[dict[str, Any]],
+        spine: IncidentSpine,
+        *,
+        chain_trace: list[dict[str, Any]] | None = None,
+        advice: dict[str, Any] | None = None,
+        token_usage: dict[str, Any] | None = None,
+        summary_mode: str = "auto",
+    ) -> dict[str, Any] | None:
+        from security_agent.agent.health_format import format_tool_outputs_for_user
+
+        formatted = format_tool_outputs_for_user(
+            plan.get("intent", "general"),
+            tool_out,
+            tool_trace,
+            trace_id=spine.trace_id,
+            degraded=True,
+            summary_mode=summary_mode,
+        )
+        if not formatted:
+            return None
+        self._history.append({"role": "assistant", "content": formatted})
+        return {
+            "reply": formatted,
+            "tool_trace": tool_trace,
+            "plan": plan,
+            "auto_warn": self._maybe_warn_from_trace(chain_trace or tool_trace),
+            "advice": advice or {},
+            "citations": (advice or {}).get("citations", []),
+            "token_usage": token_usage or {},
+            "model_used": "tool_fallback",
+            "fallback_used": True,
+            "degradation_level": DegradationLevel.S2_RULE.value,
+        }
+
+    def _finalize_deterministic_reply(
+        self,
+        plan: dict[str, Any],
+        tool_out: str,
+        chain_trace: list[dict[str, Any]],
+        tool_trace: list[dict[str, Any]],
+        spine: IncidentSpine,
+        *,
+        token_usage: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        quick = self._reply_from_tool_outputs(
+            plan,
+            tool_out,
+            chain_trace,
+            spine,
+            chain_trace=chain_trace,
+            token_usage=token_usage,
+            summary_mode="deterministic",
+        )
+        if not quick:
+            return None
+        memo = self._build_inline_trace_memo(spine.trace_id, plan, chain_trace)
+        quick["trace_memo"] = memo
+        quick["reply"] = f"{quick['reply']}\n\n{memo}"
+        quick["model_used"] = "deterministic_summary"
+        quick["fallback_used"] = False
+        quick["degradation_level"] = DegradationLevel.S0_FULL.value
+        spine.post_verify({"ok": True, "message": "deterministic tool summary"})
+        return quick
+
+    @staticmethod
+    def _build_inline_trace_memo(
+        trace_id: str,
+        plan: dict[str, Any],
+        chain_trace: list[dict[str, Any]],
+    ) -> str:
+        tools: list[str] = []
+        for entry in chain_trace:
+            if isinstance(entry, dict) and entry.get("tool"):
+                tools.append(str(entry["tool"]))
+        tool_line = " -> ".join(dict.fromkeys(tools)) if tools else "-"
+        lines = [
+            "## Trace 执行纪要",
+            f"- trace: `{trace_id or '-'}`",
+            f"- plan: `{str(plan.get('plan_id', '-'))[:12]}`",
+            f"- intent: {plan.get('intent', '-')}",
+            f"- L2: {plan.get('l2_verdict') or '-'}",
+            f"- tools: {tool_line}",
+            "",
+            "右侧 **Trace 纪要** 面板可查看阶段耗时图；完整分析见 Trace 溯源页。",
+        ]
+        return "\n".join(lines)
+
     async def _degraded_or_error(
         self,
         spine: IncidentSpine,
@@ -439,7 +542,7 @@ class AgentBrain:
         meta = fallback_metadata or {}
         spine.stage("inference_decision", {"error": str(err)[:400], "llm": meta})
         degraded = await try_rule_fallback(
-            user_message, plan=plan, trace_id=spine.trace_id,
+            user_message, plan=plan, trace_id=spine.trace_id, tool_trace=tool_trace,
         )
         if degraded:
             spine.set_degradation(DegradationLevel.S2_RULE, str(err)[:200])
@@ -448,7 +551,11 @@ class AgentBrain:
             return self._enrich_response(degraded, spine)
         return self._enrich_response(
             {
-                "reply": f"模型调用失败: {err}",
+                "reply": (
+                    f"模型调用失败: {err}\n\n"
+                    "提示：请检查 .env — LLM_API_KEY 勿含多余空格；"
+                    "直连 MiMo 时 LLM_MODEL 应为 mimo-v2.5（或开启 USE_LITELLM_PROXY 后用 mimo-chat）。"
+                ),
                 "tool_trace": tool_trace,
                 "plan": plan,
                 "auto_warn": False,
@@ -600,6 +707,11 @@ class AgentBrain:
                     messages=self._history,
                 )
             except Exception as e:
+                quick = self._reply_from_tool_outputs(
+                    plan, tool_out, tool_trace, spine, advice=advice, token_usage=token_usage,
+                )
+                if quick:
+                    return self._enrich_response(quick, spine)
                 return await self._degraded_or_error(
                     spine, user_message, plan, tool_trace, token_usage, e,
                 )
@@ -677,6 +789,14 @@ class AgentBrain:
                 "parallel_used": use_parallel,
             })
             tool_trace.extend(chain_trace)
+
+            if plan.get("intent") in SUMMARY_FIRST_INTENTS:
+                det = self._finalize_deterministic_reply(
+                    plan, tool_out, chain_trace, tool_trace, spine, token_usage=token_usage,
+                )
+                if det:
+                    return self._enrich_response(det, spine)
+
             self._history.append({"role": "user", "content": user_message})
             # 保存到数据库
             if len(self._history) > 0:
@@ -700,6 +820,17 @@ class AgentBrain:
                     messages=self._history,
                 )
             except Exception as e:
+                quick = self._reply_from_tool_outputs(
+                    plan,
+                    tool_out,
+                    tool_trace,
+                    spine,
+                    chain_trace=chain_trace,
+                    advice=advice,
+                    token_usage=token_usage,
+                )
+                if quick:
+                    return self._enrich_response(quick, spine)
                 return await self._degraded_or_error(
                     spine, user_message, plan, tool_trace, token_usage, e,
                 )

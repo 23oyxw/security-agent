@@ -8,8 +8,10 @@ export function downloadBlob(content, filename, mime = 'text/plain;charset=utf-8
   URL.revokeObjectURL(a.href)
 }
 
+import { getAuthToken } from './auth-token'
+
 export function authHeaders() {
-  const token = localStorage.getItem('token')
+  const token = getAuthToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

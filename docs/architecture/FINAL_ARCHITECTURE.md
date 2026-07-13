@@ -1,8 +1,9 @@
 # 人工智能安全运维智能体 — 最终架构完整论述
 
-> **版本**：v1.0-final · **更新**：2026-06-11  
+> **版本**：v0.9.0 · **更新**：2026-07-13  
 > **地位**：技术重构 **唯一权威** 文档。其余架构文档均须与本篇对齐，冲突以本文为准。  
-> **记忆公式**：**1 调度 + 1 安全 + 1 迭代** · 前析后防再执行，审计绘图自更新 · 数据全部进 Wiki，工具单一职责化 · 批量必须先分析，全程追踪可溯源
+> **记忆公式**：**1 调度 + 1 安全 + 1 迭代** · 前析后防再执行，审计绘图自更新 · 数据全部进 Wiki，工具单一职责化 · 批量必须先分析，全程追踪可溯源  
+> **v0.9.0 升级**：6 步全域升级已完成 — 沙箱透明化 · 告警安静化 · 终端智能化 · 文档活化 · 边界自检化 · 知识自愈化
 
 ---
 
@@ -182,32 +183,97 @@
 |------|------|
 | core_dispatch analyze/execute 阶段锁 | ✅ |
 | safety_sandbox L2 预检 | ✅ |
-| audit_iteration finalize 桩 | ⚠️ 基础 trace/指标，Wiki 待建 |
+| audit_iteration finalize 桩 | ✅ trace/指标/Wiki 回流 |
 | 前端双模式 + 三 Agent 流水线 | ✅ |
 | 四大工具簇注册分组 | ✅ registry + cluster_map |
 | 计划持久化 plans.db | ✅ |
 | trace_id 全链路归一 | ✅ |
 | 多角色协调文档 | ✅ MULTI_PERSONA_COORDINATION.md |
 | PersonaCoordPanel | ✅ AgentChat 侧栏 |
-| Gitee Wiki 全量落库 | ❌ |
+| 全域沙箱 7 层隔离 | ✅ sandbox/ (v0.9) |
+| 告警 5 层降噪 | ✅ notify/ (v0.9) |
+| 终端 5 阶段智能闭环 | ✅ terminal/ (v0.9) |
+| 文档智能 Pipeline | ✅ document/ (v0.9) |
+| 边界 12 探针 + Fuzzer | ✅ sandbox/probes.py + fuzzer.py (v0.9) |
+| 知识自愈（一致性+新鲜度） | ✅ knowledge/guard.py + freshness.py (v0.9) |
+| 能力装箱（CapabilityRegistry） | ✅ capability/ (v0.9) |
+| Gitee Wiki 全量落库 | ⚠️ 本地知识库完整，Wiki push 待建 |
 | L1/L5 数学绘图 API | ✅ L5 `/api/l5/*` · L1 静态在 perception |
 | L5 专属页 `/l5` | ✅ 散点/热力/溯源/集成测试 |
 | 侧栏 autorun 跑到底 | ✅ GATE/L3 → L3/L4 → `/l5` |
 
+## 六-B、v0.9.0 模块清单（实际）
+
+```
+security_agent/        260 py · 23 test files
+├── agent/             25py   Brain · Orchestrator · Fallback · L1_TriplePerception
+│                             · Autonomous · Evaluation · ReactContext · CoreAgents
+├── analysis/           2py   任务分析器
+├── api/               34py   FastAPI + 路由(17) + WS + MCP_Host
+├── audit/              9py   IncidentSpine · Trace · 六阶段
+├── auth/               5py   JWT · RBAC · Models · Store
+├── capability/         5py   🆕 Registry · Guard · ToolBox · FlowBox · PluginBox
+├── confirm/            2py   S4 审批队列
+├── contracts/          2py   三方契约加载器
+├── demo/               7py   竞赛演练场景
+├── document/           8py   🆕 Pipeline · Chunker · Embedder · Indexer · Parsers(2)
+├── filesystem/         3py   🆕 VersionManager · SafeOps
+├── inspection/         5py   华测式巡检引擎
+├── knowledge/         14py   Playbooks(30+) · GiteeWiki(7) · Guard · Freshness
+├── l5/                 8py   数学模型 · Analytics · PolicyFeedback
+├── mcp/                3py   统一MCP注册中心
+├── memory/             3py   对话记忆 + 语义记忆
+├── monitor/            8py   巡检 + 动态阈值
+├── notify/             6py   🆕 告警 + 节流 + 浮屏
+├── ops/                3py   守卫 + 任务分发
+├── pipeline/           8py   五层流水线引擎
+├── resilience/         4py   预算·熔断·降级 S0-S4
+├── retrieval/          4py   混合检索
+├── rules/              2py   规则引擎
+├── safety_gate/        9py   三层防御 · 快照 · 注入 · MAC检查
+├── sandbox/            7py   🆕 Profile · OverlayFS · Namespace · Session · Probes · Fuzzer
+├── scanner/            2py   安全扫描
+├── security/           3py   脱敏
+├── skills/            41py   17 Skills + 6 Flows
+├── storage/            5py   快照+Trace 持久化
+├── terminal/           8py   🆕 Executor · Context · PreAnalyzer · PostVerifier · Learner
+├── tools/              5py   工具注册中心 + 四大簇
+├── utils/              2py   Token管理
+├── visualizer/         2py   Trace可视化
+└── workflow/           2py   状态机引擎
+
+tests/                 23 files · 137+ test cases
+```
+
 ---
 
-## 七、演进计划（P0→P2）
+## 七、设计原则（v0.9 新增）
 
-| 优先级 | 项 |
-|--------|-----|
-| **P0** | ~~计划持久化~~；execute 失败重试；~~工具 cluster 元数据~~ |
-| **P1** | Wiki 回流 API；L4 append-only 卷宗；WebSocket 阶段推送 |
-| **P1** | L1 静态图表 API；L4 链路时序图 API |
-| **P2** | L5 指标闭环反写规则/权重；沙箱预演可视化 |
+> 来源：[EXPERIENCE_DRIVEN_DESIGN.md](EXPERIENCE_DRIVEN_DESIGN.md) — 从用户体感倒推架构决策
 
----
+| # | 原则 | 架构决策 |
+|---|------|----------|
+| 1 | **不打扰** — 能自动处理的绝不告警，能告警的绝不中断 | 告警系统五层降噪（频率节流→去重→衍生抑制→关联→分级） |
+| 2 | **可解释** — 每个决策都要能回答「为什么」 | 三层防御评分分解到 L1/L2/L3 子项；终端操作附带风险因子说明 |
+| 3 | **可追溯** — 任何操作都有前→中→后快照 | 全域沙箱 OverlayFS 写时复制 + FileChangeReport；trace_id 贯穿 |
+| 4 | **渐进式** — 新用户 5 分钟上手，老用户能深挖 | 前端双模式（计划/执行）→ 一键操作 → 高级编排 |
+| 5 | **自愈优先** — 先尝试自动修复，实在不行再找人 | 告警附带的 recommended_action 自动执行；磁盘清理/进程重启优先静默处理 |
 
-## 八、架构优势摘要
+## 八、v0.9.0 演进（✅ 已完成）
+
+| 方向 | 当前级别 | v0.9 目标 | 状态 |
+|------|----------|-----------|------|
+| 全域沙箱 | 演示级（setuid+rlimit） | 7 层隔离（OverlayFS+namespace） | ✅ |
+| 告警降噪 | 中等级（去重+衍生抑制） | 五层降噪（频率节流+浮屏控制） | ✅ |
+| 终端智能 | 基础级（无状态执行） | 五阶段闭环（上下文→预分析→验证→学习） | ✅ |
+| 文档智能 | 不存在 | Pipeline（解析→分块→索引→检索→自抽取） | ✅ |
+| 边界韧性 | 基础级（权限探针） | 12 探针网格 + 7 策略 Fuzzer | ✅ |
+| 知识自愈 | 基础级（30条硬编码） | 一致性校验 + 防污染 + 新鲜度追踪 | ✅ |
+| 能力装箱 | 5 入口散落 | CapabilityRegistry 单入口 + Guard 自动保护 | ✅ |
+
+6 步实施路线详见 [MASTER_PLAN.md §11](MASTER_PLAN.md)。
+
+## 九、架构优势摘要
 
 1. 主体分工清晰：**感知执行一体（阶段锁）· 安全独立 · 审计迭代独立**
 2. 安全等级高：双层前置 + 沙箱 + 事后审计
@@ -224,5 +290,8 @@
 |------|------|
 | [FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md) | 五层细节补充（服从本文 Agent 合并定义） |
 | [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md) | 模块矩阵与交付线 |
+| [EXPERIENCE_DRIVEN_DESIGN.md](EXPERIENCE_DRIVEN_DESIGN.md) | 🆕 体验驱动设计 — 从用户体感倒推接口契约（本文 §七的设计原则来源） |
+| [FULL_DOMAIN_UPGRADE.md](FULL_DOMAIN_UPGRADE.md) | 🆕 生产级技术方案 — 7 模块升级的技术细节（本文 §八的实现方案） |
+| [MASTER_PLAN.md](MASTER_PLAN.md) | 总控计划 — 含 v0.9 升级 6 步路线（本文 §八的执行计划） |
 | [../../frontend/ARCHITECTURE.md](../../frontend/ARCHITECTURE.md) | 前端双模式与组件 |
 | [ORCHESTRATOR_THREE_AGENTS.md](ORCHESTRATOR_THREE_AGENTS.md) | 已归并至本文 §二、§五 |

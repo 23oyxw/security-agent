@@ -1,5 +1,11 @@
 <template>
-  <div class="app-shell" :class="pageThemeClass">
+  <div class="app-shell" :class="[pageThemeClass, { 'is-narrow': isNarrow }]">
+    <div
+      v-if="isNarrow && !collapsed"
+      class="sidebar-backdrop"
+      aria-hidden="true"
+      @click="toggleCollapsed"
+    />
     <!-- 环境光球（对话页关闭以减轻绘制） -->
     <div v-if="!isAgentRoute" class="ambient-orbs" aria-hidden="true">
       <div class="ambient-orb ambient-orb--1"></div>
@@ -10,8 +16,8 @@
     <!-- 侧边栏（独立组件） -->
     <Sidebar
       :collapsed="collapsed"
-      :width="sidebarWidth"
-      @toggle="collapsed = !collapsed"
+      :overlay="isNarrow && !collapsed"
+      @toggle="toggleCollapsed"
       @navigate="navigate"
       @resize-start="startResize"
     />
@@ -28,7 +34,7 @@
         description="请先运行 START_WIN.bat 或 scripts/start_backend.ps1 启动 http://127.0.0.1:8900 ，勿单独打开 dist/index.html。"
       />
       <!-- 顶栏（独立组件） -->
-      <Topbar :collapsed="collapsed" @toggle-sidebar="collapsed = !collapsed" @logout="logout" />
+      <Topbar :collapsed="collapsed" @toggle-sidebar="toggleCollapsed" @logout="logout" />
 
       <!-- 内容区（顶栏 PillarWorkflowRail 已移除，五层导航仅在侧栏） -->
       <main ref="contentRef" class="content" :class="{ 'content--agent': isAgentRoute }">
@@ -65,17 +71,20 @@ import { useStaggerReveal } from '../composables/useStaggerReveal'
 import Sidebar from '../components/layout/Sidebar.vue'
 import Topbar from '../components/layout/Topbar.vue'
 import { useSidebarResize } from '../composables/useSidebarResize'
+import { useSidebarCollapse } from '../composables/useSidebarCollapse'
+import { usePipelineBootstrap } from '../composables/usePipelineBootstrap'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const backendStore = useBackendStore()
 
-// 轮询 60s；对话页不阻塞首屏
-useSystemPolling(60000)
+// 全局监控 10s 轮询 — 供顶栏 / 仪表盘 / 态势总览共用
+useSystemPolling(10000)
+usePipelineBootstrap()
 
-const collapsed = ref(false)
-const { width: sidebarWidth, startResize } = useSidebarResize()
+const { collapsed, isNarrow, toggle: toggleCollapsed } = useSidebarCollapse()
+const { startResize } = useSidebarResize()
 const contentRef = ref(null)
 const { refresh: refreshReveal } = useStaggerReveal(contentRef)
 
@@ -112,7 +121,9 @@ watch(
 )
 
 function onPageEntered() {
+  if (contentRef.value) contentRef.value.scrollTop = 0
   refreshReveal()
+  window.setTimeout(() => window.dispatchEvent(new Event('resize')), 280)
 }
 
 watch(
@@ -315,5 +326,25 @@ function logout() {
 .fade-scale-leave-to {
   opacity: 0;
   transform: scale(1.02);
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 9;
+  backdrop-filter: blur(2px);
+}
+
+@media (max-width: 900px) {
+  .content {
+    padding: var(--space-3);
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: var(--space-2);
+  }
 }
 </style>

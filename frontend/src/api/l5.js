@@ -8,6 +8,14 @@ export function fetchL5Heatmap() {
   return api.get('/l5/heatmap')
 }
 
+export function fetchL5Distributions() {
+  return api.get('/l5/distributions')
+}
+
+export function fetchL5LayerCross() {
+  return api.get('/l5/layer-cross')
+}
+
 export function fetchL5RootCause(traceId) {
   return api.get(`/l5/root-cause/${encodeURIComponent(traceId)}`)
 }
@@ -47,3 +55,8 @@ export function applyL5PolicyFeedback() {
 export function fetchAggregatedAlerts(windowMinutes = 5) {
   return api.get('/alerts/aggregated', { params: { window_minutes: windowMinutes } })
 }
+
+export function fetchL5Sync() {
+  return api.get('/l5/sync')
+}
+

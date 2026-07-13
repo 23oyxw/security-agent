@@ -168,11 +168,14 @@ def build_secure_exec_charts(facts: dict[str, Any]) -> list[ChartSpec]:
                 chart_type="hbar",
                 bars=[
                     MetricBar(
-                        {"static_risk": "L1 静态", "dynamic_intent": "L2 意图", "restricted_exec": "L3 执行"}.get(
-                            str(x.get("layer", "")), str(x.get("layer", ""))
-                        ),
+                        str(x.get("name_zh") or x.get("name"))
+                        or {
+                            "static_risk": "第1层 静态风险",
+                            "dynamic_intent": "第2层 意图审计",
+                            "restricted_exec": "第3层 受限执行",
+                        }.get(str(x.get("layer", "")), str(x.get("layer", ""))),
                         float(x.get("score") or 0),
-                        ["#43a047", "#1e88e5", "#fb8c00"][i % 3],
+                        ["#3b82f6", "#10b981", "#f59e0b"][i % 3],
                     )
                     for i, x in enumerate(layers)
                 ],

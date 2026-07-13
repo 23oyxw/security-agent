@@ -1,7 +1,7 @@
 # 银河麒麟智能安全运维 Agent — 总控计划
 
 > **定位**：A2 赛题唯一权威路线图，统领三条交付线、**五层智能体流水线**与分阶段验收。  
-> **更新**：2026-06-11  
+> **版本**：v0.9.0 · **更新**：2026-07-13  
 > **Agent 编排权威**：[FIVE_LAYER_PIPELINE.md](FIVE_LAYER_PIPELINE.md)  
 > **关联**：[TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md) · [TECH_STACK.md](TECH_STACK.md) · [../OPTIMIZATION_PLAN.md](../OPTIMIZATION_PLAN.md)
 
@@ -560,7 +560,7 @@ uv run uvicorn security_agent.api.app:app --host 0.0.0.0 --port 8000
 | 合并 | `knowledge/mcp/` → `mcp/` | 去重两套 MCP 目录 |
 | 删除 | `test_dify_bridge.py`, `test_blue_team_rules.py`, `dify_routes.py` | 关联死代码 |
 
-**结果**: 204 → 177 py 文件 (-13%)
+**结果**: 204 → 177 py 文件 (-13%) → v0.9.0: 260 py (+83)
 
 ### 10.2 新功能
 
@@ -603,7 +603,7 @@ uv run uvicorn security_agent.api.app:app --host 0.0.0.0 --port 8000
 ### 10.5 当前模块统计
 
 ```
-security_agent/        177 py
+security_agent/        260 py (v0.9.0)
 ├── agent/             18 py   (脑、编排、回退、自验证)
 ├── api/               28 py   (FastAPI + 路由 + WS)
 ├── audit/              9 py   (事件脊柱、Trace、JSONL日志)
@@ -662,7 +662,7 @@ security_agent/        177 py
 | 趋势 | 无 | improving/stable/declining |
 | Token | 仅累计 | 线性回归预测 + 方向判定 |
 
-### 10.8 后端模块现状 (181 py)
+### 10.8 后端模块现状 (260 py · v0.9.0)
 
 ```
 agent/   19py   Brain · Orchestrator · Fallback · evaluation(v2)
@@ -678,3 +678,74 @@ monitor/  8py   巡检 + 动态阈值
 memory/   3py   ConversationMemory + SemanticMemory(Mem0)
 ops/      3py   Guardrails + TaskDispatch(权限管控)
 data/     agent_eval.json · wiki_cache · snapshots/ · alerts/
+
+---
+
+## 11. Phase 4 — 生产级全域升级（v0.8.0 → v0.9.0）✅ 已完成
+
+> **完成日期**：2026-07-13  
+> **设计依据**：[FINAL_ARCHITECTURE.md](FINAL_ARCHITECTURE.md) §七（设计原则）+ §八（演进方向）  
+> **测试总计**：137 tests 全绿 · 6 步 + 装箱体系 + 统一基准框架  
+> **体验规格**：[EXPERIENCE_DRIVEN_DESIGN.md](EXPERIENCE_DRIVEN_DESIGN.md)（接口契约 + 验收标准）  
+> **技术方案**：[FULL_DOMAIN_UPGRADE.md](FULL_DOMAIN_UPGRADE.md)（代码路径 + 类设计）
+
+### 11.1 执行顺序（体验优先 — 每步可独立演示）
+
+```
+Step 1 · 沙箱透明化 ─── 用户能「看见」每次操作的影响
+  ├── 新建 security_agent/sandbox/ (overlay.py + profile.py + namespace.py)
+  ├── 修改 security_agent/terminal/executor.py → 接入 SandboxSession
+  ├── 新建 tests/test_sandbox_overlay.py
+  └── 验收: 执行任意命令后能看到文件变更清单 + 一键回滚
+
+Step 2 · 告警安静化 ─── 用户不再被刷屏
+  ├── 新建 security_agent/notify/throttle.py (FrequencyThrottle)
+  ├── 新建 security_agent/notify/floating.py (FloatingNotificationController)
+  ├── 修改 security_agent/notify/alerts.py → 接入 throttle + floating
+  ├── 新建 tests/test_alert_throttle.py
+  └── 验收: 同告警5分钟不重复 · 低优先级不弹窗 · 「暂时忽略」1h有效
+
+Step 3 · 终端智能化 ─── 终端「懂」用户意图
+  ├── 新建 security_agent/terminal/context.py (TerminalContext)
+  ├── 新建 security_agent/terminal/pre_analyzer.py (PreExecutionAnalyzer)
+  ├── 修改 security_agent/terminal/executor.py → IntelligentExecutor
+  ├── 新建 tests/test_terminal_context.py
+  └── 验收: 自然语言→命令建议 · 历史成功率展示 · 意图记忆
+
+Step 4 · 文档活化 ─── 知识从「死的」变「活的」
+  ├── 新建 security_agent/document/ (pipeline.py + parsers/ + chunker.py + embedder.py + indexer.py)
+  ├── 新建 security_agent/filesystem/ (version_manager.py + safe_ops.py)
+  ├── 新建 tests/test_document_pipeline.py
+  └── 验收: PDF/DOCX 自动解析 · 语义检索 · 事件→知识自动抽取
+
+Step 5 · 边界自检化 ─── 系统每天自我挑战
+  ├── 新建 security_agent/sandbox/probes.py (探针网格 12 探针)
+  ├── 新建 security_agent/sandbox/fuzzer.py (BoundaryFuzzer)
+  ├── 新建 tests/test_boundary_fuzzer.py
+  └── 验收: 每日巡检报告 · 发现薄弱点→自动建议加固
+
+Step 6 · 知识自愈化 ─── 知识不会腐烂
+  ├── 新建 security_agent/knowledge/guard.py (KnowledgeGuard)
+  ├── 新建 security_agent/knowledge/freshness.py (FreshnessChecker)
+  ├── 新建 tests/test_knowledge_guard.py
+  └── 验收: 自动检测矛盾 Playbook · 自动标记过时知识 · Wiki 防篡改
+```
+
+### 11.2 依赖关系
+
+```
+Step 1 (sandbox)    ──┐
+                       ├──→ Step 3 (terminal) ──→ Step 4 (document)
+Step 2 (notify)     ──┘                                    │
+                       ┌────────────────────────────────────┘
+                       ▼
+                  Step 5 (boundary) + Step 6 (knowledge) ← 可并行
+```
+
+### 11.3 验收闸门
+
+每完成一个 Step：
+1. `python scripts/verify_triple_unify.py` — 契约未漂移
+2. `pytest tests/test_<new_module>.py` — 新模块单测全过
+3. 手工体验验收（按 EXPERIENCE_DRIVEN_DESIGN.md 该 Step 的 checklist）
+4. 回归：`bash scripts/run_regression.sh` — 已有功能不受影响

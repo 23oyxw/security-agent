@@ -30,6 +30,7 @@
       <div class="hero-meta">
         <span>进程 Processes: <strong>{{ eyeCtx.processCount ?? '—' }}</strong></span>
         <span>刷新 Refresh: {{ lastRefresh || '—' }}</span>
+        <span>指标 Metrics: {{ metricsStore.lastUpdated || '—' }}</span>
         <span>间隔 Interval: {{ pollSec }}s</span>
       </div>
     </section>
@@ -103,9 +104,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { initChart } from '../composables/useEcharts'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { initChart, scheduleChartResize } from '../composables/useEcharts'
 import api from '../api'
+import { useMetricsStore } from '../stores/metrics'
 import PageHeader from '../components/common/PageHeader.vue'
 import { chartTooltip, categoryAxis, valueAxis, metricBarData, chartGrid } from '../utils/chartTheme'
 import {
@@ -117,6 +119,7 @@ import {
 const loading = ref(false)
 const lastRefresh = ref('')
 const pollSec = ref(10)
+const metricsStore = useMetricsStore()
 const metrics = ref({})
 const snapshot = ref({})
 const portCount = ref(null)
@@ -135,15 +138,19 @@ const axisCards = computed(() =>
   })),
 )
 
-async function fetchAll() {
+function syncMetricsFromStore() {
+  if (!metricsStore.raw || metricsStore.raw.cpu_percent == null) return
+  metrics.value = { ...metricsStore.raw }
+  nextTick(renderChart)
+}
+
+async function fetchContextAndPorts() {
   loading.value = true
   try {
-    const [mRes, cRes, pRes] = await Promise.allSettled([
-      api.get('/perception/metrics'),
+    const [cRes, pRes] = await Promise.allSettled([
       api.get('/perception/context'),
       api.get('/perception/os/ports'),
     ])
-    if (mRes.status === 'fulfilled' && mRes.value) metrics.value = mRes.value
     if (cRes.status === 'fulfilled' && cRes.value) {
       snapshot.value = cRes.value.snapshot || cRes.value.summary || cRes.value
       if (cRes.value.summary && !snapshot.value.summary) {
@@ -155,11 +162,16 @@ async function fetchAll() {
       ports.value = Array.isArray(list) ? list : []
       portCount.value = pRes.value.count ?? ports.value.length
     }
-    lastRefresh.value = new Date().toLocaleTimeString('zh-CN')
-    nextTick(renderChart)
+    lastRefresh.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
   } finally {
     loading.value = false
   }
+}
+
+async function fetchAll() {
+  await metricsStore.fetchMetrics()
+  syncMetricsFromStore()
+  await fetchContextAndPorts()
 }
 
 async function renderChart() {
@@ -182,9 +194,15 @@ async function renderChart() {
       ]),
     }],
   }, true)
+  scheduleChartResize(chartInstance)
 }
 
 const resizeHandler = () => chartInstance?.resize()
+
+watch(
+  () => [metricsStore.cpuPercent, metricsStore.memoryPercent, metricsStore.diskPercent],
+  () => syncMetricsFromStore(),
+)
 
 onMounted(() => {
   fetchAll()

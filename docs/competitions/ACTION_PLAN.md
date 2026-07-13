@@ -1,7 +1,6 @@
-# A2 赛题 — 核心痛点解决方案 & 架构决策
+# A2 赛题 — 核心痛点解决方案 & 架构决策（历史归档）
 
-> 生成时间: 2026-05-22
-> 基于: 完整代码审查 + ARCHITECTURE_DEEP.md 分析
+> 生成时间: 2026-05-22 · ⚠️ **已归档**：当前架构决策以 **[FINAL_ARCHITECTURE.md](../architecture/FINAL_ARCHITECTURE.md)** 为准。
 
 ---
 

@@ -3,8 +3,9 @@
    背景负责氛围；本文件负责可读 UI
    ============================================================ */
 
-/* 强制浅色组件语义（覆盖 prefers-color-scheme: dark 对内容区的反转） */
-:is(html, .app-shell)[class*='page-theme-']:not(.page-theme-canvas) {
+/* 强制浅色组件语义（全站锁定，含登录页；不受 OS 深色模式影响） */
+html,
+:is(html, .app-shell)[class*='page-theme-'] {
   color-scheme: light;
 
   --color-neutral-50: #f8fafc;
@@ -18,25 +19,22 @@
   --color-neutral-800: #1e293b;
   --color-neutral-900: #0f172a;
 
-  --color-text-primary: #0f172a;
+  --color-text-primary: #1e293b;
   --color-text-secondary: #475569;
   --color-text-muted: #64748b;
-  --color-surface: #ffffff;
+  --color-surface: #fafbfc;
   --color-surface-raised: #f8fafc;
   --color-border-default: #e2e8f0;
   --color-border-subtle: #f1f5f9;
 
   /* 实色面板（高不透明度，从背景中「浮起」） */
-  --glass-surface: #ffffff;
+  --glass-surface: #fafbfc;
   --glass-header: #f8fafc;
-  --glass-topbar: rgba(255, 255, 255, 0.96);
+  --glass-topbar: rgba(250, 251, 252, 0.94);
   --glass-chip: #f1f5f9;
   --glass-stripe: #f8fafc;
-  --glass-border: rgba(15, 23, 42, 0.10);
-  --glass-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.06),
-    0 4px 16px rgba(15, 23, 42, 0.08),
-    0 0 0 1px rgba(15, 23, 42, 0.04);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --glass-shadow: var(--shadow-sm);
   --ui-icon-accent: var(--page-accent);
   --ui-icon-muted: #64748b;
 }
@@ -58,12 +56,12 @@
 .app-shell[class*='page-theme-'] .el-card__body,
 .app-shell[class*='page-theme-'] .section-card .section-body,
 .app-shell[class*='page-theme-'] .table-wrap {
-  background: #ffffff;
+  background: #fafbfc;
   color: var(--color-text-primary);
 }
 
 .app-shell[class*='page-theme-'] .stat-card {
-  background: #ffffff !important;
+  background: #fafbfc !important;
 }
 
 .app-shell[class*='page-theme-'] .stat-card .stat-label,

@@ -1,16 +1,28 @@
-/* 图表区 — 固定白底，保证柱线/标签可读 */
+/* 图表区 — 固定白底，保证柱线/标签可读（全站生效） */
+.chart-container,
+.trace-chart,
+.trend-chart,
+.chart-box,
 .app-shell[class*='page-theme-'] .chart-container,
 .app-shell[class*='page-theme-'] .trace-chart,
 .app-shell[class*='page-theme-'] .trend-chart,
 .app-shell[class*='page-theme-'] .chart-box {
-  background: #ffffff !important;
+  background: #fafbfc !important;
   border: 1px solid var(--color-border-default, #e2e8f0);
   border-radius: var(--radius-md);
   padding: var(--space-2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: none;
 }
 
-.app-shell[class*='page-theme-'] .chart-box--sm {
+.chart-container,
+.trace-chart,
+.trend-chart,
+.chart-box {
+  min-height: 200px;
+}
+
+.app-shell[class*='page-theme-'] .chart-box--sm,
+.chart-box--sm {
   height: 200px;
 }
 

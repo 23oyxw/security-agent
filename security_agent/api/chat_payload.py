@@ -40,6 +40,7 @@ def build_chat_payload(result: dict[str, Any], session_id: str) -> dict[str, Any
         "trace_id": result.get("trace_id") or session_id,
         "degradation_level": result.get("degradation_level", "S0"),
         "fallback_used": bool(result.get("fallback_used")),
+        "trace_memo": result.get("trace_memo") or "",
     }
     if result.get("cost_estimate"):
         payload["cost_estimate"] = result["cost_estimate"]

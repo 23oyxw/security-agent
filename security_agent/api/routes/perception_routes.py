@@ -1,6 +1,7 @@
 """① 多维感知路由 — 基础指标 + OS 深度感知 + 根因分析"""
 
 import os
+import sys
 import time
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
@@ -11,34 +12,62 @@ from security_agent.auth.models import User
 router = APIRouter()
 
 
-@router.get("/metrics", response_model=SystemMetricsResponse)
-async def get_metrics(user: User = Depends(get_current_user)):
-    """获取系统指标"""
+def _disk_root() -> str:
+    if sys.platform == "win32":
+        return os.environ.get("SystemDrive", "C:") + "\\"
+    return "/"
+
+
+def _safe_load_avg(cpu_percent: float) -> list[float]:
+    try:
+        if hasattr(os, "getloadavg"):
+            return [float(x) for x in os.getloadavg()]
+    except (OSError, AttributeError):
+        pass
+    # Windows 无 getloadavg：用 CPU 利用率近似 1m 负载（相对核数）
     try:
         import psutil
-        cpu = psutil.cpu_percent(interval=0.5)
-        mem = psutil.virtual_memory()
-        disk = psutil.disk_usage("/")
-        load = os.getloadavg()
-        net = psutil.net_io_counters()
-        boot = psutil.boot_time()
+        cores = max(psutil.cpu_count(logical=True) or 1, 1)
+        load1 = round((cpu_percent / 100.0) * cores, 2)
+        return [load1, load1, load1]
+    except Exception:
+        return [0.0, 0.0, 0.0]
+
+
+@router.get("/metrics", response_model=SystemMetricsResponse)
+async def get_metrics(user: User = Depends(get_current_user)):
+    """获取系统指标 — 分项采集，避免单项失败导致整页归零"""
+    cpu = mem_pct = disk_pct = 0.0
+    load = [0.0, 0.0, 0.0]
+    net = {"bytes_sent": 0, "bytes_recv": 0}
+    uptime = 0.0
+    procs = 0
+    try:
+        import psutil
+        cpu = float(psutil.cpu_percent(interval=0.3))
+        mem_pct = float(psutil.virtual_memory().percent)
+        try:
+            disk_pct = float(psutil.disk_usage(_disk_root()).percent)
+        except Exception:
+            disk_pct = float(psutil.disk_usage("/").percent)
+        load = _safe_load_avg(cpu)
+        nio = psutil.net_io_counters()
+        if nio:
+            net = {"bytes_sent": nio.bytes_sent, "bytes_recv": nio.bytes_recv}
+        uptime = max(0.0, time.time() - psutil.boot_time())
         procs = len(psutil.pids())
-        return SystemMetricsResponse(
-            cpu_percent=cpu,
-            memory_percent=mem.percent,
-            disk_percent=disk.percent,
-            load_avg=list(load),
-            network_io={"bytes_sent": net.bytes_sent, "bytes_recv": net.bytes_recv},
-            uptime_seconds=time.time() - boot,
-            process_count=procs,
-            timestamp=time.time(),
-        )
-    except Exception as e:
-        return SystemMetricsResponse(
-            cpu_percent=0, memory_percent=0, disk_percent=0,
-            load_avg=[0, 0, 0], network_io={"bytes_sent": 0, "bytes_recv": 0},
-            uptime_seconds=0, process_count=0, timestamp=time.time(),
-        )
+    except Exception:
+        pass
+    return SystemMetricsResponse(
+        cpu_percent=cpu,
+        memory_percent=mem_pct,
+        disk_percent=disk_pct,
+        load_avg=load,
+        network_io=net,
+        uptime_seconds=uptime,
+        process_count=procs,
+        timestamp=time.time(),
+    )
 
 
 @router.get("/logs")

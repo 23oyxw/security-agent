@@ -26,6 +26,28 @@
       </div>
     </div>
 
+    <div class="wiki-sync-panel reveal-item">
+      <div class="wiki-sync-head">
+        <div>
+          <h3>Wiki 知识同步</h3>
+          <p class="wiki-sync-desc">边界对抗集 + 架构文档 + 蓝队种子 → 本地索引；有 Gitee Token 时优先远程 Wiki</p>
+        </div>
+        <el-button type="primary" size="small" :loading="wikiSyncing" @click="refreshKnowledge">
+          同步 Wiki 索引
+        </el-button>
+      </div>
+      <div class="wiki-sync-stats">
+        <el-tag :type="wikiStatus === '已同步' ? 'success' : 'warning'" effect="plain">
+          {{ wikiStatus }}
+        </el-tag>
+        <span v-if="wikiMeta.doc_count">文档 {{ wikiMeta.doc_count }} 篇</span>
+        <span v-if="wikiMeta.synced_at">上次 {{ wikiMeta.synced_at }}</span>
+        <span v-if="wikiMeta.source">来源 {{ wikiMeta.source }}</span>
+        <span v-if="wikiBoundary.matrix_cases">边界矩阵 {{ wikiBoundary.matrix_cases }} + PE {{ wikiBoundary.probe_count || 0 }}</span>
+      </div>
+      <p v-if="wikiMeta.fallback" class="wiki-sync-hint">{{ wikiMeta.fallback }}</p>
+    </div>
+
     <div class="search-section">
       <div class="search-bar">
         <el-input
@@ -206,6 +228,9 @@ const categories = ref([
   { key: '合规检查', label: '合规检查', icon: 'CircleCheck', color: '#06b6d4', count: 0 },
 ])
 const wikiStatus = ref('未同步')
+const wikiSyncing = ref(false)
+const wikiMeta = ref({})
+const wikiBoundary = ref({})
 
 const blueTeamRecommend = [
   { key: 'webshell', label: 'Webshell 检测', desc: '检测 PHP/JSP/ASP 一句话木马、大马', icon: 'WarningFilled', color: '#ef4444', heat: 95 },
@@ -285,13 +310,30 @@ function renderMarkdown(content) {
 }
 
 async function refreshKnowledge() {
+  wikiSyncing.value = true
   try {
-    await api.post('/knowledge/refresh')
-    ElMessage.success('知识库已刷新')
+    const res = await api.post('/knowledge/refresh')
+    wikiMeta.value = res || {}
+    wikiStatus.value = res?.ok ? '已同步' : '同步失败'
+    ElMessage.success(`Wiki 已同步：${res.doc_count || 0} 篇文档`)
     await loadKnowledgeStats()
+    await loadWikiStatus()
   } catch (e) {
-    ElMessage.error('刷新失败: ' + (e.message || '未知'))
+    ElMessage.error('刷新失败: ' + (e.response?.data?.detail || e.message || '未知'))
+  } finally {
+    wikiSyncing.value = false
   }
+}
+
+async function loadWikiStatus() {
+  try {
+    const st = await api.get('/knowledge/wiki-status')
+    wikiMeta.value = { ...wikiMeta.value, ...(st.last_sync || {}), doc_count: st.index?.doc_count }
+    wikiBoundary.value = st.boundary || {}
+    if (st.index_loaded && (st.index?.doc_count || 0) > 0) {
+      wikiStatus.value = '已同步'
+    }
+  } catch { /* offline */ }
 }
 
 async function loadKnowledgeStats() {
@@ -307,7 +349,10 @@ async function loadKnowledgeStats() {
   } catch { wikiStatus.value = '待同步' }
 }
 
-onMounted(() => { loadKnowledgeStats() })
+onMounted(async () => {
+  await loadWikiStatus()
+  loadKnowledgeStats()
+})
 </script>
 
 <style scoped>
@@ -317,6 +362,46 @@ onMounted(() => { loadKnowledgeStats() })
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+}
+
+.wiki-sync-panel {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.wiki-sync-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.wiki-sync-head h3 {
+  margin: 0 0 4px;
+  font-size: var(--text-base);
+}
+
+.wiki-sync-desc {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.wiki-sync-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.wiki-sync-hint {
+  margin: var(--space-2) 0 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
 }
 
 .l1-knowledge-banner {

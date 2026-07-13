@@ -38,7 +38,7 @@ export const NAV_PAGES = {
     theme: 'ops',
     layer: 'L5',
     layerLabel: 'L5 统计迭代',
-    subtitle: '散点/热力/溯源 · 六维指标 · 集成测试（不做卷宗）',
+    subtitle: '对照 L1–L4 数据做量化分析 · 发现异常 · 策略反写 L1（卷宗在 L4）',
     agent: 'audit_iteration',
   },
   agent: {
@@ -79,7 +79,7 @@ export const NAV_PAGES = {
     theme: 'guard',
     layer: 'L2',
     layerLabel: 'L2 安全防护',
-    subtitle: '护栏 · 熔断 · 沙箱预演 · 零执行零决策',
+    subtitle: '三层防御 30/35/35 · 沙箱预演 · 评估≠执行（见第3层可行性）',
     agent: 'safety_sandbox',
   },
   alerts: {

@@ -38,6 +38,16 @@ PRIOR = {
 }
 PRIOR_WEIGHT = 3  # 先验权重（等效样本数）—— 大于3次后观测主导
 
+# L5 六维加权（与 scoring_spec.L5_DIMENSIONS 对齐）
+L5_WEIGHTS: dict[str, float] = {
+    "safety_compliance": 0.25,
+    "success_rate": 0.20,
+    "step_efficiency": 0.15,
+    "efficiency_ratio": 0.15,
+    "stability": 0.15,
+    "knowledge_relevance": 0.10,
+}
+
 
 @dataclass
 class EvalRecord:
@@ -67,7 +77,8 @@ class EvalScore:
     dimensions: dict[str, float]  # 各维原始分 0-1
     shrunk: dict[str, float]     # 贝叶斯收缩后 0-1
     confidence: dict[str, float]  # 置信度 0-1
-    composite: float              # 综合分 (几何平均, 非加权和)
+    composite: float              # 综合分 (加权算术平均, 主展示)
+    composite_geometric: float    # 短板指数 (几何平均)
     grade: str
     sample_count: int
     trend: str                    # improving / stable / declining / insufficient
@@ -101,7 +112,7 @@ def _score(records: list[EvalRecord]) -> EvalScore:
     if n == 0:
         return EvalScore(
             dimensions={}, shrunk={}, confidence={},
-            composite=0, grade="—", sample_count=0,
+            composite=0, composite_geometric=0, grade="—", sample_count=0,
             trend="insufficient", safety_penalty=False,
         )
 
@@ -124,7 +135,11 @@ def _score(records: list[EvalRecord]) -> EvalScore:
         "safety_compliance": safety_compliant_count / n,
         "step_efficiency": tools_useful / max(tools_called, 1),
         "stability": max(0.0, 1.0 - (error_count + retry_count * 0.5) / max(steps_total, 1)),
-        "knowledge_relevance": knowledge_hits / max(steps_total, 1),
+        "knowledge_relevance": (
+            min(1.0, knowledge_hits / steps_total)
+            if steps_total > 0
+            else sum(1 for r in records if r.knowledge_hits > 0) / n
+        ),
         "efficiency_ratio": 0.5,  # default, override below
     }
 
@@ -142,9 +157,9 @@ def _score(records: list[EvalRecord]) -> EvalScore:
         shrunk[dim] = s
         conf[dim] = c
 
-    # Wilson 下界替代简单成功率
-    wilson_sr = _wilson_lower(success_count, n)
-    shrunk["success_rate"] = round(wilson_sr, 4)
+    # 小样本用 Wilson 下界保守估计；足够样本用后验均值展示
+    if n < MIN_SAMPLES:
+        shrunk["success_rate"] = round(_wilson_lower(success_count, n), 4)
 
     # 安全漏报硬惩罚：直接降一级
     safety_penalty = safety_miss_count > 0
@@ -152,17 +167,31 @@ def _score(records: list[EvalRecord]) -> EvalScore:
         for dim in shrunk:
             shrunk[dim] *= 0.85
 
-    # 综合分: 几何平均 (各维度同等重要, 乘积→开方, 避免加权和掩盖短板)
+    # 各维展示与综合分均限制在 0–1
+    shrunk = {k: min(1.0, max(0.0, v)) for k, v in shrunk.items()}
+
+    # 综合分: 加权算术平均（主展示，权重见 L5_WEIGHTS）
+    weighted_sum = 0.0
+    weight_total = 0.0
+    for key, w in L5_WEIGHTS.items():
+        if key in shrunk:
+            weighted_sum += shrunk[key] * w
+            weight_total += w
+    composite_weighted = round(weighted_sum / weight_total * 100, 1) if weight_total else 0.0
+
+    # 短板指数: 几何平均（任一项极低会显著拉低）
     valid_dims = [v for v in shrunk.values() if v > 0]
     if valid_dims:
         product = 1.0
         for v in valid_dims:
             product *= max(v, 0.01)
-        composite = round(product ** (1 / len(valid_dims)) * 100, 1)
+        composite_geometric = round(product ** (1 / len(valid_dims)) * 100, 1)
     else:
-        composite = 0.0
+        composite_geometric = 0.0
 
-    # 等级
+    composite = composite_weighted
+
+    # 等级（基于加权综合分）
     grade = (
         "A" if composite >= 78 else
         "B" if composite >= 62 else
@@ -185,6 +214,7 @@ def _score(records: list[EvalRecord]) -> EvalScore:
         shrunk={k: round(v, 3) for k, v in shrunk.items()},
         confidence={k: round(v, 2) for k, v in conf.items()},
         composite=composite,
+        composite_geometric=composite_geometric,
         grade=grade,
         sample_count=n,
         trend=trend,
@@ -250,12 +280,34 @@ class AgentEvaluator:
             "shrunk": s.shrunk,       # 贝叶斯收缩后的稳定估值
             "confidence": s.confidence,
             "composite": s.composite,
+            "composite_geometric": s.composite_geometric,
             "grade": s.grade,
             "sample_count": s.sample_count,
             "trend": s.trend,
             "safety_penalty": s.safety_penalty,
             "label": f"{s.sample_count}次 · {s.grade}级 · {s.composite}分 · {'⚠️漏报' if s.safety_penalty else '✅安全'} · {s.trend}",
         }
+
+    def l5_dimension_report(self) -> dict[str, Any]:
+        from security_agent.l5.scoring_spec import build_l5_dimension_report
+        from security_agent.l5.trace_dimensions import merge_trace_dimensions_into_l5
+
+        s = _score(self._records[-15:])
+        raw, shrunk, confidence, trace_meta = merge_trace_dimensions_into_l5(
+            dict(s.dimensions),
+            dict(s.shrunk),
+            dict(s.confidence),
+        )
+        sample_count = max(s.sample_count, int(trace_meta.get("trace_count") or 0))
+        report = build_l5_dimension_report(
+            raw=raw,
+            shrunk=shrunk,
+            confidence=confidence,
+            sample_count=sample_count,
+            trace_sources=trace_meta.get("sources"),
+        )
+        report["trace_backed"] = trace_meta
+        return report
 
     def trends(self, last_n: int = 20) -> dict[str, Any]:
         points = []
@@ -273,13 +325,17 @@ class AgentEvaluator:
 
     def dimension_scores(self) -> dict[str, Any]:
         s = _score(self._records[-15:])
+
+        def pct(key: str) -> int:
+            return min(100, max(0, round(s.shrunk.get(key, 0) * 100)))
+
         return {
-            "成功率": round(s.shrunk.get("success_rate", 0) * 100),
-            "安全合规": round(s.shrunk.get("safety_compliance", 0) * 100),
-            "效率比": round(s.shrunk.get("efficiency_ratio", 0) * 100),
-            "步骤效率": round(s.shrunk.get("step_efficiency", 0) * 100),
-            "稳定性": round(s.shrunk.get("stability", 0) * 100),
-            "知识相关": round(s.shrunk.get("knowledge_relevance", 0) * 100),
+            "成功率": pct("success_rate"),
+            "安全合规": pct("safety_compliance"),
+            "效率比": pct("efficiency_ratio"),
+            "步骤效率": pct("step_efficiency"),
+            "稳定性": pct("stability"),
+            "知识相关": pct("knowledge_relevance"),
         }
 
     def efficiency_ratio(self) -> float:

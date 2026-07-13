@@ -58,6 +58,8 @@ class CoreDispatchAgent:
             "hint": plan.get("hint") or "",
             "user_message_resolved": msg,
             "trace_id": tid,
+            "plan_id": plan.get("plan_id"),
+            "l2_verdict": plan.get("l2_verdict"),
         }
 
         from security_agent.agent.brain import AgentBrain

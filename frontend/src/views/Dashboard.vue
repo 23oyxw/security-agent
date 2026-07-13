@@ -150,7 +150,8 @@
           <div class="panel-body">
             <div ref="resourceBar" class="chart-container"></div>
             <div class="chart-footer">
-              {{ loadStr }} — {{ loadTip }} · 数据来自 L1 静态之眼快照
+              {{ loadStr }} — {{ loadTip }} · 实时 /api/perception/metrics
+              <span v-if="metricsUpdatedAt"> · 更新 {{ metricsUpdatedAt }}</span>
             </div>
           </div>
         </div>
@@ -294,13 +295,15 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { Monitor, DataAnalysis, BellFilled, MagicStick, Document } from '@element-plus/icons-vue'
-import { initChart } from '../composables/useEcharts'
+import { initChart, scheduleChartResize } from '../composables/useEcharts'
 import {
   chartGrid, chartTooltip, categoryAxis, valueAxis,
   metricBarData,
 } from '../utils/chartTheme'
 import api from '../api'
 import { useAlertsStore } from '../stores/alerts'
+import { useEvalStore } from '../stores/eval'
+import { useMetricsStore } from '../stores/metrics'
 import PageHeader from '../components/common/PageHeader.vue'
 import { buildAgentRoute } from '../constants/navigation'
 import { usePageMeta } from '../composables/usePageMeta'
@@ -312,6 +315,8 @@ import {
 } from '../constants/l5-metrics'
 
 const alertsStore = useAlertsStore()
+const evalStore = useEvalStore()
+const metricsStore = useMetricsStore()
 const { pageMeta } = usePageMeta('dashboard')
 
 /* ---- Refs ---- */
@@ -339,6 +344,7 @@ let pollTimer = null
 
 const loadStr = ref('—')
 const loadTip = ref('')
+const metricsUpdatedAt = ref('')
 
 const layerCross = L5_LAYER_CROSS
 
@@ -399,16 +405,52 @@ function trendBarHeight(score) {
   return `${Math.max(4, (score / 100) * 28)}px`
 }
 
+function formatUptime(sec) {
+  const s = Math.max(0, Math.floor(sec || 0))
+  return `${Math.floor(s / 3600)}h${Math.floor((s % 3600) / 60)}m`
+}
+
+function applyPerceptionMetrics(perc) {
+  if (!perc) return
+  const cpu = Math.round(perc.cpu_percent ?? 0)
+  const mem = Math.round(perc.memory_percent ?? 0)
+  const disk = Math.round(perc.disk_percent ?? 0)
+  statCards[0].value = `${cpu}%`
+  statCards[1].value = `${mem}%`
+  statCards[2].value = `${disk}%`
+  if (perc.process_count != null) statCards[3].value = String(perc.process_count)
+  const la = perc.load_avg || []
+  if (la.length) {
+    statCards[4].value = la.map(x => Number(x).toFixed(2)).join(' / ')
+    loadStr.value = `负载 ${statCards[4].value}`
+    const l1 = parseFloat(la[0]) || 0
+    const cores = 8
+    loadTip.value = l1 <= cores * 0.5 ? '轻载' : l1 <= cores * 0.8 ? '中载' : l1 <= cores * 1.5 ? '高载' : '过载'
+  }
+  if (perc.uptime_seconds != null) {
+    statCards[5].value = formatUptime(perc.uptime_seconds)
+  }
+  metricsUpdatedAt.value = metricsStore.lastUpdated || new Date().toLocaleTimeString('zh-CN', { hour12: false })
+}
+
 /* ---- 数据获取 ---- */
 async function fetchAll() {
   try {
-    const [flow, health, mcpRes, evalRes, perception] = await Promise.allSettled([
+    const [flow, health, mcpRes, evalRes, portsRes] = await Promise.allSettled([
       api.get('/workflow/flow-status'),
       api.get('/health'),
       api.get('/mcp/servers'),
-      api.get('/eval/score'),
-      api.get('/perception/metrics'),
+      evalStore.fetchScore({ force: true, maxAgeMs: 0 }),
+      api.get('/perception/os/ports'),
     ])
+    await metricsStore.fetchMetrics()
+    applyPerceptionMetrics(metricsStore.raw)
+
+    if (portsRes.status === 'fulfilled' && portsRes.value) {
+      const list = portsRes.value.ports || portsRes.value.listening || portsRes.value.items || []
+      osPorts.value = Array.isArray(list) ? list : []
+    }
+
     if (health?.value?.modules) modules.value = health.value.modules
     if (evalRes?.value?.latest) {
       const e = evalRes.value.latest
@@ -417,28 +459,18 @@ async function fetchAll() {
       traceMetrics.value = evalRes.value.trace_metrics || {}
       trendPoints.value = evalRes.value.trend_points || []
     }
-    const perc = perception?.value
-    if (perc) {
-      statCards[0].value = `${perc.cpu_percent ?? 0}%`
-      statCards[1].value = `${perc.memory_percent ?? 0}%`
-      statCards[2].value = `${perc.disk_percent ?? 0}%`
-    }
+    // flow-status 仅补充编排层节点，不再覆盖 CPU/内存/磁盘真实读数
     if (flow?.value?.layers?.collection) {
       const ns = flow.value.layers.collection.nodes || []
       const byId = {}
       ns.forEach(n => { byId[n.id] = n })
-      statCards[0].value = byId.C1?.value || '0%'
-      statCards[1].value = byId.C2?.value || '0%'
-      statCards[2].value = byId.C3?.value || '0%'
-      statCards[3].value = byId.C4?.value || '0'
-      const lv = (byId.C1?.subtitle || '').replace('负载 ', '').split(' ')
-      statCards[4].value = lv[0] || '—'
-      const ut = flow.value.uptime_seconds || 0
-      statCards[5].value = `${Math.floor(ut / 3600)}h${Math.floor((ut % 3600) / 60)}m`
-      loadStr.value = lv.join(' / ')
-      const cores = 8
-      const l1 = parseFloat(lv[0]) || 0
-      loadTip.value = l1 <= cores * 0.5 ? '轻载' : l1 <= cores * 0.8 ? '中载' : l1 <= cores * 1.5 ? '高载' : '过载'
+      if (!metricsStore.raw?.process_count && byId.C4?.value) {
+        statCards[3].value = byId.C4.value
+      }
+      const ut = flow.value.uptime_seconds
+      if (ut && !metricsStore.raw?.uptime_seconds) {
+        statCards[5].value = formatUptime(ut)
+      }
     }
     await alertsStore.fetchRecent(5)
     alerts.value = alertsStore.recent || []
@@ -501,6 +533,7 @@ async function renderChart() {
       ]),
     }],
   }, true)
+  scheduleChartResize(chartInstance)
 }
 
 const resizeHandler = () => chartInstance?.resize()
@@ -508,6 +541,14 @@ const resizeHandler = () => chartInstance?.resize()
 watch(pollSec, (v) => {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = setInterval(fetchAll, v * 1000) }
 })
+
+watch(
+  () => [metricsStore.cpuPercent, metricsStore.memoryPercent, metricsStore.diskPercent, metricsStore.lastUpdated],
+  () => {
+    applyPerceptionMetrics(metricsStore.raw)
+    nextTick(renderChart)
+  },
+)
 
 onMounted(() => {
   fetchAll()
