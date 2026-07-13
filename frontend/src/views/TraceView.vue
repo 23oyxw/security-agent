@@ -82,7 +82,7 @@
         <div ref="traceChart" class="trace-chart" :class="{ 'is-hidden': chartShowEmpty }" v-loading="chartLoading"></div>
         <div v-if="chartView === 'focus' && focusTraceId && focusVizLoading" class="chart-overlay-hint">加载阶段数据…</div>
         <div v-if="chartShowEmpty" class="chart-empty">
-          <el-icon :size="32" color="var(--color-neutral-300)"><DataAnalysis /></el-icon>
+          <el-icon :size="32" color="var(--color-neutral-500)"><DataAnalysis /></el-icon>
           <p>{{ chartEmptyText }}</p>
         </div>
       </div>
@@ -1138,7 +1138,7 @@ async function cleanupOld() {
 
 .page-subtitle {
   font-size: var(--text-sm);
-  color: var(--color-neutral-400);
+  color: var(--color-neutral-600);
   margin: var(--space-1) 0 0;
 }
 
@@ -1198,13 +1198,13 @@ async function cleanupOld() {
 
 .stat-label {
   font-size: var(--text-sm);
-  color: var(--color-neutral-400);
+  color: var(--color-neutral-600);
   margin-top: var(--space-1);
 }
 
 .stat-suffix {
   font-size: var(--text-sm);
-  color: var(--color-neutral-300);
+  color: var(--color-neutral-500);
   position: absolute;
   top: var(--space-4);
   right: var(--space-4);
@@ -1286,7 +1286,7 @@ async function cleanupOld() {
   bottom: 12px;
   right: 16px;
   font-size: var(--text-sm);
-  color: var(--color-neutral-400);
+  color: var(--color-neutral-600);
 }
 
 .trace-records-wrap {
@@ -1484,7 +1484,7 @@ async function cleanupOld() {
 
 .analysis-chart-def {
   font-size: var(--text-sm);
-  color: var(--color-neutral-400);
+  color: var(--color-neutral-600);
   margin-bottom: var(--space-2);
   line-height: 1.4;
 }
@@ -1528,7 +1528,7 @@ async function cleanupOld() {
 .chart-hint {
   margin: var(--space-2) 0;
   font-size: var(--text-sm);
-  color: var(--color-neutral-400);
+  color: var(--color-neutral-600);
   text-align: center;
 }
 
@@ -1552,7 +1552,7 @@ async function cleanupOld() {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  color: var(--color-neutral-300);
+  color: var(--color-neutral-500);
   background: rgba(248, 250, 252, 0.92);
   border-radius: var(--radius-md);
 }
@@ -1569,7 +1569,7 @@ async function cleanupOld() {
 
 .last-refresh {
   font-size: var(--text-sm);
-  color: var(--color-neutral-400);
+  color: var(--color-neutral-600);
 }
 
 .trace-time {
@@ -1579,11 +1579,11 @@ async function cleanupOld() {
 
 .trace-time-relative {
   font-size: var(--text-sm);
-  color: var(--color-neutral-400);
+  color: var(--color-neutral-600);
 }
 
 .degradation-s0 {
-  color: var(--color-neutral-400);
+  color: var(--color-neutral-600);
   font-size: var(--text-sm);
 }
 
@@ -1686,10 +1686,10 @@ async function cleanupOld() {
 }
 
 .trace-layer-titles { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-.trace-layer-cn { font-size: var(--text-lg); font-weight: 700; color: var(--color-neutral-800); }
-.trace-layer-en { font-size: var(--text-sm); color: var(--color-neutral-400); }
-.trace-layer-agent { font-size: var(--text-sm); color: var(--color-neutral-500); }
-.trace-layer-count { font-size: var(--text-base); font-weight: 600; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.trace-layer-cn { font-size: var(--text-lg); font-weight: 700; color: var(--color-neutral-900); }
+.trace-layer-en { font-size: var(--text-base); color: var(--color-neutral-600); font-weight: 500; }
+.trace-layer-agent { font-size: var(--text-base); color: var(--color-primary-600); font-weight: 500; }
+.trace-layer-count { font-size: var(--text-lg); font-weight: 700; color: var(--color-neutral-700); font-variant-numeric: tabular-nums; }
 
 .stage-timeline--layer {
   padding: var(--space-4) var(--space-4) var(--space-2) calc(32px + var(--space-4));
@@ -1797,7 +1797,7 @@ async function cleanupOld() {
 
 .stage-node-subline {
   font-size: var(--text-sm);
-  color: var(--color-neutral-400);
+  color: var(--color-neutral-600);
   margin-bottom: var(--space-1);
 }
 
@@ -1809,7 +1809,7 @@ async function cleanupOld() {
 
 .stage-node-duration {
   font-size: var(--text-sm);
-  color: var(--color-neutral-400);
+  color: var(--color-neutral-600);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
