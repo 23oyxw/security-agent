@@ -63,7 +63,7 @@ class ToolBox:
             pass
 
     def invoke(self, name: str, params: dict[str, Any] | None = None, *, timeout: float = 30.0) -> ToolResult:
-        """调用一个工具.
+        """调用一个工具（自动记录统计）.
 
         Args:
             name: 工具名（如 "get_system_health"）
@@ -75,6 +75,8 @@ class ToolBox:
         """
         self._ensure_loaded()
         params = params or {}
+        import time
+        t0 = time.time()
 
         def _call():
             from security_agent.tools.registry import call_tool
@@ -82,6 +84,12 @@ class ToolBox:
 
         key = f"tool:{name}"
         guarded: GuardResult = self._guard.call(key, _call, timeout=timeout)
+
+        # 自动记录统计（MCP 评分维度硬性要求）
+        elapsed_ms = (time.time() - t0) * 1000
+        from security_agent.capability.tool_stats import record_tool_call
+        record_tool_call(name, ok=guarded.ok, elapsed_ms=elapsed_ms, error=guarded.error)
+
         return ToolResult(
             ok=guarded.ok,
             tool_name=name,
