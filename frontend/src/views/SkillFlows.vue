@@ -238,7 +238,7 @@ onMounted(loadFlows)
 }
 
 .flow-level {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 700;
   padding: 2px 8px;
   border-radius: var(--radius-full);
@@ -276,7 +276,7 @@ onMounted(loadFlows)
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--color-neutral-500);
   flex-shrink: 0;
@@ -303,7 +303,7 @@ onMounted(loadFlows)
 }
 
 .step-tag {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
   padding: 1px 6px;
   border-radius: var(--radius-sm);

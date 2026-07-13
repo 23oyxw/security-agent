@@ -134,7 +134,7 @@ function entityValue(key) {
   display: flex;
   gap: 6px;
   align-items: flex-start;
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.45;
   color: var(--text-muted, #94a3b8);
   margin-bottom: 10px;
@@ -145,7 +145,7 @@ function entityValue(key) {
   flex-direction: column;
   gap: 4px;
   margin-bottom: 10px;
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 .entity-row {
@@ -156,7 +156,7 @@ function entityValue(key) {
 
 .entity-row code {
   color: var(--accent-primary, #60a5fa);
-  font-size: 10px;
+  font-size: var(--text-xs);
 }
 
 .entity-val {
@@ -175,7 +175,7 @@ function entityValue(key) {
 }
 
 .persona-link {
-  font-size: 11px;
+  font-size: var(--text-sm);
   padding: 2px 8px;
   border-radius: 4px;
   background: rgba(96, 165, 250, 0.12);
@@ -195,7 +195,7 @@ function entityValue(key) {
   gap: 4px;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--text-xs);
   opacity: 0.5;
   border: 1px solid transparent;
 }

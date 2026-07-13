@@ -72,7 +72,7 @@ function goTrace() {
 .arch-card :deep(.el-card__header) { padding: 8px 12px; }
 .arch-card :deep(.el-card__body) { padding: 8px 12px 12px; }
 .arch-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 13px; font-weight: 600; }
-.arch-body { font-size: 12px; color: #606266; }
+.arch-body { font-size: var(--text-sm); color: #606266; }
 .arch-row { display: flex; gap: 10px; margin-bottom: 10px; padding: 8px; border-radius: 6px; border: 1px solid transparent; }
 .arch-row.active { background: #ecf5ff; border-color: #d9ecff; }
 .arch-row p { margin: 4px 0 0; line-height: 1.45; color: #909399; }

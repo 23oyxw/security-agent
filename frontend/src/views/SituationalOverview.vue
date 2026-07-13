@@ -251,7 +251,7 @@ onUnmounted(() => {
 
 .hero-label {
   display: block;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -355,7 +355,7 @@ onUnmounted(() => {
 }
 
 .axis-hint {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 
@@ -447,7 +447,7 @@ onUnmounted(() => {
 
 .triple-label {
   display: block;
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--color-primary-600);
   margin-bottom: var(--space-2);

@@ -1244,7 +1244,7 @@ async function cleanupOld() {
 
 .section-card-desc {
   margin: 4px 0 0;
-  font-size: 11px;
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: #64748b;
 }
@@ -1285,7 +1285,7 @@ async function cleanupOld() {
   position: absolute;
   bottom: 12px;
   right: 16px;
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-neutral-400);
 }
 
@@ -1370,7 +1370,7 @@ async function cleanupOld() {
   padding: var(--space-4);
   max-height: min(480px, 50vh);
   overflow: auto;
-  font-size: 12px;
+  font-size: var(--text-sm);
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1388,7 +1388,7 @@ async function cleanupOld() {
 }
 
 .trace-inline-id {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-primary-600);
   word-break: break-all;
 }
@@ -1483,7 +1483,7 @@ async function cleanupOld() {
 }
 
 .analysis-chart-def {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-400);
   margin-bottom: var(--space-2);
   line-height: 1.4;
@@ -1578,7 +1578,7 @@ async function cleanupOld() {
 }
 
 .trace-time-relative {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-neutral-400);
 }
 
@@ -1677,7 +1677,7 @@ async function cleanupOld() {
 }
 
 .trace-layer-id {
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 800;
   color: #fff;
   background: var(--layer-accent);
@@ -1686,10 +1686,10 @@ async function cleanupOld() {
 }
 
 .trace-layer-titles { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-.trace-layer-cn { font-size: var(--text-sm); font-weight: 600; color: var(--color-neutral-800); }
-.trace-layer-en { font-size: 10px; color: var(--color-neutral-400); }
-.trace-layer-agent { font-size: 10px; color: var(--color-neutral-500); }
-.trace-layer-count { font-size: 10px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.trace-layer-cn { font-size: var(--text-base); font-weight: 600; color: var(--color-neutral-800); }
+.trace-layer-en { font-size: var(--text-xs); color: var(--color-neutral-400); }
+.trace-layer-agent { font-size: var(--text-xs); color: var(--color-neutral-500); }
+.trace-layer-count { font-size: var(--text-xs); color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
 
 .stage-timeline--layer {
   padding: var(--space-4) var(--space-4) var(--space-2) calc(32px + var(--space-4));
@@ -1778,7 +1778,7 @@ async function cleanupOld() {
 }
 
 .stage-node-tool {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-500);
   background: var(--color-neutral-100);
   padding: 1px 6px;
@@ -1786,7 +1786,7 @@ async function cleanupOld() {
 }
 
 .stage-node-status {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 
@@ -1796,7 +1796,7 @@ async function cleanupOld() {
 .stage-node-status.is-info { color: var(--color-primary-500); }
 
 .stage-node-subline {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-400);
   margin-bottom: var(--space-1);
 }

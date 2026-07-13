@@ -298,7 +298,7 @@ function copyFlow() {
 }
 
 .cmd-session-label {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -317,11 +317,11 @@ function copyFlow() {
 }
 
 .cmd-option-msg {
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .cmd-option-meta {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: #94a3b8;
 }
 
@@ -341,7 +341,7 @@ function copyFlow() {
 
 .cmd-flow-title {
   margin: 0 0 6px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: #e2e8f0;
   line-height: 1.4;
@@ -351,7 +351,7 @@ function copyFlow() {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: #94a3b8;
   margin-bottom: 8px;
 }
@@ -404,7 +404,7 @@ function copyFlow() {
 }
 
 .cmd-empty {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
   text-align: center;
   padding: 16px;
@@ -431,7 +431,7 @@ function copyFlow() {
   border-radius: 50%;
   background: rgba(148, 163, 184, 0.2);
   color: #64748b;
-  font-size: 10px;
+  font-size: var(--text-xs);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -439,13 +439,13 @@ function copyFlow() {
 }
 
 .cmd-type {
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 600;
   flex: 1;
 }
 
 .cmd-time {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-400);
 }
 
@@ -455,7 +455,7 @@ function copyFlow() {
 
 .cmd-code {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--text-sm);
   white-space: pre-wrap;
   word-break: break-all;
   background: var(--color-neutral-50);
@@ -471,7 +471,7 @@ function copyFlow() {
 
 .cmd-meta {
   margin: 4px 0 0;
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-neutral-500);
 }
 

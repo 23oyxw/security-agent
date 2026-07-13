@@ -545,7 +545,7 @@ onUnmounted(() => {
 }
 
 .canvas-hint {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
   margin-left: 8px;
 }
@@ -617,7 +617,7 @@ onUnmounted(() => {
   text-shadow: 0 0 12px color-mix(in srgb, var(--band-accent) 45%, transparent);
 }
 
-.canvas-band-cn { font-size: 10px; color: rgba(255, 255, 255, 0.9); }
+.canvas-band-cn { font-size: var(--text-xs); color: rgba(255, 255, 255, 0.9); }
 .canvas-band-en { font-size: 9px; color: rgba(255, 255, 255, 0.45); }
 
 .canvas-col-head {
@@ -653,7 +653,7 @@ onUnmounted(() => {
   background: rgba(15, 23, 42, 0.88);
   color: var(--nav-accent, #fff);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 800;
   cursor: pointer;
   transition: background 0.15s, transform 0.15s;
@@ -696,7 +696,7 @@ onUnmounted(() => {
   opacity: 0.94;
 }
 
-.cv-node--rail .cv-node-label { font-size: 11px; }
+.cv-node--rail .cv-node-label { font-size: var(--text-sm); }
 .cv-node--rail .cv-node-sub,
 .cv-node--rail .cv-node-cmd { font-size: 9px; }
 

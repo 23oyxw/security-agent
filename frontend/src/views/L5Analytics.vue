@@ -961,7 +961,7 @@ watch(() => [route.query.trace, route.query.id], () => {
   border-radius: 50%;
   background: var(--color-primary-500);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -1042,12 +1042,12 @@ watch(() => [route.query.trace, route.query.id], () => {
 }
 
 .layer-flow-stat {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 
 .layer-flow-err {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: #ef4444;
 }
 
@@ -1077,7 +1077,7 @@ watch(() => [route.query.trace, route.query.id], () => {
 
 .model-layer {
   display: inline-block;
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 4px;
@@ -1096,7 +1096,7 @@ watch(() => [route.query.trace, route.query.id], () => {
 .model-formula {
   display: block;
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
   line-height: 1.4;
 }
@@ -1104,7 +1104,7 @@ watch(() => [route.query.trace, route.query.id], () => {
 .model-oss {
   display: block;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 
@@ -1244,7 +1244,7 @@ watch(() => [route.query.trace, route.query.id], () => {
 .dim-method-table {
   width: 100%;
   margin-top: var(--space-3);
-  font-size: 11px;
+  font-size: var(--text-sm);
   border-collapse: collapse;
 }
 
@@ -1391,7 +1391,7 @@ watch(() => [route.query.trace, route.query.id], () => {
   display: flex;
   justify-content: space-between;
   gap: var(--space-2);
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
   padding-left: 2px;
 }
@@ -1494,20 +1494,20 @@ watch(() => [route.query.trace, route.query.id], () => {
 
 .metric-label { display: block; font-size: var(--text-sm); font-weight: 600; color: var(--color-text-primary); }
 .metric-val { display: block; font-family: var(--font-mono); font-size: var(--text-metric); font-weight: 700; margin: 4px 0; color: var(--color-text-primary); }
-.metric-desc { display: block; font-size: 11px; color: var(--color-text-secondary); line-height: 1.35; margin-bottom: 4px; }
-.metric-src { font-size: 10px; color: var(--color-text-muted); }
+.metric-desc { display: block; font-size: var(--text-sm); color: var(--color-text-secondary); line-height: 1.35; margin-bottom: 4px; }
+.metric-src { font-size: var(--text-xs); color: var(--color-text-muted); }
 
 .evolve-hints {
   margin: var(--space-3) 0 0;
   padding-left: 1.25rem;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
 
 .cross-table {
   width: 100%;
   margin-top: var(--space-2);
-  font-size: 11px;
+  font-size: var(--text-sm);
   border-collapse: collapse;
 }
 
@@ -1538,7 +1538,7 @@ watch(() => [route.query.trace, route.query.id], () => {
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-subtle);
-  font-size: 11px;
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--color-text-secondary);
 }
@@ -1549,7 +1549,7 @@ watch(() => [route.query.trace, route.query.id], () => {
 
 .legend-muted {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: var(--text-xs);
 }
 
 .heatmap-wrap {
@@ -1570,7 +1570,7 @@ watch(() => [route.query.trace, route.query.id], () => {
   border-radius: var(--radius-md);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-subtle);
-  font-size: 11px;
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--color-text-secondary);
 }
@@ -1578,7 +1578,7 @@ watch(() => [route.query.trace, route.query.id], () => {
 .heatmap-legend h3,
 .heatmap-legend h4 {
   margin: 0 0 6px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-primary);
 }
@@ -1594,7 +1594,7 @@ watch(() => [route.query.trace, route.query.id], () => {
 .hotspot-table table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10px;
+  font-size: var(--text-xs);
 }
 
 .hotspot-table th,
@@ -1611,7 +1611,7 @@ watch(() => [route.query.trace, route.query.id], () => {
 
 .chain-note {
   margin: var(--space-2) 0 0;
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 

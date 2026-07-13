@@ -79,7 +79,7 @@ defineEmits(['trace'])
 
 .cell-k {
   display: block;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-400);
 }
 
@@ -97,7 +97,7 @@ defineEmits(['trace'])
 }
 
 .charts-label {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-400);
   margin-right: var(--space-1);
 }

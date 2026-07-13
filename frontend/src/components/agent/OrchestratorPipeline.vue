@@ -126,7 +126,7 @@ function isConnectorActive(afterIndex) {
 }
 
 .layers-title {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--color-neutral-400);
   text-transform: uppercase;
@@ -139,7 +139,7 @@ function isConnectorActive(afterIndex) {
 }
 
 .layer-chip {
-  font-size: 10px;
+  font-size: var(--text-xs);
   padding: 2px 8px;
   border-radius: var(--radius-full);
   background: var(--color-neutral-100);
@@ -155,7 +155,7 @@ function isConnectorActive(afterIndex) {
 
 .phase-badge {
   margin-left: auto;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-primary-600);
   font-weight: 600;
 }
@@ -218,7 +218,7 @@ function isConnectorActive(afterIndex) {
 
 .node-text span {
   display: block;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-400);
   margin-top: 2px;
 }
@@ -270,7 +270,7 @@ function isConnectorActive(afterIndex) {
 }
 
 .agent-desc {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-400);
   line-height: 1.35;
   margin: var(--space-2) 0 0;
@@ -278,7 +278,7 @@ function isConnectorActive(afterIndex) {
 }
 
 .agent-detail, .agent-status-label {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-500);
   margin-top: var(--space-2);
 }

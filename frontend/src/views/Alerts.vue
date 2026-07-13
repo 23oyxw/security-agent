@@ -574,7 +574,7 @@ onUnmounted(() => {
 }
 
 .alert-time-relative {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-neutral-400);
 }
 

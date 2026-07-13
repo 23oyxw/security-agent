@@ -85,7 +85,7 @@ const metaRows = computed(() => {
 
 .exec-label {
   display: block;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-400);
   margin-bottom: 4px;
   text-transform: uppercase;

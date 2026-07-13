@@ -234,7 +234,7 @@ function handleAlert(cmd) {
 }
 
 .version-pill {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   padding: 2px 8px;
   border-radius: var(--radius-full);
@@ -254,7 +254,7 @@ function handleAlert(cmd) {
   background: rgba(14, 165, 233, 0.08);
   border-radius: var(--radius-full);
   padding: 2px 10px;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
   cursor: pointer;
 }

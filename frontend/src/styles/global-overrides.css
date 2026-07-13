@@ -380,7 +380,7 @@ body {
 /* 徽标 */
 .el-badge__content {
   border: none;
-  font-size: 10px;
+  font-size: var(--text-xs);
   height: 16px;
   line-height: 16px;
   padding: 0 5px;

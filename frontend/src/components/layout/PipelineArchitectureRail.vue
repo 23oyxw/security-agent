@@ -389,7 +389,7 @@ function runAction(actionKey) {
 
 .rail-title {
   display: block;
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 700;
   color: rgba(255, 255, 255, 0.92);
 }
@@ -591,7 +591,7 @@ function runAction(actionKey) {
 
 .layer-badge {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 800;
   color: #fff;
   background: var(--layer-accent);
@@ -603,7 +603,7 @@ function runAction(actionKey) {
 
 .layer-name {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 700;
   color: rgba(255, 255, 255, 0.95);
   line-height: 1.2;
@@ -795,7 +795,7 @@ function runAction(actionKey) {
 .gate-icon-el { color: rgba(255, 255, 255, 0.5); }
 
 .gate-title {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.8);
 }
@@ -859,7 +859,7 @@ function runAction(actionKey) {
   border-radius: 4px;
   background: rgba(251, 146, 60, 0.1);
   color: #fdba74;
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 700;
   cursor: pointer;
   padding: 0;

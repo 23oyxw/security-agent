@@ -73,7 +73,7 @@ function enqueue() {
 }
 
 .batch-hint {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-400);
 }
 
@@ -95,7 +95,7 @@ function enqueue() {
   gap: var(--space-2);
   padding: 6px 8px;
   border-radius: var(--radius-md);
-  font-size: 11px;
+  font-size: var(--text-sm);
   cursor: pointer;
   border: 1px solid var(--color-neutral-200);
   transition: background var(--duration-fast);

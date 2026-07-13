@@ -400,7 +400,7 @@ onMounted(async () => {
 
 .wiki-sync-hint {
   margin: var(--space-2) 0 0;
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
@@ -419,7 +419,7 @@ onMounted(async () => {
 }
 
 .l1-badge {
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 800;
   color: var(--color-primary-600);
 }
@@ -431,7 +431,7 @@ onMounted(async () => {
 }
 
 .l1-sensitivity {
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 700;
   padding: 4px 10px;
   border-radius: var(--radius-full);
@@ -447,7 +447,7 @@ onMounted(async () => {
   align-items: center;
   margin-top: var(--space-3);
 }
-.intent-label { font-size: 10px; color: var(--color-text-muted); }
+.intent-label { font-size: var(--text-xs); color: var(--color-text-muted); }
 
 .search-tag.intent-tag {
   border: 1px dashed var(--color-primary-300);
@@ -606,7 +606,7 @@ onMounted(async () => {
 }
 
 .result-source {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
   padding: 1px 8px;
   border-radius: var(--radius-sm);
@@ -645,7 +645,7 @@ onMounted(async () => {
 }
 
 .result-tag {
-  font-size: 10px;
+  font-size: var(--text-xs);
   padding: 1px 6px;
   border-radius: var(--radius-sm);
   background: var(--color-neutral-50);
@@ -811,7 +811,7 @@ onMounted(async () => {
 }
 
 .heat-value {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--color-primary-500);
   font-variant-numeric: tabular-nums;
@@ -846,7 +846,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--color-neutral-400);
   background: var(--color-neutral-100);
@@ -903,7 +903,7 @@ onMounted(async () => {
 }
 
 .detail-source {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
   padding: 1px 8px;
   border-radius: var(--radius-sm);
@@ -927,7 +927,7 @@ onMounted(async () => {
 }
 
 .detail-tag {
-  font-size: 10px;
+  font-size: var(--text-xs);
   padding: 1px 6px;
   border-radius: var(--radius-sm);
   background: var(--color-neutral-50);

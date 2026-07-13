@@ -257,7 +257,7 @@ onMounted(() => {
 .cal-score.is-bad .cal-value { color: var(--color-danger); }
 
 .cal-value { display: block; font-size: 28px; font-weight: 800; }
-.cal-label { font-size: 10px; color: var(--color-text-muted); }
+.cal-label { font-size: var(--text-xs); color: var(--color-text-muted); }
 
 .cal-meta {
   flex: 1;
@@ -286,10 +286,10 @@ onMounted(() => {
 }
 
 .panel-head h3 { margin: 0; font-size: var(--text-sm); font-weight: 700; }
-.panel-hint { font-size: 10px; color: var(--color-text-muted); }
+.panel-hint { font-size: var(--text-xs); color: var(--color-text-muted); }
 
 .probe-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
-.chip-label { font-size: 10px; color: var(--color-text-muted); }
+.chip-label { font-size: var(--text-xs); color: var(--color-text-muted); }
 .probe-chip { cursor: pointer; }
 
 .eval-result { margin-top: var(--space-4); }
@@ -305,12 +305,12 @@ onMounted(() => {
 .risk-high { background: var(--color-danger-bg); color: var(--color-danger); }
 
 .block { margin-bottom: var(--space-3); }
-.block-title { display: block; font-size: 10px; font-weight: 700; color: var(--color-text-muted); margin-bottom: 6px; }
-.hit-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; font-size: 11px; }
+.block-title { display: block; font-size: var(--text-xs); font-weight: 700; color: var(--color-text-muted); margin-bottom: 6px; }
+.hit-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; font-size: var(--text-sm); }
 .hit-row code { word-break: break-all; }
 .empty-ok { font-size: var(--text-xs); color: var(--color-success); padding: var(--space-2) 0; }
 
-.matrix-table { max-height: 520px; overflow: auto; font-size: 11px; }
+.matrix-table { max-height: 520px; overflow: auto; font-size: var(--text-sm); }
 .matrix-head, .matrix-row {
   display: grid;
   grid-template-columns: 56px 88px 1fr 72px 72px 36px;

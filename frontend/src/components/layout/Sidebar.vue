@@ -210,7 +210,7 @@ body.sidebar-resizing .sidebar {
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.04);
   color: rgba(255, 255, 255, 0.6);
-  font-size: 10px;
+  font-size: var(--text-xs);
   cursor: pointer;
 }
 

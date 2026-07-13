@@ -148,7 +148,7 @@ onMounted(() => {
 .sub { color: #999; font-size: 13px; margin: 0 0 12px; }
 .demo-hint {
   text-align: left;
-  font-size: 12px;
+  font-size: var(--text-sm);
   animation: fade-in var(--duration-slow) var(--ease-out) 600ms both;
 }
 .demo-hint :deep(.el-alert__title) { font-size: 13px; }

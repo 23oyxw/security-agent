@@ -169,33 +169,33 @@ const quickStart = [
   font-size: 13px;
 }
 .agent-card strong { display: block; margin-bottom: 4px; }
-.agent-bracket { font-size: 11px; color: var(--color-text-muted); }
-.agent-card p { margin: 8px 0 0; color: var(--color-text-secondary); font-size: 12px; }
+.agent-bracket { font-size: var(--text-sm); color: var(--color-text-muted); }
+.agent-card p { margin: 8px 0 0; color: var(--color-text-secondary); font-size: var(--text-sm); }
 
 .layer-flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 .layer-block {
   padding: 12px; border-radius: var(--radius-md);
   border: 1px solid var(--color-border-default);
   background: rgba(255, 255, 255, 0.03);
-  font-size: 12px; position: relative;
+  font-size: var(--text-sm); position: relative;
 }
 .layer-badge {
   display: inline-block; padding: 2px 8px; border: 2px solid;
   border-radius: 4px; font-weight: 700; margin-bottom: 6px;
 }
 .layer-block strong { display: block; font-size: 13px; }
-.layer-block span { color: var(--color-text-muted); font-size: 11px; }
+.layer-block span { color: var(--color-text-muted); font-size: var(--text-sm); }
 .layer-block p { margin: 6px 0; color: var(--color-text-secondary); line-height: 1.5; }
 .gate-chip {
-  margin-top: 8px; padding: 4px 8px; font-size: 10px;
+  margin-top: 8px; padding: 4px 8px; font-size: var(--text-xs);
   border: 1px dashed #f59e0b; border-radius: 4px; color: #f59e0b;
 }
 .flow-note { margin: 12px 0 0; font-size: 13px; color: var(--color-text-secondary); }
 
 .l5-block { padding: 12px; border-radius: var(--radius-md); background: rgba(14, 165, 233, 0.08); height: 100%; }
 .l5-block h4 { margin: 0 0 8px; font-size: 14px; }
-.l5-block p { font-size: 12px; line-height: 1.6; color: var(--color-text-secondary); margin: 0 0 8px; }
-.encap-list { margin: 0; padding-left: 18px; font-size: 12px; color: var(--color-text-secondary); }
+.l5-block p { font-size: var(--text-sm); line-height: 1.6; color: var(--color-text-secondary); margin: 0 0 8px; }
+.encap-list { margin: 0; padding-left: 18px; font-size: var(--text-sm); color: var(--color-text-secondary); }
 .encap-list li { margin-bottom: 4px; }
 .l5-block .el-tag { margin-right: 4px; }
 
@@ -215,7 +215,7 @@ const quickStart = [
   border-radius: 50%; background: var(--color-primary-500); color: #fff; font-weight: 700; margin-bottom: 8px;
 }
 .quick-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-.quick-desc { font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; min-height: 48px; }
+.quick-desc { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: 8px; min-height: 48px; }
 
 .doc-list { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.8; color: var(--color-text-secondary); }
 

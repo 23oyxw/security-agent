@@ -696,22 +696,32 @@ onUnmounted(() => {
 .l5-pipeline-step {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--glass-border, var(--color-border-default));
   background: var(--glass-surface, #fff);
   cursor: pointer;
-  font-size: var(--text-xs);
+  font-size: 1.1rem;
+  font-weight: 600;
+  min-width: 100px;
+  justify-content: center;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.l5-pipeline-step:hover {
+  border-color: var(--color-primary-400);
+  box-shadow: var(--shadow-md);
 }
 
 .l5-step-badge {
   font-weight: 800;
+  font-size: 1.3rem;
   color: var(--page-accent, var(--color-primary-600));
 }
 
 .l5-step-label {
   color: var(--color-text-secondary);
+  font-size: 0.95rem;
 }
 
 .section-head {

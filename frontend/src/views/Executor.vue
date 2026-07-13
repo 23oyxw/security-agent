@@ -587,7 +587,7 @@ async function copyOutput() {
 }
 
 .assessment-layer-reason {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-400);
 }
 

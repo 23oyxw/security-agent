@@ -175,9 +175,9 @@ onUnmounted(() => {
   background: #fff;
   flex-shrink: 0;
 }
-.trace-memo-head strong { display: block; font-size: 12px; }
-.trace-id { font-size: 10px; color: #0369a1; }
-.trace-hint { display: block; font-size: 10px; color: #94a3b8; margin-top: 2px; }
+.trace-memo-head strong { display: block; font-size: var(--text-sm); }
+.trace-id { font-size: var(--text-xs); color: #0369a1; }
+.trace-hint { display: block; font-size: var(--text-xs); color: #94a3b8; margin-top: 2px; }
 .trace-memo-actions { display: flex; flex-wrap: wrap; gap: 2px; justify-content: flex-end; flex-shrink: 0; }
 .trace-memo-chart-wrap {
   position: relative;
@@ -203,7 +203,7 @@ onUnmounted(() => {
   margin: 0;
   padding: 12px;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: #94a3b8;
   background: rgba(255, 255, 255, 0.92);
   border-radius: 8px;
@@ -215,7 +215,7 @@ onUnmounted(() => {
   margin: 0;
   padding: 10px 12px;
   overflow: auto;
-  font-size: 11px;
+  font-size: var(--text-sm);
   line-height: 1.5;
   white-space: pre-wrap;
   background: #fff;

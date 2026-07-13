@@ -588,7 +588,7 @@ onUnmounted(() => disconnectWs())
 .chat-notice {
   flex-shrink: 0;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   background: var(--color-warning-bg);
   color: var(--color-warning-muted);
 }
@@ -613,7 +613,7 @@ onUnmounted(() => disconnectWs())
 
 .welcome-eyebrow {
   margin: 0 0 4px;
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -650,7 +650,7 @@ onUnmounted(() => disconnectWs())
   border-radius: 6px;
   border: 1px solid var(--color-border-default);
   background: #fff;
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
   cursor: pointer;
 }
@@ -684,7 +684,7 @@ onUnmounted(() => disconnectWs())
 
 .quick-cmd-label {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-primary);
 }
@@ -692,7 +692,7 @@ onUnmounted(() => disconnectWs())
 .quick-cmd-hint {
   display: block;
   margin-top: 2px;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 
@@ -707,7 +707,7 @@ onUnmounted(() => disconnectWs())
 }
 
 .strip-label {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--color-primary-600);
   text-transform: uppercase;
@@ -729,7 +729,7 @@ onUnmounted(() => disconnectWs())
   border-radius: var(--radius-full);
   border: 1px solid var(--color-border-default);
   background: #fff;
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
   cursor: pointer;
 }
@@ -767,7 +767,7 @@ onUnmounted(() => disconnectWs())
   display: flex;
   gap: 8px;
   margin-bottom: 4px;
-  font-size: 11px;
+  font-size: var(--text-sm);
   opacity: 0.85;
 }
 

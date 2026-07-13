@@ -31,7 +31,7 @@ defineEmits(['click'])
   padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid transparent;
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, opacity 0.15s;

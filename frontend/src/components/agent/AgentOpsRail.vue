@@ -470,7 +470,7 @@ const spineNodes = computed(() => {
 }
 
 .ops-sub {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: #94a3b8;
 }
 
@@ -499,7 +499,7 @@ const spineNodes = computed(() => {
   border-radius: 8px 8px 0 0;
   background: rgba(15, 23, 42, 0.5);
   color: #94a3b8;
-  font-size: 11px;
+  font-size: var(--text-sm);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -555,7 +555,7 @@ const spineNodes = computed(() => {
 }
 
 .ops-kpi {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: #cbd5e1;
   display: inline-flex;
   align-items: center;
@@ -565,13 +565,13 @@ const spineNodes = computed(() => {
 .ops-kpi em {
   font-style: normal;
   color: #64748b;
-  font-size: 10px;
+  font-size: var(--text-xs);
   text-transform: uppercase;
 }
 
 .ops-kpi code {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: #7dd3fc;
 }
 
@@ -597,7 +597,7 @@ const spineNodes = computed(() => {
   align-items: center;
   justify-content: space-between;
   margin: 0 0 10px;
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -692,7 +692,7 @@ const spineNodes = computed(() => {
 }
 
 .ops-gate-title {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: #fdba74;
   letter-spacing: 0.04em;
@@ -723,7 +723,7 @@ const spineNodes = computed(() => {
   border: none;
   background: rgba(14, 165, 233, 0.15);
   color: #7dd3fc;
-  font-size: 11px;
+  font-size: var(--text-sm);
   padding: 4px 8px;
   border-radius: 6px;
   cursor: pointer;
@@ -732,7 +732,7 @@ const spineNodes = computed(() => {
 .ops-l5-link em {
   font-style: normal;
   color: #64748b;
-  font-size: 10px;
+  font-size: var(--text-xs);
   margin-right: 4px;
 }
 
@@ -742,13 +742,13 @@ const spineNodes = computed(() => {
 
 .ops-l5-desc {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: #475569;
   line-height: 1.5;
 }
 
 .ops-l5-meta code {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: #0369a1;
 }
 
@@ -761,7 +761,7 @@ const spineNodes = computed(() => {
 
 .ops-l5-hint {
   margin: 8px 0 0;
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: #64748b;
 }
 
@@ -800,19 +800,19 @@ const spineNodes = computed(() => {
 
 .spine-id {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--node-accent);
 }
 
 .spine-label {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: #e2e8f0;
 }
 
 .spine-status {
   margin-left: auto;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: #94a3b8;
 }
 
@@ -832,7 +832,7 @@ const spineNodes = computed(() => {
   border: 1px solid rgba(148, 163, 184, 0.25);
   background: rgba(15, 23, 42, 0.5);
   color: #94a3b8;
-  font-size: 10px;
+  font-size: var(--text-xs);
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
@@ -867,7 +867,7 @@ const spineNodes = computed(() => {
 
 .cmd-label {
   display: block;
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: #f1f5f9;
   margin-bottom: 2px;
@@ -898,7 +898,7 @@ const spineNodes = computed(() => {
 
 .ops-collapse :deep(.el-collapse-item__header) {
   color: #cbd5e1;
-  font-size: 12px;
+  font-size: var(--text-sm);
   padding: 0 14px;
   border-bottom-color: rgba(148, 163, 184, 0.1);
 }

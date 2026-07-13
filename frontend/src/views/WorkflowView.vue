@@ -499,7 +499,7 @@ watch(pollInterval, (v) => {
   height: 28px;
   border-radius: var(--radius-sm);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 800;
   flex-shrink: 0;
 }
@@ -601,7 +601,7 @@ watch(pollInterval, (v) => {
 .text-danger { color: var(--color-danger-600); }
 
 .node-sub {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--color-neutral-400);
   white-space: nowrap;
   overflow: hidden;
@@ -633,7 +633,7 @@ watch(pollInterval, (v) => {
   justify-content: center;
   padding: var(--space-1) 0;
   color: var(--color-neutral-300);
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 
 /* ---- 模板面板 ---- */

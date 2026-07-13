@@ -432,7 +432,7 @@ onMounted(() => {})
 
 .meta-label {
   display: block;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-neutral-400);
   margin-bottom: var(--space-1);
 }
@@ -545,7 +545,7 @@ onMounted(() => {})
 }
 
 .type-tag {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
   padding: 1px 6px;
   border-radius: var(--radius-sm);
@@ -560,7 +560,7 @@ onMounted(() => {})
 .type-tag.kernel_hardening { background: var(--color-neutral-100); color: var(--color-neutral-600); }
 
 .sev-tag {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
   padding: 1px 6px;
   border-radius: var(--radius-sm);

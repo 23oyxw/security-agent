@@ -362,27 +362,27 @@ function clearAll() {
 
 .defense-intro { margin-bottom: 12px; }
 .defense-intro-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
-.defense-formula { font-size: 12px; color: var(--color-neutral-500); background: var(--color-neutral-100); padding: 2px 8px; border-radius: 4px; }
+.defense-formula { font-size: var(--text-sm); color: var(--color-neutral-500); background: var(--color-neutral-100); padding: 2px 8px; border-radius: 4px; }
 .defense-layer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
 .defense-layer-chip { border-left: 3px solid var(--dl-color); padding: 8px 10px; background: #fff; border-radius: 6px; border: 1px solid var(--color-neutral-200); border-left-width: 3px; border-left-color: var(--dl-color); }
-.dl-weight { font-size: 11px; font-weight: 700; color: var(--dl-color); margin-right: 6px; }
-.dl-name { font-size: 12px; font-weight: 600; display: block; margin: 2px 0; }
-.dl-desc { font-size: 11px; color: var(--color-neutral-500); line-height: 1.4; }
-.defense-note { margin: 10px 0 0; font-size: 12px; color: var(--color-neutral-600); line-height: 1.5; }
+.dl-weight { font-size: var(--text-sm); font-weight: 700; color: var(--dl-color); margin-right: 6px; }
+.dl-name { font-size: var(--text-sm); font-weight: 600; display: block; margin: 2px 0; }
+.dl-desc { font-size: var(--text-sm); color: var(--color-neutral-500); line-height: 1.4; }
+.defense-note { margin: 10px 0 0; font-size: var(--text-sm); color: var(--color-neutral-600); line-height: 1.5; }
 
 .chart-box--defense { min-height: 140px; margin: 8px 0 12px; }
 .layer-card { margin-bottom: 10px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--color-neutral-200); border-left: 3px solid var(--dl-color); background: #fff; }
 .layer-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
-.layer-card .layer-name { font-size: 12px; font-weight: 600; flex: 1; }
-.layer-weight { font-size: 10px; color: var(--color-neutral-400); }
-.layer-detail { margin: 6px 0 0; font-size: 11px; color: var(--color-neutral-500); line-height: 1.45; }
+.layer-card .layer-name { font-size: var(--text-sm); font-weight: 600; flex: 1; }
+.layer-weight { font-size: var(--text-xs); color: var(--color-neutral-400); }
+.layer-detail { margin: 6px 0 0; font-size: var(--text-sm); color: var(--color-neutral-500); line-height: 1.45; }
 .decision-path { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.path-label { font-size: 11px; color: var(--color-neutral-400); margin-right: 4px; }
-.path-item { font-size: 10px; background: var(--color-neutral-100); padding: 2px 6px; border-radius: 4px; }
+.path-label { font-size: var(--text-sm); color: var(--color-neutral-400); margin-right: 4px; }
+.path-item { font-size: var(--text-xs); background: var(--color-neutral-100); padding: 2px 6px; border-radius: 4px; }
 .feasibility-alert { margin-bottom: 8px; }
 
 .plan-link-banner { margin-bottom: 12px; }
-.plan-l2-tag { color: var(--color-neutral-500); font-size: 12px; }
+.plan-l2-tag { color: var(--color-neutral-500); font-size: var(--text-sm); }
 
 /* 三步流程连接线 */
 .safety-page :deep(.el-row) {
@@ -413,7 +413,7 @@ function clearAll() {
 .verdict-icon { font-size: 24px; }
 .verdict-text { font-size: 16px; flex: 1; }
 .verdict-score { font-size: 14px; opacity: .7; }
-.verdict-msg { font-size: 12px; color: var(--color-neutral-500); margin-bottom: 8px; }
+.verdict-msg { font-size: var(--text-sm); color: var(--color-neutral-500); margin-bottom: 8px; }
 
 .layer-bar {
   display: flex; align-items: center; padding: 4px 0;
@@ -421,10 +421,10 @@ function clearAll() {
 }
 .layer-bar:nth-child(2) { animation-delay: 80ms; }
 .layer-bar:nth-child(3) { animation-delay: 160ms; }
-.layer-name { font-size: 11px; font-weight: 600; color: var(--color-neutral-600); min-width: 30px; }
+.layer-name { font-size: var(--text-sm); font-weight: 600; color: var(--color-neutral-600); min-width: 30px; }
 
 .suggestions { margin-top: 8px; animation: fade-in var(--duration-slow) var(--ease-out) 300ms both; }
-.sug-item { font-size: 12px; color: var(--color-neutral-500); padding: 2px 0; }
+.sug-item { font-size: var(--text-sm); color: var(--color-neutral-500); padding: 2px 0; }
 
 /* 执行按钮增强 */
 .safety-page :deep(.el-button--success) {
