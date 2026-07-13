@@ -276,7 +276,7 @@
   /* 布局                            */
   /* ============================== */
 
-  --sidebar-width: 360px;
+  --sidebar-width: 300px;
   --sidebar-min-width: 300px;
   --sidebar-max-width: 520px;
   --sidebar-collapsed-width: 64px;

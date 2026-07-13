@@ -915,7 +915,7 @@ onUnmounted(() => {
   overflow: auto;
 }
 
-.chart-container { height: 280px; min-height: 220px; }
+.chart-container { height: 35vh; min-height: 280px; max-height: 500px; }
 
 .chart-footer {
   text-align: center;
