@@ -1197,13 +1197,13 @@ async function cleanupOld() {
 }
 
 .stat-label {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--color-neutral-400);
   margin-top: var(--space-1);
 }
 
 .stat-suffix {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--color-neutral-300);
   position: absolute;
   top: var(--space-4);
@@ -1483,7 +1483,7 @@ async function cleanupOld() {
 }
 
 .analysis-chart-def {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--color-neutral-400);
   margin-bottom: var(--space-2);
   line-height: 1.4;
@@ -1527,7 +1527,7 @@ async function cleanupOld() {
 
 .chart-hint {
   margin: var(--space-2) 0;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--color-neutral-400);
   text-align: center;
 }
@@ -1568,7 +1568,7 @@ async function cleanupOld() {
 }
 
 .last-refresh {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--color-neutral-400);
 }
 
@@ -1584,7 +1584,7 @@ async function cleanupOld() {
 
 .degradation-s0 {
   color: var(--color-neutral-400);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
 }
 
 .stage-count {
@@ -1686,10 +1686,10 @@ async function cleanupOld() {
 }
 
 .trace-layer-titles { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-.trace-layer-cn { font-size: var(--text-base); font-weight: 600; color: var(--color-neutral-800); }
-.trace-layer-en { font-size: var(--text-xs); color: var(--color-neutral-400); }
-.trace-layer-agent { font-size: var(--text-xs); color: var(--color-neutral-500); }
-.trace-layer-count { font-size: var(--text-xs); color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.trace-layer-cn { font-size: var(--text-lg); font-weight: 700; color: var(--color-neutral-800); }
+.trace-layer-en { font-size: var(--text-sm); color: var(--color-neutral-400); }
+.trace-layer-agent { font-size: var(--text-sm); color: var(--color-neutral-500); }
+.trace-layer-count { font-size: var(--text-base); font-weight: 600; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
 
 .stage-timeline--layer {
   padding: var(--space-4) var(--space-4) var(--space-2) calc(32px + var(--space-4));
@@ -1778,7 +1778,7 @@ async function cleanupOld() {
 }
 
 .stage-node-tool {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--color-neutral-500);
   background: var(--color-neutral-100);
   padding: 1px 6px;
@@ -1786,7 +1786,7 @@ async function cleanupOld() {
 }
 
 .stage-node-status {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
@@ -1796,7 +1796,7 @@ async function cleanupOld() {
 .stage-node-status.is-info { color: var(--color-primary-500); }
 
 .stage-node-subline {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--color-neutral-400);
   margin-bottom: var(--space-1);
 }
@@ -1808,14 +1808,14 @@ async function cleanupOld() {
 }
 
 .stage-node-duration {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--color-neutral-400);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
 .stage-node-desc {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--color-neutral-500);
   line-height: var(--leading-relaxed);
 }
