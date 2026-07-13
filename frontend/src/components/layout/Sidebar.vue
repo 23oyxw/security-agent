@@ -1,5 +1,5 @@
 <template>
-  <aside class="sidebar" :class="{ collapsed, overlay }">
+  <aside class="sidebar" :class="{ collapsed, overlay }" role="navigation" aria-label="主导航">
     <div class="sidebar-accent"></div>
 
     <div class="sidebar-header">

@@ -3,13 +3,13 @@
     <el-card class="login-card" shadow="always">
       <template #header>
         <div class="login-header">
-          <h2>🛡️ 安全运维控制台</h2>
+          <h2><span aria-hidden="true" class="login-icon">&#x1F6E1;</span> 安全运维控制台</h2>
           <p class="sub">银河麒麟智能安全运维 Agent v{{ APP_VERSION }}</p>
-          <el-alert v-if="sessionExpired" type="warning" :closable="false" show-icon class="demo-hint">
+          <el-alert v-if="sessionExpired" type="warning" :closable="false" show-icon class="demo-hint" role="alert">
             <template #title>登录已过期</template>
             后端重启或 Token 失效，请重新登录（admin / admin123）。
           </el-alert>
-          <el-alert v-else type="info" :closable="false" show-icon class="demo-hint">
+          <el-alert v-else type="info" :closable="false" show-icon class="demo-hint" role="status">
             <template #title>演示账号</template>
             用户名 <strong>admin</strong> · 密码 <strong>admin123</strong>
             <br />登录后 Token 会保留；要重新登录请在控制台右上角「退出登录」。
