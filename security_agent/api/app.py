@@ -73,6 +73,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 无缓存 — 开发阶段确保前端总是最新
+@app.middleware("http")
+async def no_cache_assets(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/assets") or request.url.path == "/":
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 # 注册路由（按五大支柱组织）
 app.include_router(auth_routes.router,      prefix="/api/auth",      tags=["认证"])
 app.include_router(perception_routes.router, prefix="/api/perception", tags=["① 多维感知"])
