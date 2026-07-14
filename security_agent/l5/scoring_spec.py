@@ -1,4 +1,4 @@
-﻿"""L5 six-dimension scoring spec."""
+"""L5 six-dimension scoring spec."""
 
 from __future__ import annotations
 
