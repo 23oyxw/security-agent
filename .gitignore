@@ -66,8 +66,8 @@ data/versions/
 data/document_index/
 data/.jwt_secret
 
-# GitHub Actions
-.github/
+# GitHub Actions — workflows 必须提交，仅忽略运行时缓存
+.github/.cache/
 
 # 答辩提交：勿纳入版本库的个人/临时材料
 *.docx
