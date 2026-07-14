@@ -1,0 +1,1 @@
+import{a as r}from"./index-B0jx5js3.js";function o(){try{const t=localStorage.getItem("security-agent-user");if(t){const e=JSON.parse(t);if(e!=null&&e.token)return e.token}}catch{}return localStorage.getItem("token")||""}function n(t){return r.get(`/trace/${t}/memo`)}function c(t){return r.get(`/trace/${t}/viz`)}export{c as a,n as f,o as g};

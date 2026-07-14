@@ -59,6 +59,44 @@
       </el-table>
     </el-card>
 
+    <!-- 工具调用统计（MCP 评分维度硬性要求） -->
+    <el-card style="margin-top:16px" v-loading="statsLoading">
+      <template #header>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span>工具调用统计</span>
+          <el-button size="small" text type="primary" @click="fetchStats">刷新统计</el-button>
+        </div>
+      </template>
+      <div v-if="toolStats" class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-num">{{ toolStats.total_tools }}</div>
+          <div class="stat-label">已追踪工具</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">{{ toolStats.total_calls }}</div>
+          <div class="stat-label">总调用次数</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" :style="{ color: toolStats.overall_success_rate >= 0.95 ? '#10b981' : '#f59e0b' }">{{ (toolStats.overall_success_rate * 100).toFixed(1) }}%</div>
+          <div class="stat-label">成功率</div>
+        </div>
+      </div>
+      <el-table v-if="toolStats && Object.keys(toolStats.tools).length" :data="statsTableData" size="small" stripe style="margin-top:12px" empty-text="暂无调用记录">
+        <el-table-column prop="name" label="工具名" width="200" />
+        <el-table-column prop="calls" label="调用次数" width="100" align="center" />
+        <el-table-column prop="success_rate" label="成功率" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.success_rate >= 0.95 ? 'success' : row.success_rate >= 0.8 ? 'warning' : 'danger'" size="small">{{ (row.success_rate * 100).toFixed(0) }}%</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="avg_latency_ms" label="平均延迟" width="100" align="center">
+          <template #default="{ row }">{{ row.avg_latency_ms.toFixed(1) }}ms</template>
+        </el-table-column>
+        <el-table-column prop="last_error" label="最近错误" show-overflow-tooltip />
+      </el-table>
+      <el-empty v-else-if="toolStats && !Object.keys(toolStats.tools).length" description="暂无工具调用记录 — 使用 AgentChat 或终端执行后自动统计" />
+    </el-card>
+
     <!-- 工具详情对话框 -->
     <el-dialog v-model="toolDialog" :title="`${selectedServer} 的工具列表`" width="700px">
       <el-table :data="toolList" stripe size="small" empty-text="暂无工具">
@@ -92,6 +130,12 @@ const selectedServer = ref('')
 
 const checkingAll = ref(false)
 const lastCheckLabel = ref('')
+const statsLoading = ref(false)
+const toolStats = ref(null)
+const statsTableData = computed(() => {
+  if (!toolStats.value?.tools) return []
+  return Object.entries(toolStats.value.tools).map(([name, d]) => ({ name, ...d }))
+})
 
 const servers = computed(() => mcpStore.servers)
 const totalTools = computed(() => mcpStore.tools.length || servers.value.reduce((s, srv) => s + (srv.tools_count || 0), 0))
@@ -153,7 +197,43 @@ async function healthCheck(row) {
   }
 }
 
+async function fetchStats() {
+  statsLoading.value = true
+  try {
+    const res = await api.get('/mcp/stats')
+    toolStats.value = res.data
+  } catch { toolStats.value = null }
+  finally { statsLoading.value = false }
+}
+
 onMounted(async () => {
   await fetch()
+  await fetchStats()
 })
 </script>
+
+<style scoped>
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.stat-item {
+  text-align: center;
+  padding: var(--space-4);
+  background: var(--glass-surface, var(--color-neutral-50));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-glass-outer, var(--color-neutral-200));
+}
+.stat-num {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--color-primary-600);
+}
+.stat-label {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-500);
+  margin-top: 4px;
+}
+</style>

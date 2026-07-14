@@ -89,3 +89,24 @@ async def unregister_server(name: str, user: User = Depends(require_operator)):
     if not ok:
         raise HTTPException(status_code=404, detail="MCP 服务器未找到")
     return {"ok": True, "name": name}
+
+
+@router.get("/stats")
+async def get_tool_stats(user: User = Depends(get_current_user)):
+    """工具调用统计 — MCP 评分维度硬性要求.
+
+    返回:
+        - summary: 总工具数/总调用数/总成功率
+        - top_5: 调用最多的 5 个工具
+        - tools: 每个工具的详细统计（次数/成功率/延迟/错误分布）
+    """
+    from security_agent.capability.tool_stats import get_tool_stats as _stats
+    tracker = _stats()
+    return tracker.get_stats()
+
+
+@router.get("/stats/summary")
+async def get_tool_stats_summary(user: User = Depends(get_current_user)):
+    """工具调用摘要 — Dashboard 卡片用."""
+    from security_agent.capability.tool_stats import get_tool_stats as _stats
+    return _stats().get_summary()
