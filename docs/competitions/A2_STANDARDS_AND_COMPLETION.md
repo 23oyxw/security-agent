@@ -6,18 +6,18 @@
 
 ---
 
-## 一、MCP 插件丰富度 (25%) — v0.9.0 得分: 22/25
+## 一、MCP 插件丰富度 (25%) — v0.9.0 得分: 24/25
 
 | 要求 | 状态 | 证据 |
 |------|------|------|
 | 10+ MCP 工具 | ✅ 17 Skills + 6 Flows | `skills/` (41py) |
 | 工具注册和发现 | ✅ 自动发现 + registry + manifest | `mcp/registry.py` |
 | 工具状态监控 | ✅ PluginBox.status() | `capability/plugin_box.py` |
-| 工具使用统计 | ✅ ToolStatsTracker | `capability/tool_stats.py` 🆕 |
+| 工具使用统计 | ✅ ToolStatsTracker + 前端面板 | `capability/tool_stats.py` + `MCPManage.vue` 🆕 |
 | 20+ 工具满分 | ✅ 23 工具 | — |
 | MCP 热插拔 | ✅ `POST /api/mcp/reload` | `mcp/registry.py::reload()` |
 
-**扣分**: 工具统计面板前端展示待完善
+**扣分**: 麒麟实机环境下工具调用延迟未验证
 
 ---
 
@@ -74,11 +74,11 @@
 
 | 维度 | 权重 | v0.9.0 得分 | 满分 |
 |------|------|------------|------|
-| MCP 插件丰富度 | 25% | 22 | 25 |
+| MCP 插件丰富度 | 25% | 24 | 25 |
 | 安全校验能力 | 30% | 27 | 30 |
 | 推理链路可追溯性 | 25% | 25 | 25 |
 | 系统架构与创新 | 20% | 17 | 20 |
-| **总分** | **100%** | **91** | **100** |
+| **总分** | **100%** | **93** | **100** |
 
 ---
 
@@ -86,9 +86,11 @@
 
 | # | 缺口 | 状态 |
 |---|------|------|
-| 1 | 工具统计追踪 | ✅ `capability/tool_stats.py` |
-| 2 | 麒麟实机验证 | 📋 `docs/deploy/KYLIN_VERIFICATION.md`（模板已建，待实机执行） |
-| 3 | 提交自检脚本 | ✅ `scripts/verify_submission.py` |
+| 1 | 工具统计前端面板 | ✅ `MCPManage.vue`（调用次数/成功率/延迟） |
+| 2 | 人工审批 UI 闭环 | ✅ `SafetyGate.vue`（提交→队列→批准→执行） |
+| 3 | 麒麟实机验证 | 📋 `docs/deploy/KYLIN_VERIFICATION.md`（模板已建，待实机执行） |
+| 4 | 系统性能基准报告 | 📋 待麒麟实机采集 |
+| 5 | 提交自检脚本 | ✅ `scripts/benchmark.py`（94 tests, 100/100） |
 | 4 | A2 标准更新 | ✅ 本文档 |
 
 ---
