@@ -11,7 +11,7 @@
 | LiteLLM Docker | 常见 | ⚠️ 镜像多为 amd64/arm64，**龙架构常无镜像** |
 | 推荐 LLM 模式 | 可选代理 | **直连 API**（`USE_LITELLM_PROXY=false`） |
 
-打包文件：`dist/security-agent-v*.tar.gz`（不含 `pgdata2`、不含 `.venv`）。
+打包文件：`dist/security-agent-v0.9.0-*.tar.gz`（不含 `pgdata2`、不含 `.venv`）。
 
 ## 2. 系统依赖（dnf）
 
@@ -36,8 +36,8 @@ sudo systemctl enable --now docker
 ## 3. 解压与初始化
 
 ```bash
-tar -xzf security-agent-v0.7.0-*.tar.gz
-cd security-agent-v0.7.0-*
+tar -xzf security-agent-v0.9.0-*.tar.gz
+cd security-agent-v0.9.0-*
 
 # 一键脚本（推荐）
 bash scripts/bootstrap-kylin-loongarch.sh
