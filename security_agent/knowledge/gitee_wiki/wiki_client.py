@@ -285,3 +285,68 @@ class GiteeWikiClient:
             updated_at=meta.get("updated_at", ""),
             source_url=source_url,
         )
+
+    # ---- Wiki 推送（v0.9 双向同步） ----
+
+    async def _post(self, path: str, json_data: dict[str, Any]) -> dict[str, Any]:
+        """POST 请求 Gitee API."""
+        url = f"{GITEE_API_BASE}{path}" if not path.startswith("http") else path
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(url, headers=self._headers, json=json_data)
+            resp.raise_for_status()
+            return resp.json()
+
+    async def push_wiki_page(
+        self,
+        repo_owner: str,
+        repo_name: str,
+        title: str,
+        content: str,
+    ) -> dict[str, Any]:
+        """推送/更新一个 Wiki 页面到 Gitee.
+
+        Gitee API: POST /repos/{owner}/{repo}/wikis
+        如果同 title 的页面已存在，会返回错误，需要先删除再创建。
+
+        Args:
+            repo_owner: 仓库所有者
+            repo_name: 仓库名
+            title: 页面标题
+            content: Markdown 内容
+        """
+        return await self._post(
+            f"/repos/{repo_owner}/{repo_name}/wikis",
+            {"title": title, "content": content},
+        )
+
+    async def push_docs(
+        self,
+        repo_owner: str,
+        repo_name: str,
+        docs: dict[str, str],   # {title: markdown_content}
+    ) -> dict[str, Any]:
+        """批量推送文档到 Gitee Wiki.
+
+        Args:
+            repo_owner: 仓库所有者
+            repo_name: 仓库名
+            docs: {页面标题: Markdown 内容}
+
+        Returns:
+            {"pushed": N, "failed": N, "errors": [...]}
+        """
+        results = {"pushed": 0, "failed": 0, "errors": []}
+        for title, content in docs.items():
+            try:
+                await self.push_wiki_page(repo_owner, repo_name, title, content)
+                results["pushed"] += 1
+                logger.info("Wiki pushed: %s", title)
+            except httpx.HTTPStatusError as e:
+                results["failed"] += 1
+                err = f"{title}: {e.response.status_code} {e.response.text[:200]}"
+                results["errors"].append(err)
+                logger.warning("Wiki push failed: %s", err)
+            except Exception as e:
+                results["failed"] += 1
+                results["errors"].append(f"{title}: {e}")
+        return results
