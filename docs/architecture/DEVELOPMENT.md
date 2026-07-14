@@ -93,8 +93,8 @@ litellm --config litellm_config.yaml --port 4000
 
 ## 5. 版本号约定
 
-- 文档：**v0.6.0**（功能冻结用于比赛时可打 tag）  
-- `pyproject.toml` 的 version 与 README 标题建议保持一致  
+- 文档：**v0.9.0**（功能冻结用于比赛时可打 tag）
+- `pyproject.toml` 的 version 与 README 标题建议保持一致
 
 ## 6. 发布 / 演示前检查清单
 

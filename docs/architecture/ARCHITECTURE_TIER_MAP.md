@@ -1,6 +1,6 @@
 # 架构分级对照图（建议 vs 实现 vs 开源）
 
-> 权威索引：`FINAL_ARCHITECTURE.md` · `ENCAPSULATION_TO_L5_ROADMAP.md` · 本文 T0-T4 分级  
+> 权威索引：`FINAL_ARCHITECTURE.md` · 本文 T0-T4 分级  
 > 答辩入口：[docs/INDEX.md](../INDEX.md) · 仓库结构：[REPO_STRUCTURE.md](../REPO_STRUCTURE.md)
 
 ## 分级总览
@@ -34,10 +34,9 @@
 ## 文档阅读顺序（答辩）
 
 1. `ARCHITECTURE_TIER_MAP.md`（本文）
-2. `ENCAPSULATION_TO_L5_ROADMAP.md`
-3. `FIVE_LAYER_PIPELINE.md`
-4. `L5_ANALYTICS.md`
-5. `FINAL_ARCHITECTURE.md`（终版权威）
+2. `FIVE_LAYER_PIPELINE.md`
+3. `L5_ANALYTICS.md`
+4. `FINAL_ARCHITECTURE.md`（终版权威）
 
 ## API 分级索引
 

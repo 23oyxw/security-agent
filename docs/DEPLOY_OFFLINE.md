@@ -19,7 +19,7 @@
 ```bash
 cd /home/oy0/security-agent
 bash scripts/package-release.sh
-# 产物: dist/security-agent-v0.7.0-YYYYMMDD.tar.gz
+# 产物: dist/security-agent-v0.9.0-YYYYMMDD.tar.gz
 ```
 
 内网同一套配置（含已调好的 `.env`、`.venv`）：

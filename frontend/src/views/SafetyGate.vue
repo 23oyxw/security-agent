@@ -156,8 +156,58 @@
             <div v-if="execResult.error" style="margin-top:4px;color:#F56C6C;font-size:12px">{{ execResult.error }}</div>
           </div>
 
+          <!-- 需要审批：提交审批申请 -->
+          <div v-if="needsApproval && !approvalSubmitted" style="text-align:center;padding:30px 0">
+            <el-icon :size="48" color="#E6A23C"><WarningFilled /></el-icon>
+            <div style="margin-top:12px;font-weight:600;font-size:16px">⚠️ 此命令需要管理员审批</div>
+            <div style="font-size:13px;color:#999;margin:8px 0">{{ result?.message }}</div>
+            <el-button type="warning" size="large" @click="submitApproval" :loading="submittingApproval" icon="Upload">
+              提交审批申请
+            </el-button>
+            <div style="font-size:11px;color:#999;margin-top:6px">提交后需等待管理员批准方可执行</div>
+          </div>
+
+          <!-- 审批已提交，等待中 -->
+          <div v-if="approvalSubmitted && approvalStatus === 'pending'" style="text-align:center;padding:30px 0">
+            <el-icon :size="48" color="#409EFF" class="is-loading"><Loading /></el-icon>
+            <div style="margin-top:12px;font-weight:600;font-size:16px">⏳ 等待管理员审批</div>
+            <div style="font-size:13px;color:#999;margin:8px 0">
+              审批单号: <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px">{{ approvalRequestId }}</code>
+            </div>
+            <el-button size="small" @click="checkApprovalStatus" :loading="checkingApproval" icon="Refresh">
+              刷新状态
+            </el-button>
+            <div style="font-size:11px;color:#999;margin-top:6px">审批通过后，执行按钮将自动启用</div>
+          </div>
+
+          <!-- 审批已通过，可以执行 -->
+          <div v-if="approvalSubmitted && approvalStatus === 'approved'" style="text-align:center;padding:30px 0">
+            <el-icon :size="48" color="#67C23A"><CircleCheckFilled /></el-icon>
+            <div style="margin-top:12px;font-weight:600;font-size:16px;color:#67C23A">✅ 审批已通过</div>
+            <div style="font-size:13px;color:#999;margin:8px 0">审批人: {{ approvalResponder }}</div>
+            <el-button type="success" size="large" @click="executeWithApproval" icon="CaretRight">
+              执行: {{ form.target?.slice(0, 40) }}
+            </el-button>
+          </div>
+
+          <!-- 审批被拒绝 -->
+          <div v-if="approvalSubmitted && approvalStatus === 'rejected'" style="text-align:center;padding:30px 0">
+            <el-icon :size="48" color="#F56C6C"><CircleCloseFilled /></el-icon>
+            <div style="margin-top:12px;font-weight:600;font-size:16px;color:#F56C6C">❌ 审批被拒绝</div>
+            <div style="font-size:13px;color:#999;margin:8px 0">原因: {{ approvalReason || '未提供' }}</div>
+            <el-button size="small" @click="resetApproval" icon="RefreshRight">重新申请</el-button>
+          </div>
+
+          <!-- 审批超时 -->
+          <div v-if="approvalSubmitted && approvalStatus === 'timeout'" style="text-align:center;padding:30px 0">
+            <el-icon :size="48" color="#909399"><Clock /></el-icon>
+            <div style="margin-top:12px;font-weight:600;font-size:16px;color:#909399">⏰ 审批已超时</div>
+            <div style="font-size:13px;color:#999;margin:8px 0">审批未在有效时间内完成，请重新提交</div>
+            <el-button size="small" @click="resetApproval" icon="RefreshRight">重新申请</el-button>
+          </div>
+
           <!-- 被拦截 -->
-          <div v-if="verdictClass === 'deny'" style="text-align:center;padding:40px 0;color:#999">
+          <div v-if="verdictClass === 'deny' && !needsApproval" style="text-align:center;padding:40px 0;color:#999">
             <el-icon :size="48" color="#F56C6C"><CircleCloseFilled /></el-icon>
             <div style="margin-top:12px">🚫 三层防御已拦截此命令，不会执行</div>
             <div style="font-size:12px;color:#999;margin-top:4px">{{ result?.message }}</div>
@@ -170,11 +220,53 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- ═══════ 管理员审批队列 ═══════ -->
+    <el-card v-if="userStore.isAdmin || userStore.role === 'operator'" header="🔐 审批队列" class="section-card approval-queue" shadow="never" style="margin-top:16px">
+      <template #header>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span>🔐 审批队列</span>
+          <el-button size="small" @click="loadPendingApprovals" :loading="loadingPending" icon="Refresh">刷新</el-button>
+        </div>
+      </template>
+      <el-empty v-if="!loadingPending && pendingApprovals.length === 0" description="暂无待审批项" :image-size="60" />
+      <el-table v-else :data="pendingApprovals" size="small" style="width:100%">
+        <el-table-column prop="request_id" label="审批单号" width="140">
+          <template #default="{ row }">
+            <code style="font-size:11px">{{ row.request_id?.slice(0, 12) }}…</code>
+          </template>
+        </el-table-column>
+        <el-table-column prop="command" label="命令" min-width="180">
+          <template #default="{ row }">
+            <code style="font-size:11px;word-break:break-all">{{ row.command || row.action_description }}</code>
+          </template>
+        </el-table-column>
+        <el-table-column prop="risk_level" label="风险等级" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.risk_level === 'critical' ? 'danger' : row.risk_level === 'high' ? 'warning' : 'info'" size="small">
+              {{ row.risk_level === 'critical' ? '严重' : row.risk_level === 'high' ? '高' : row.risk_level || '中' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="requested_by" label="申请人" width="90" />
+        <el-table-column prop="requested_at" label="时间" width="100">
+          <template #default="{ row }">
+            <span style="font-size:11px;color:#999">{{ row.requested_at?.slice(0, 16)?.replace('T', ' ') }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="160" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="success" @click="approveRequest(row)" :loading="row._approving" icon="Check">批准</el-button>
+            <el-button size="small" type="danger" @click="rejectRequest(row)" :loading="row._rejecting" icon="Close">拒绝</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { ElMessage } from 'element-plus'
@@ -191,8 +283,10 @@ import {
 import { initChart, scheduleChartResize } from '../composables/useEcharts'
 import { buildDefenseLayersChartOption } from '../utils/chartTheme'
 import { useAgentStore } from '../stores/agent'
+import { useUserStore } from '../stores/user'
 
 const pageMeta = NAV_PAGES.safety
+const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
 const agentStore = useAgentStore()
@@ -204,6 +298,18 @@ const result = ref(null)
 const execResult = ref(null)
 const defenseChartRef = ref(null)
 let defenseChart = null
+
+// ──────── 审批流程状态 ────────
+const submittingApproval = ref(false)
+const approvalSubmitted = ref(false)
+const approvalRequestId = ref('')
+const approvalStatus = ref('')        // pending | approved | rejected | timeout
+const approvalResponder = ref('')
+const approvalReason = ref('')
+const checkingApproval = ref(false)
+const loadingPending = ref(false)
+const pendingApprovals = ref([])
+let approvalPollTimer = null
 
 const isWin = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform)
 
@@ -257,8 +363,16 @@ const evalExecGap = computed(() => {
 
 const canExecute = computed(() => {
   if (!result.value) return false
+  // 审批通过后也可以执行
+  if (approvalSubmitted.value && approvalStatus.value === 'approved') return true
   const v = result.value.verdict
   return v === 'allow' || v === 'confirm'
+})
+
+const needsApproval = computed(() => {
+  if (!result.value) return false
+  const v = result.value.verdict
+  return v === 'escalate' || v === 'approve' || result.value.requires_human_approval
 })
 
 const verdictClass = computed(() => {
@@ -304,6 +418,8 @@ async function evaluate() {
       decision_path: res.decision_path || [],
       execution_feasibility: res.execution_feasibility || null,
       requires_sandbox: res.requires_sandbox,
+      requires_human_approval: res.requires_human_approval || false,
+      confirmation_request_id: res.confirmation_request_id || '',
       trace_id: res.trace_id,
     }
     await renderDefenseChart()
@@ -330,6 +446,141 @@ async function execute() {
   } finally { executing.value = false }
 }
 
+// ═══════ 审批流程 ═══════
+
+async function submitApproval() {
+  submittingApproval.value = true
+  resetApproval()
+  try {
+    const res = await api.post('/safety/submit', {
+      trace_id: result.value?.trace_id || '',
+      user_message: form.user_message || form.target,
+      command: form.target,
+      risk_level: result.value?.verdict === 'escalate' ? 'critical' : 'high',
+    })
+    approvalRequestId.value = res.request_id || res.task_id || ''
+    approvalStatus.value = res.status || 'pending'
+    approvalSubmitted.value = true
+    ElMessage.success('审批申请已提交，等待管理员审批')
+    startApprovalPolling()
+  } catch (e) {
+    ElMessage.error('提交审批失败: ' + (e.response?.data?.detail || e.message))
+  } finally { submittingApproval.value = false }
+}
+
+async function checkApprovalStatus() {
+  if (!approvalRequestId.value) return
+  checkingApproval.value = true
+  try {
+    const pending = await api.get('/safety/pending')
+    const found = (Array.isArray(pending) ? pending : []).find(
+      r => r.request_id === approvalRequestId.value
+    )
+    if (!found) {
+      approvalStatus.value = 'approved'
+      stopApprovalPolling()
+      ElMessage.success('审批已完成，可以执行')
+    }
+  } catch (e) {
+    console.warn('查询审批状态失败:', e)
+  } finally { checkingApproval.value = false }
+}
+
+function startApprovalPolling() {
+  stopApprovalPolling()
+  approvalPollTimer = setInterval(async () => {
+    if (!approvalRequestId.value) { stopApprovalPolling(); return }
+    try {
+      const pending = await api.get('/safety/pending')
+      const found = (Array.isArray(pending) ? pending : []).find(
+        r => r.request_id === approvalRequestId.value
+      )
+      if (!found) {
+        stopApprovalPolling()
+        approvalStatus.value = 'approved'
+        approvalResponder.value = '管理员'
+        ElMessage.success('审批已完成！')
+      }
+    } catch { /* 轮询静默失败 */ }
+  }, 5000)
+}
+
+function stopApprovalPolling() {
+  if (approvalPollTimer) { clearInterval(approvalPollTimer); approvalPollTimer = null }
+}
+
+async function executeWithApproval() {
+  executing.value = true
+  execResult.value = null
+  try {
+    const res = await api.post('/executor/execute', {
+      command: form.target,
+      confirm: true,
+      sandbox: form.sandbox,
+      timeout: 30,
+      approval_id: approvalRequestId.value,
+    })
+    execResult.value = res
+    if (res.success) ElMessage.success('执行完成')
+    else ElMessage.warning('执行失败: ' + (res.error || ''))
+  } catch (e) {
+    const detail = e.response?.data?.detail || e.message
+    execResult.value = { success: false, error: detail }
+    if (detail.includes('审批')) ElMessage.error(detail)
+  } finally { executing.value = false }
+}
+
+function resetApproval() {
+  stopApprovalPolling()
+  approvalSubmitted.value = false
+  approvalRequestId.value = ''
+  approvalStatus.value = ''
+  approvalResponder.value = ''
+  approvalReason.value = ''
+}
+
+// ═══════ 管理员审批队列 ═══════
+
+async function loadPendingApprovals() {
+  loadingPending.value = true
+  try {
+    const res = await api.get('/safety/pending')
+    pendingApprovals.value = Array.isArray(res) ? res : []
+  } catch (e) {
+    ElMessage.error('加载审批队列失败: ' + (e.response?.data?.detail || e.message))
+  } finally { loadingPending.value = false }
+}
+
+async function approveRequest(row) {
+  row._approving = true
+  try {
+    await api.post('/safety/approve', {
+      request_id: row.request_id || row.task_id,
+      action: 'approve',
+      reason: '管理员批准',
+    })
+    ElMessage.success('已批准')
+    await loadPendingApprovals()
+  } catch (e) {
+    ElMessage.error('操作失败: ' + (e.response?.data?.detail || e.message))
+  } finally { row._approving = false }
+}
+
+async function rejectRequest(row) {
+  row._rejecting = true
+  try {
+    await api.post('/safety/approve', {
+      request_id: row.request_id || row.task_id,
+      action: 'reject',
+      reason: '管理员拒绝',
+    })
+    ElMessage.info('已拒绝')
+    await loadPendingApprovals()
+  } catch (e) {
+    ElMessage.error('操作失败: ' + (e.response?.data?.detail || e.message))
+  } finally { row._rejecting = false }
+}
+
 // Agent / 路由上下文自动填充
 function initFromContext() {
   const plan = agentStore.currentPlan
@@ -343,6 +594,13 @@ function initFromContext() {
 
 onMounted(() => {
   initFromContext()
+  if (userStore.isAdmin || userStore.role === 'operator') {
+    loadPendingApprovals()
+  }
+})
+
+onUnmounted(() => {
+  stopApprovalPolling()
 })
 
 function clearAll() {
@@ -350,6 +608,7 @@ function clearAll() {
   form.user_message = ''
   result.value = null
   execResult.value = null
+  resetApproval()
 }
 </script>
 
@@ -457,6 +716,25 @@ function clearAll() {
   background: linear-gradient(transparent, rgba(30, 41, 59, 0.8));
   pointer-events: none;
   border-radius: 0 0 6px 6px;
+}
+
+/* ──────── 审批流程 ──────── */
+.approval-queue {
+  animation: fade-in var(--duration-slow) var(--ease-out) both;
+}
+
+.approval-queue :deep(.el-card__header) {
+  font-weight: 600;
+}
+
+.approval-queue :deep(.el-table) {
+  font-size: var(--text-xs);
+}
+
+.approval-queue :deep(.el-table th) {
+  background: var(--color-neutral-50);
+  font-size: var(--text-xs);
+  font-weight: 600;
 }
 
 @keyframes border-pulse {

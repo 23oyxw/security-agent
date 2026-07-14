@@ -24,7 +24,7 @@
 | P0-2 | 完善 `.gitignore`（node_modules、qt01、aiflowy、.cursor） | Agent | ✅ | 已更新 |
 | P0-3 | 版本号统一到 **0.7.0**（`api/__init__.py` 等） | Agent | ✅ | `__version__` = 0.7.0 |
 | P0-4 | `AgentChat` 展示 `trace_id` / `degradation_level` / `fallback_used` | Agent | ✅ | WS+REST；WS 补 `fallback_used` |
-| P0-5 | 联调脚本 + 浏览器清单 | Agent | ✅ | `scripts/p0_frontend_checklist.sh` · `P0_FRONTEND_WALKTHROUGH.md` |
+| P0-5 | 联调脚本 + 浏览器清单 | Agent | ✅ | `scripts/p0_frontend_checklist.sh`（P0 已完成） |
 | P0-6 | 回归包一键跑通 | Agent | ✅ | `scripts/run_regression.sh` 全过 |
 | P0-7a | **P0 API 段 curl 签字**（`p0_frontend_checklist.sh`） | Agent | ✅ | 10/10 @ :8900 |
 | P0-7 | **浏览器 10 页人工签字** | 👤 用户 | 👤 | 清单每项打勾 |
@@ -37,7 +37,7 @@ cd /home/oy0/security-agent
 bash scripts/run_regression.sh
 PYTHONPATH=. .venv/bin/python scripts/e2e_api_smoke.py
 bash scripts/p0_frontend_checklist.sh   # API 段（需 API 已启动）
-# 浏览器：见 docs/P0_FRONTEND_WALKTHROUGH.md
+# 浏览器：P0 已通过验收，无需再执行
 ```
 
 ### P0 启动（答辩拓扑）
@@ -55,7 +55,7 @@ bash boot_start.sh --dev    # :5173 → proxy :8900
 | # | 任务 | 状态 | 说明 |
 |---|------|------|------|
 | P1-1 | 更新 `MASTER_PLAN` §8 / §3（E2E 已 28/28、mac_checker 已接线、boot_start 已含 Vue） | ✅ | 2026-05-30 已修 §8 风险表 |
-| P1-2 | 更新 `GAP_ANALYSIS.md` 沙箱/MCP/热插拔等过时条目 | ✅ | 文首 §2026-05-30 对照表 |
+| P1-2 | 更新 GAP_ANALYSIS（沙箱/MCP/热插拔等过时条目） | ✅ | 已由 `A2_OFFICIAL_GAP_ANALYSIS.md` 替代 |
 | P1-3 | `aiflowy-main/` 去留决策 | ✅ | [REFERENCE_LIBS.md](REFERENCE_LIBS.md)：保留本地、gitignore、不集成 |
 | P1-4 | 麒麟实机：executor + mac_checker 一条路径实测 | 👤 | 赛题 KYSEC |
 | P1-5 | 演示脚本统一端口说明（8900 vs 8000） | ✅ | README + `boot_start.sh` 头注释 |
@@ -105,4 +105,4 @@ bash boot_start.sh --dev    # :5173 → proxy :8900
 
 ---
 
-*关联：[MASTER_PLAN.md](architecture/MASTER_PLAN.md) · [P0_FRONTEND_WALKTHROUGH.md](P0_FRONTEND_WALKTHROUGH.md) · [KNOWN_ISSUES.md](KNOWN_ISSUES.md) · [LLM_MODEL_FIX.md](LLM_MODEL_FIX.md)*
+*关联：[MASTER_PLAN.md](architecture/MASTER_PLAN.md) · [KNOWN_ISSUES.md](KNOWN_ISSUES.md) · [LLM_MODEL_FIX.md](LLM_MODEL_FIX.md)*

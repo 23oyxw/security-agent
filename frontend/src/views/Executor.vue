@@ -56,6 +56,10 @@
             <div class="executor-options">
               <el-checkbox v-model="sudo">使用 sudo</el-checkbox>
               <el-checkbox v-model="confirm">需要用户确认</el-checkbox>
+              <div class="approval-id-input">
+                <span class="approval-id-label">审批单号</span>
+                <el-input v-model="approvalId" placeholder="可选，审批通过后填入" size="small" style="width:200px" clearable />
+              </div>
             </div>
             <div class="executor-actions">
               <el-button type="primary" :loading="executing" @click="execute" :disabled="!command.trim()">
@@ -156,6 +160,7 @@ const command = ref(route.query.command || '')
 const fromSafety = ref(!!route.query.from_safety)
 const sudo = ref(false)
 const confirm = ref(true)
+const approvalId = ref('')
 const executing = ref(false)
 const output = ref('')
 const executionTime = ref(null)
@@ -206,11 +211,13 @@ async function execute() {
   assessment.value = null
   const t0 = Date.now()
   try {
-    const res = await api.post('/executor/execute', {
+    const payload = {
       command: command.value,
       sudo: sudo.value,
       require_confirmation: confirm.value,
-    })
+    }
+    if (approvalId.value) payload.approval_id = approvalId.value
+    const res = await api.post('/executor/execute', payload)
     executionTime.value = Date.now() - t0
     output.value = res.output || res.stdout || ''
     if (res.stderr) output.value += '\n\n[STDERR]\n' + res.stderr
@@ -227,7 +234,12 @@ async function execute() {
     const detail = e.response?.data?.detail || e.message || '未知错误'
     output.value = `执行失败: ${detail}`
     assessment.value = e.response?.data?.assessment || null
-    ElMessage.error('执行失败: ' + detail)
+    if (detail.includes('审批') || detail.includes('人工')) {
+      ElMessage.warning('⚠️ 需要人工审批')
+      output.value = `⚠️ 权限不足，需要人工审批\n\n${detail}\n\n→ 请前往「L2 安全防护沙箱」页面提交审批申请\n→ 审批通过后将获得审批单号\n→ 在此处填入审批单号后重新执行`
+    } else {
+      ElMessage.error('执行失败: ' + detail)
+    }
   } finally {
     executing.value = false
   }
@@ -393,6 +405,20 @@ async function copyOutput() {
 .executor-options {
   display: flex;
   gap: var(--space-4);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.approval-id-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.approval-id-label {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-500);
+  white-space: nowrap;
 }
 
 .executor-actions {

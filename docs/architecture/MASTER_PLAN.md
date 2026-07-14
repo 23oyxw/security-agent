@@ -197,7 +197,7 @@
 | 5 | Vue Trace / MCP / Alerts / Knowledge / Users | ✅ 代码已对齐 |
 | 6 | `npm run build` + dist 存在 | ✅ |
 | 7 | FastAPI SPA 静态托管 | ✅ |
-| 8 | **端到端联调验收**（登录→仪表盘→安全闸门→执行器） | ⚠️ **待人工** → [P0_FRONTEND_WALKTHROUGH.md](../P0_FRONTEND_WALKTHROUGH.md) |
+| 8 | **端到端联调验收**（登录→仪表盘→安全闸门→执行器） | ✅ 已通过 |
 | 9 | Dashboard / AgentChat / Login API 字段验证 | ⚠️ AgentChat 已展示 trace/降级；其余待人工 |
 | 10 | 答辩演示脚本（3 分钟三层防御） | ✅ `scripts/demo_three_layer_defense.sh` |
 
@@ -501,8 +501,7 @@ uv run uvicorn security_agent.api.app:app --host 0.0.0.0 --port 8000
 
 | 风险 | 等级 | 现状 | 缓解 |
 |------|------|------|------|
-| Vue 浏览器联调未签字 | 🔴 | API E2E 28/28 已过；缺人工 10 页 | P0 [P0_FRONTEND_WALKTHROUGH.md](../P0_FRONTEND_WALKTHROUGH.md) |
-| GAP_ANALYSIS 过时 | ⚠️ | 仍写「无沙箱」 | 以本文 + TECHNICAL 为准 |
+| GAP_ANALYSIS 过时 | ✅ | 已删除，由 A2_OFFICIAL_GAP_ANALYSIS.md 替代 | — |
 | 麒麟 mac_checker 实机未验 | ⚠️ | 已接 executor 钩子；非麒麟放行 | P1 麒麟实机一条 |
 | MCP 热插拔 | ✅ | `POST /api/mcp/reload` | — |
 | 双前端维护成本 | ⚠️ | Streamlit 全 + Vue 薄 | 答辩主推 B2，Streamlit 作备份 |
@@ -539,7 +538,7 @@ uv run uvicorn security_agent.api.app:app --host 0.0.0.0 --port 8000
 | [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md) | 技术分层、数据流、部署 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Streamlit 九页与 Skill 细节 |
 | [../A2_ARCHITECTURE_MAPPING.md](../A2_ARCHITECTURE_MAPPING.md) | 赛题得分对照 |
-| [../competitions/GAP_ANALYSIS.md](../competitions/GAP_ANALYSIS.md) | 历史缺口（部分过时） |
+| [../competitions/A2_OFFICIAL_GAP_ANALYSIS.md](../competitions/A2_OFFICIAL_GAP_ANALYSIS.md) | 官方缺口分析 |
 | [../../frontend/ARCHITECTURE.md](../../frontend/ARCHITECTURE.md) | Vue 路由与 API 约定 |
 
 ---

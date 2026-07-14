@@ -30,8 +30,7 @@
 
 - 记忆公式：**1 调度 + 1 安全 + 1 迭代**
 - 关联：五层细节见 [FIVE_LAYER_PIPELINE.md](architecture/FIVE_LAYER_PIPELINE.md)
-- 已归并：[ORCHESTRATOR_THREE_AGENTS.md](architecture/ORCHESTRATOR_THREE_AGENTS.md)（旧三分法，已合并到此）
-- 已归并：[ARCHITECTURE.md](architecture/ARCHITECTURE.md)（旧 Streamlit 九页架构，以此为准）
+- 旧 `ORCHESTRATOR_THREE_AGENTS.md` 和 `ARCHITECTURE.md` 已合并到此，v0.9.0 已移除冗余副本
 
 ### ② 技术架构 — `docs/architecture/TECHNICAL_ARCHITECTURE.md`
 
@@ -81,7 +80,7 @@ Vue3 + Element Plus + Vite 前端架构。13 页面路由、Pinia 状态管理�
 
 ### ⑦ 项目目录与包结构 — `docs/REPO_STRUCTURE.md`
 
-顶层目录规范、`security_agent/` 包结构（181 py）、前端 `frontend/src/` 结构、数据目录 `data/` 规范。
+顶层目录规范、`security_agent/` 包结构（260 py）、前端 `frontend/src/` 结构、数据目录 `data/` 规范。
 
 ### ⑧ 三方统一契约 — `data/contracts/triple_unify.json`
 
@@ -182,7 +181,7 @@ MASTER_PLAN.md §11 (✅)        ← 执行层: 6 Step 全部完成 · 137 tests
 | 3 | [RELEASE.md](RELEASE.md) | 本地启动 |
 | 4 | [architecture/TECH_STACK.md](architecture/TECH_STACK.md) | 技术栈 |
 | 5 | [architecture/DEVELOPMENT.md](architecture/DEVELOPMENT.md) | 开发规范 |
-| 6 | [architecture/TESTING.md](architecture/TESTING.md) | 测试体系 |
+| 6 | [CPU_STRESS_GUIDE.md](CPU_STRESS_GUIDE.md) | 压测指南 |
 
 ### 部署运维
 
@@ -202,8 +201,8 @@ MASTER_PLAN.md §11 (✅)        ← 执行层: 6 Step 全部完成 · 137 tests
 | [competitions/A2_ARCHITECTURE_MAPPING.md](../A2_ARCHITECTURE_MAPPING.md) | 赛题↔架构映射 |
 | [competitions/DEMO_SCRIPT.md](competitions/DEMO_SCRIPT.md) | 答辩演示脚本 |
 | [competitions/SUBMISSION_CHECKLIST.md](competitions/SUBMISSION_CHECKLIST.md) | 提交规范 |
-| [competitions/GAP_ANALYSIS.md](competitions/GAP_ANALYSIS.md) | 历史缺口（部分过时，以 MASTER_PLAN 为准） |
-| [competitions/ACTION_PLAN.md](competitions/ACTION_PLAN.md) | 改进行动计划 |
+| [competitions/A2_OFFICIAL_GAP_ANALYSIS.md](competitions/A2_OFFICIAL_GAP_ANALYSIS.md) | 官方缺口分析 |
+| [competitions/ACTION_PLAN.md](competitions/ACTION_PLAN.md) | 改进行动计划（已归档） |
 
 ### 参考与专项
 
@@ -212,15 +211,13 @@ MASTER_PLAN.md §11 (✅)        ← 执行层: 6 Step 全部完成 · 137 tests
 | [architecture/L5_ANALYTICS.md](architecture/L5_ANALYTICS.md) | L5 数学模型 |
 | [architecture/INSPECTION_ENGINE.md](architecture/INSPECTION_ENGINE.md) | 华测式巡检引擎 |
 | [architecture/MULTI_PERSONA_COORDINATION.md](architecture/MULTI_PERSONA_COORDINATION.md) | 多角色协调 |
-| [architecture/ENCAPSULATION_TO_L5_ROADMAP.md](architecture/ENCAPSULATION_TO_L5_ROADMAP.md) | 封装到 L5 路线图 |
 | [architecture/ARCHITECTURE_TIER_MAP.md](architecture/ARCHITECTURE_TIER_MAP.md) | T0-T4 架构分级 |
 | [LITELLM_GUIDE.md](LITELLM_GUIDE.md) | LiteLLM 指南（仅 x86 开发用） |
 | [FALLBACK_GUIDE.md](FALLBACK_GUIDE.md) | 模型回退指南 |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | 已知问题 |
 | [CPU_STRESS_GUIDE.md](CPU_STRESS_GUIDE.md) | CPU 压测指南 |
 | [MCP_SERVERS.md](MCP_SERVERS.md) | MCP 服务端说明 |
-| [user/QUICK_START.md](user/QUICK_START.md) | 用户快速上手 |
-| [user/AGENT.md](user/AGENT.md) | Agent 使用说明 |
+| [user/PLAIN_GUIDE.md](user/PLAIN_GUIDE.md) | 用户白话指南 |
 | [security/BLUE_TEAM_DEFENSE_KNOWLEDGE.md](security/BLUE_TEAM_DEFENSE_KNOWLEDGE.md) | 蓝队防御知识 |
 
 ---

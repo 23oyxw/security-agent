@@ -294,4 +294,3 @@ tests/                 23 files · 137+ test cases
 | [FULL_DOMAIN_UPGRADE.md](FULL_DOMAIN_UPGRADE.md) | 🆕 生产级技术方案 — 7 模块升级的技术细节（本文 §八的实现方案） |
 | [MASTER_PLAN.md](MASTER_PLAN.md) | 总控计划 — 含 v0.9 升级 6 步路线（本文 §八的执行计划） |
 | [../../frontend/ARCHITECTURE.md](../../frontend/ARCHITECTURE.md) | 前端双模式与组件 |
-| [ORCHESTRATOR_THREE_AGENTS.md](ORCHESTRATOR_THREE_AGENTS.md) | 已归并至本文 §二、§五 |

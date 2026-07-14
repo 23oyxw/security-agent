@@ -416,7 +416,7 @@ cd frontend && npm install && npm run dev
 | [MASTER_PLAN.md](MASTER_PLAN.md) | 总控计划、验收 |
 | **本文** | 三交付线、模块矩阵、API |
 | [TECH_STACK.md](TECH_STACK.md) | 依赖版本与自研模块清单 |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Streamlit 九页与 Skill 细节 |
+| [FINAL_ARCHITECTURE.md](FINAL_ARCHITECTURE.md) | 终版架构（替代旧 ARCHITECTURE.md） |
 | [../A2_ARCHITECTURE_MAPPING.md](../A2_ARCHITECTURE_MAPPING.md) | 赛题得分点对照 |
-| [../competitions/GAP_ANALYSIS.md](../competitions/GAP_ANALYSIS.md) | 历史缺口与 P0 清单 |
+| [../competitions/A2_OFFICIAL_GAP_ANALYSIS.md](../competitions/A2_OFFICIAL_GAP_ANALYSIS.md) | 官方缺口分析 |
 | [../../frontend/package.json](../../frontend/package.json) | Vue 依赖锁定 |
