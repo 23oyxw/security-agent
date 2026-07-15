@@ -1,7 +1,7 @@
 # 技术架构总览 v0.9.0
 
-> **定位**：银河麒麟智能安全运维 Agent（A2 赛题）——以 `security-agent` 为主干，FastAPI 为核心服务层，Streamlit / Vue3 双前端可选，qt01 为赛题能力参考库。  
-> **更新**：2026-06-11  
+> **定位**：银河麒麟智能安全运维 Agent（A2 赛题）——以 `security-agent` 为主干（260 py, 34 模块），FastAPI 为服务层，Vue3 :8900 为主前端。  
+> **更新**：2026-07-15  
 > **Agent 编排权威**：[FINAL_ARCHITECTURE.md](FINAL_ARCHITECTURE.md)（终版三 Agent + 五层流水线 · 先分析后执行 · 计划/执行双模式）  
 > **关联**：[MASTER_PLAN.md](MASTER_PLAN.md) · [TECH_STACK.md](TECH_STACK.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [A2_ARCHITECTURE_MAPPING.md](../A2_ARCHITECTURE_MAPPING.md)
 
