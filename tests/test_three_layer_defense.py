@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import asyncio
 import sys
+
+import pytest
 import os
 import json
 
@@ -249,6 +251,7 @@ def test_rollback_with_backup_manager():
     return True
 
 
+@pytest.mark.asyncio
 async def test_defense_engine_with_backup():
     """测试三层防御引擎 + backup_manager 联动 — 自动备份触发."""
     from security_agent.safety_gate.snapshot import SnapshotManager
