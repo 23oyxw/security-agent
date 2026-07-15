@@ -248,7 +248,6 @@ def test_rollback_with_backup_manager():
     import shutil
     shutil.rmtree(tmpdir, ignore_errors=True)
     print(f"  ✅ 快照回滚集成测试通过")
-    return True
 
 
 @pytest.mark.asyncio
