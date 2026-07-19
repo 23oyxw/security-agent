@@ -3,7 +3,7 @@
 # 说明: 仅含 B/S 答辩必需的纯 Python 包，体积大的计算库按需附加
 
 # ---- 核心 Web 框架 ----
-uvicorn[standard]
+uvicorn
 fastapi
 httpx
 python-multipart
