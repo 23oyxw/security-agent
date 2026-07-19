@@ -49,8 +49,8 @@ bash scripts/bootstrap-kylin-loongarch.sh
 
 这个脚本会自动：
 - 安装系统依赖（dnf）
-- 尝试安装 uv，**如果 loongarch64 无预编译包则自动降级到 pip**
-- 安装 Python 依赖（uv sync 或 pip install）
+- 创建 Python 虚拟环境（pip + venv）
+- 安装所有 Python 依赖（纯 Python 秒装 + C 扩展编译）
 - 生成 `.env`（自动关闭 LiteLLM 代理）
 
 ### 第三步：配置 API Key
