@@ -53,8 +53,8 @@ pip install --timeout 300 --no-build-isolation pandas 2>/dev/null || log "⚠️
 pip install --timeout 300 --no-build-isolation matplotlib 2>/dev/null || log "⚠️ matplotlib 跳过"
 pip install --timeout 300 --no-build-isolation pillow 2>/dev/null || log "⚠️ pillow 跳过"
 
-log "安装项目自身（不拉依赖，上面已装完）..."
-pip install -e . --no-deps
+log "跳过 pip install -e .（龙架构 setuptools 版本不足）"
+log "启动脚本已设置 PYTHONPATH，import security_agent 可直接工作"
 
 # ---- 3. 生成 .env ----
 if [[ ! -f .env ]]; then
