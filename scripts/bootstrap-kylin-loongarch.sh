@@ -22,7 +22,8 @@ sudo dnf install -y python3 python3-pip python3-devel gcc gcc-c++ make curl libf
 log "loongarch64 环境，使用 pip + venv..."
 
 log "安装编译工具链（C 扩展编译必需）..."
-sudo dnf install -y gcc gcc-c++ python3-devel cmake libffi-devel openssl-devel 2>/dev/null || true
+sudo dnf install -y gcc gcc-c++ python3-devel cmake libffi-devel openssl-devel \
+  python3-wheel python3-setuptools 2>/dev/null || true
 
 rm -rf .venv
 python3 -m venv .venv
@@ -31,19 +32,19 @@ source .venv/bin/activate
 log "配置清华 pip 镜像源（加速下载）..."
 pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple 2>/dev/null || true
 
-log "升级 pip + 安装编译加速工具..."
-pip install --upgrade pip setuptools wheel -q
+log "升级 pip（提升 loongarch 架构识别）..."
+python3 -m pip install --upgrade pip -q 2>/dev/null || true
 
 log "安装纯 Python 依赖..."
 pip install --timeout 120 httpx openai python-dotenv fastapi uvicorn \
   "python-multipart>=0.0.18" PyJWT "passlib>=1.7.4" \
   websockets pyyaml slowapi tenacity psutil
 
-log "安装含 C 扩展的依赖（优先 binary，失败则尝试编译）..."
-pip install --timeout 300 numpy 2>/dev/null || log "⚠️ numpy 编译失败，跳过"
-pip install --timeout 300 pandas 2>/dev/null || log "⚠️ pandas 编译失败，跳过"
-pip install --timeout 300 matplotlib 2>/dev/null || log "⚠️ matplotlib 编译失败，跳过"
-pip install --timeout 300 pillow 2>/dev/null || log "⚠️ pillow 编译失败，跳过"
+log "安装含 C 扩展的依赖（编译失败则跳过，不影响答辩）..."
+pip install --timeout 300 --no-build-isolation numpy 2>/dev/null || log "⚠️ numpy 跳过"
+pip install --timeout 300 --no-build-isolation pandas 2>/dev/null || log "⚠️ pandas 跳过"
+pip install --timeout 300 --no-build-isolation matplotlib 2>/dev/null || log "⚠️ matplotlib 跳过"
+pip install --timeout 300 --no-build-isolation pillow 2>/dev/null || log "⚠️ pillow 跳过"
 
 log "安装项目自身（不拉依赖，上面已装完）..."
 pip install -e . --no-deps
