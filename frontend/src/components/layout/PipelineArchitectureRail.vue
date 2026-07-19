@@ -274,8 +274,8 @@ const activeLayer = computed(() => {
   if (fromRoute && route.path !== '/agent') return fromRoute
 
   const p = agentStore.dispatchPhase
-  if (p === 'executed') return 'L5'
   if (p === 'execute' || agentStore.mode === 'execute') return 'L3'
+  if (p === 'executed') return 'L5'
   if (agentStore.currentPlan) return 'L2'
   return fromRoute || 'L1'
 })
