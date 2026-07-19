@@ -2,7 +2,20 @@
 
 > 适用：麒麟高级服务器 V11 Swan25 · LoongArch (loongarch64)  
 > 读者：项目组成员、评审老师  
-> 版本：v0.9.0
+> 版本：v0.9.0  
+
+## 依赖管理说明
+
+本项目遵循赛题要求：**不打包第三方依赖库**，依赖全部从网络源安装。
+
+| 项目 | 说明 |
+|------|------|
+| 依赖清单 | `requirements-kylin.txt`（项目根目录） |
+| Python 源 | 龙芯专属镜像 `https://lpypi.loongnix.cn/loongson/pypi/+simple` |
+| 系统依赖 | `dnf install` 从麒麟官方源安装 |
+| 前端依赖 | `npm install` 从 npm 官方源安装（仅需构建 dist 时） |
+
+安装包 `dist/security-agent-v0.9.0-*.tar.gz` **不含** `.venv/site-packages/` 和 `node_modules/`，体积 2.4MB。
 
 ---
 

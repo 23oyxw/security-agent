@@ -35,26 +35,11 @@ python3 -m pip install --upgrade pip --no-cache-dir 2>/dev/null || true
 log "配置龙芯专属 pip 镜像源（loongarch64 原生适配）..."
 pip config set global.index-url https://lpypi.loongnix.cn/loongson/pypi/+simple 2>/dev/null || true
 
-log "安装纯 Python 依赖..."
-pip install --timeout 120 httpx openai python-dotenv fastapi uvicorn \
-  "python-multipart>=0.0.18" PyJWT "passlib>=1.7.4" \
-  websockets pyyaml slowapi tenacity psutil 2>&1 | tail -3 || {
-    log "部分 pip 包失败，尝试 dnf 系统包..."
-    sudo dnf install -y python3-httpx python3-fastapi python3-uvicorn \
-      python3-pyyaml python3-psutil 2>/dev/null || true
-    pip install --timeout 120 httpx openai python-dotenv fastapi uvicorn \
-      "python-multipart>=0.0.18" PyJWT "passlib>=1.7.4" \
-      websockets pyyaml slowapi tenacity psutil 2>/dev/null || true
-  }
+log "从 requirements-kylin.txt 安装依赖..."
+pip install -r requirements-kylin.txt \
+  -i https://lpypi.loongnix.cn/loongson/pypi/+simple
 
-log "安装含 C 扩展的依赖（编译失败则跳过，不影响答辩）..."
-pip install --timeout 300 --no-build-isolation numpy 2>/dev/null || log "⚠️ numpy 跳过"
-pip install --timeout 300 --no-build-isolation pandas 2>/dev/null || log "⚠️ pandas 跳过"
-pip install --timeout 300 --no-build-isolation matplotlib 2>/dev/null || log "⚠️ matplotlib 跳过"
-pip install --timeout 300 --no-build-isolation pillow 2>/dev/null || log "⚠️ pillow 跳过"
-
-log "跳过 pip install -e .（龙架构 setuptools 版本不足）"
-log "启动脚本已设置 PYTHONPATH，import security_agent 可直接工作"
+log "依赖安装完成。项目通过 PYTHONPATH 导入，无需 pip install -e ."
 
 # ---- 3. 生成 .env ----
 if [[ ! -f .env ]]; then
