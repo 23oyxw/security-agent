@@ -35,8 +35,9 @@ python3 -m pip install --upgrade pip --no-cache-dir 2>/dev/null || true
 log "配置龙芯专属 pip 镜像源（loongarch64 原生适配）..."
 pip config set global.index-url https://lpypi.loongnix.cn/loongson/pypi/+simple 2>/dev/null || true
 
-log "从 requirements-kylin.txt 安装依赖..."
-pip install -r requirements-kylin.txt \
+log "从 requirements-kylin.txt 安装依赖（禁止编译，纯 Python 包）..."
+export PIP_NO_BUILD_ISOLATION=1
+pip install --no-build-isolation -r requirements-kylin.txt \
   -i https://lpypi.loongnix.cn/loongson/pypi/+simple
 
 log "依赖安装完成。项目通过 PYTHONPATH 导入，无需 pip install -e ."
