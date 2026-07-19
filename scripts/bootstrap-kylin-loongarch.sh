@@ -29,16 +29,23 @@ rm -rf .venv
 python3 -m venv .venv
 source .venv/bin/activate
 
-log "配置清华 pip 镜像源（加速下载）..."
-pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple 2>/dev/null || true
+log "升级 pip 到最新版（完善 loongarch 架构识别）..."
+python3 -m pip install --upgrade pip --no-cache-dir 2>/dev/null || true
 
-log "升级 pip（提升 loongarch 架构识别）..."
-python3 -m pip install --upgrade pip -q 2>/dev/null || true
+log "配置清华 pip 镜像源..."
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple 2>/dev/null || true
 
 log "安装纯 Python 依赖..."
 pip install --timeout 120 httpx openai python-dotenv fastapi uvicorn \
   "python-multipart>=0.0.18" PyJWT "passlib>=1.7.4" \
-  websockets pyyaml slowapi tenacity psutil
+  websockets pyyaml slowapi tenacity psutil 2>&1 | tail -3 || {
+    log "部分 pip 包失败，尝试 dnf 系统包..."
+    sudo dnf install -y python3-httpx python3-fastapi python3-uvicorn \
+      python3-pyyaml python3-psutil 2>/dev/null || true
+    pip install --timeout 120 httpx openai python-dotenv fastapi uvicorn \
+      "python-multipart>=0.0.18" PyJWT "passlib>=1.7.4" \
+      websockets pyyaml slowapi tenacity psutil 2>/dev/null || true
+  }
 
 log "安装含 C 扩展的依赖（编译失败则跳过，不影响答辩）..."
 pip install --timeout 300 --no-build-isolation numpy 2>/dev/null || log "⚠️ numpy 跳过"
