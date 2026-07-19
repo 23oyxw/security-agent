@@ -99,7 +99,7 @@ litellm --config litellm_config.yaml --port 4000
 ## 6. 发布 / 演示前检查清单
 
 - [ ] `.env` 已配置有效 `LLM_API_KEY`  
-- [ ] `boot_start.sh` 能打开 http://127.0.0.1:8501  
+- [ ] `boot_start.sh` 能打开 http://127.0.0.1:8900  
 - [ ] 风险演练 → 校准 66/66、边界 35/35  
 - [ ] 报告中心表格 + 网页预览正常  
 - [ ] 自主运维：终端 `ps aux`、任务结果页可滚动  

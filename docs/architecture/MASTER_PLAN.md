@@ -472,7 +472,7 @@ PYTHONPATH=. .venv/bin/python scripts/e2e_api_smoke.py
 ### 7.4 Streamlit（B1 快速演示）
 
 ```bash
-bash boot_start.sh   # → http://localhost:8501
+bash boot_start.sh   # → http://localhost:8900
 ```
 
 ### 7.5 L2 Flow（Python 直接调用）

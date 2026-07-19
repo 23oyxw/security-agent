@@ -365,8 +365,8 @@ security-agent/
 
 | 模式 | 命令 | 端口 | 适用 |
 |------|------|------|------|
-| Streamlit 单机 | `bash boot_start.sh` | 8501 | 开发、快速演示 |
-| API only | `uv run uvicorn security_agent.api.app:app --port 8000` | 8000 | Vue 联调 |
+| Vue3 生产 | `bash boot_start.sh` | 8900 | 答辩演示 |
+| API only | `uvicorn security_agent.api.app:app --port 8000` | 8000 | 开发联调 |
 | Vue 开发 | `cd frontend && npm run dev` | 5173 → proxy 8600 | 前端开发 |
 | 生产 B/S | API + `frontend/dist` 静态挂载 | 8000 单端口 | 答辩推荐 |
 

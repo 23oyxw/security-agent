@@ -69,8 +69,8 @@
 ## 核心概念（9 个词）
 
 1. **规则引擎**：命令能不能执行，代码说了算，不是 AI 说了算。  
-2. **工具**：扫描、列进程、看端口等，和 MCP 协议里的「工具」同一套（共 49 个）。  
-3. **Skill**：可插拔的功能模块（5 个：健康巡检、日志分析、安全加固、配置管理、故障响应），每个自带工具、知识库、运维规则。  
+2. **工具**：扫描、列进程、看端口等，和 MCP 协议里的「工具」同一套（共 **17 个 Skills**，86 个工具函数）。  
+3. **Skill**：可插拔的功能模块（**17 个**，分四簇：metrics 指标采集 / logs 日志处理 / repair 故障修复 / dispatch 资源调度），每个自带工具、知识库、运维规则。  
 4. **Agent**：会自己决定先调哪个工具；两种入口——聊天助手 / 自主运维。  
 5. **告警升级**：监控发现异常后自动分级（忽略→仅通知→通知+建议→自动修复），低风险自愈，高风险通知人工。  
 6. **风险演练**：不真攻击系统，用 101 条用例测规则会不会误报/漏报。  
@@ -94,7 +94,7 @@
 | 你想… | 文件 |
 |--------|------|
 | 5 分钟跑起来 | [README.md](README.md) |
-| 技术架构、答辩画图 | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| Agent 权限、自动化等级 | [AGENT.md](AGENT.md) |
-| 用什么语言、库 | [TECH_STACK.md](TECH_STACK.md) |
-| 怎么改代码、提交流程 | [DEVELOPMENT.md](DEVELOPMENT.md) |
+| 技术架构、答辩画图 | [architecture/FINAL_ARCHITECTURE.md](architecture/FINAL_ARCHITECTURE.md) |
+| Agent 权限、自动化等级 | [PRODUCT_MANUAL.md](PRODUCT_MANUAL.md) |
+| 用什么语言、库 | [architecture/TECH_STACK.md](architecture/TECH_STACK.md) |
+| 怎么改代码、提交流程 | [architecture/DEVELOPMENT.md](architecture/DEVELOPMENT.md) |

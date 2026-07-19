@@ -50,16 +50,16 @@
 | 规则引擎 | `rules/` | ALLOW / CONFIRM / DENY | ✅ |
 | 安全终端 | `terminal/` | 白名单 + 降权 + 沙箱 | ✅ |
 | Agent | `agent/` | Brain、Orchestrator、Escalation | ✅ |
-| Skills | `skills/` | 5 Skill + MCP server | ✅ |
-| API 层 | `api/` | 五大支柱 REST | ✅ |
-| 插件热插拔 | `mcp/plugin_manager.py` | 运行时注册 | 📦 仅 qt01 |
+| Skills | `skills/` | 17 Skills (四簇) + 6 Flows | ✅ |
+| API 层 | `api/` | 153 路由 REST | ✅ |
+| 插件热插拔 | `mcp/registry.py` | `POST /api/mcp/reload` | ✅ |
 | 可视化工作流 | qt-security-flow / Dify | 拖拽编排 | 📦 仅 qt01，V2 可选 |
 
 ## 运行环境
 
 - **目标系统**：银河麒麟 V10/V11、主流 Linux
-- **Streamlit**：`127.0.0.1:8501`（`boot_start.sh`）
-- **FastAPI**：`:8000` 或 `:8600`（Vue proxy 默认 8600）
+- **Vue3 (主前端)**：`127.0.0.1:8900`（`boot_start.sh`）
+- **FastAPI**：`127.0.0.1:8900`（与前端同端口，SPA 托管）
 - **Vue 开发**：`:5173`
 
 ## 外部依赖（运行时）

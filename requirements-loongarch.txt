@@ -1,3 +1,0 @@
-# Full deps = min + optional. B/S use min only.
--r requirements-loongarch-min.txt
--r requirements-loongarch-optional.txt
