@@ -1,1 +1,0 @@
-import{ax as n,g as u}from"./vue-ecosystem-l1Vq-QAs.js";import{d as o,N as r}from"./index-yqd8LnsL.js";function c(t=null){const e=n();return{pageMeta:u(()=>{const a=o(e.path);return a||(t&&r[t]?r[t]:{id:"unknown",label:"页面",subtitle:"",layer:"",layerLabel:"",agent:null})}),route:e}}export{c as u};
