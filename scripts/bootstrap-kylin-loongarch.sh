@@ -1,75 +1,88 @@
 #!/bin/bash
-# 麒麟 V11 Swan25 + LoongArch 实验机首次初始化
+# 麒麟 V11 LoongArch 首次初始化
+# 自动检测 uv 是否可用，不可用则降级到 pip
 # 用法: bash scripts/bootstrap-kylin-loongarch.sh
 set -eu
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
-# 修复 tar 解压后丢失的执行权限
-find . -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
-
-log() { echo "[kylin-bootstrap] $*"; }
+log() { echo "[bootstrap] $*"; }
 
 ARCH="$(uname -m)"
-log "架构: ${ARCH} · 系统: $(grep -E '^PRETTY_NAME=' /etc/os-release 2>/dev/null | cut -d= -f2- | tr -d '\"' || uname -s)"
+log "架构: ${ARCH} · $(grep -E '^PRETTY_NAME=' /etc/os-release 2>/dev/null | cut -d= -f2- | tr -d '\"' || uname -s)"
+log "仅支持 LoongArch 麒麟部署，其他可用平台请参考 docs/"
 
-if [[ "${ARCH}" != "loongarch64" && "${ARCH}" != "loong64" ]]; then
-  log "提示: 当前非 LoongArch (${ARCH})，脚本仍可继续（开发机自检）"
-fi
+# ---- 1. 系统依赖 ----
+log "安装系统依赖..."
+sudo dnf install -y python3 python3-pip python3-devel gcc gcc-c++ make curl libffi-devel openssl-devel 2>/dev/null || true
 
-if [[ -x "${HOME}/.local/bin/uv" ]]; then
-  UV="${HOME}/.local/bin/uv"
-elif command -v uv >/dev/null 2>&1; then
-  UV="$(command -v uv)"
+# ---- 2. Python 虚拟环境 ----
+USE_UV=false
+
+if command -v uv >/dev/null 2>&1; then
+  USE_UV=true
+elif [[ -x "${HOME}/.local/bin/uv" ]]; then
+  export PATH="${HOME}/.local/bin:${PATH}"
+  USE_UV=true
 else
-  log "未找到 uv，尝试: curl -LsSf https://astral.sh/uv/install.sh | sh"
-  if command -v curl >/dev/null 2>&1; then
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    UV="${HOME}/.local/bin/uv"
+  log "uv 未安装，尝试在线安装..."
+  if curl -fsSL --connect-timeout 10 https://astral.sh/uv/install.sh -o /tmp/uv-install.sh 2>/dev/null; then
+    sh /tmp/uv-install.sh 2>/dev/null && export PATH="${HOME}/.local/bin:${PATH}" && USE_UV=true && log "uv 安装成功" || log "uv 安装失败（loongarch64 无预编译包）"
   else
-    log "请安装 uv 或: sudo dnf install -y python3-pip && pip3 install uv"
-    exit 1
+    log "无法连接 uv 官网"
   fi
 fi
 
-export PATH="${HOME}/.local/bin:${PATH}"
-
-if ! command -v dnf >/dev/null 2>&1; then
-  log "未检测到 dnf，请手动安装 python3、gcc、nodejs"
+if [[ "${USE_UV}" == true ]] && command -v uv >/dev/null 2>&1; then
+  log "使用 uv 安装依赖..."
+  rm -rf .venv
+  uv sync
 else
-  log "建议已执行: sudo dnf install -y python3 python3-devel gcc gcc-c++ make git curl nodejs npm"
+  # ---- 降级：pip + venv ----
+  log "uv 不可用，降级到 pip + venv..."
+  rm -rf .venv
+  python3 -m venv .venv
+  source .venv/bin/activate
+
+  log "升级 pip..."
+  pip install --upgrade pip -q
+
+  log "安装核心依赖（纯 Python，无需编译）..."
+  pip install httpx openai python-dotenv fastapi uvicorn \
+    "python-multipart>=0.0.18" PyJWT "passlib>=1.7.4" \
+    websockets pyyaml slowapi tenacity psutil
+
+  log "安装含 C 扩展的依赖（龙架构需编译，稍等）..."
+  pip install numpy pandas matplotlib pillow 2>/dev/null || log "⚠️ 部分可选包编译失败，核心功能不受影响"
+
+  log "安装项目自身..."
+  pip install -e . --no-deps
 fi
 
-mkdir -p "${ROOT}/data/logs" "${ROOT}/data/reports"
-touch "${ROOT}/data/audit.log" 2>/dev/null || true
-
-if [[ ! -f "${ROOT}/.env" ]]; then
-  cp "${ROOT}/.env.example" "${ROOT}/.env"
-  if ! grep -q '^USE_LITELLM_PROXY=' "${ROOT}/.env"; then
-    echo "USE_LITELLM_PROXY=false" >>"${ROOT}/.env"
-  else
-    sed -i 's/^USE_LITELLM_PROXY=.*/USE_LITELLM_PROXY=false/' "${ROOT}/.env" 2>/dev/null || true
-  fi
-  log "已从 .env.example 生成 .env（LoongArch 默认关闭 LiteLLM 代理）"
-  log "请编辑 .env 填写 LLM_API_KEY 后执行: bash boot_start.sh"
+# ---- 3. 生成 .env ----
+if [[ ! -f .env ]]; then
+  cp .env.example .env
+  sed -i 's/^USE_LITELLM_PROXY=.*/USE_LITELLM_PROXY=false/' .env 2>/dev/null || true
+  log "已生成 .env，请编辑 LLM_API_KEY"
+else
+  log ".env 已存在，跳过"
 fi
 
-log "创建虚拟环境 (本机架构)..."
-rm -rf "${ROOT}/.venv"
-"${UV}" sync
+# ---- 4. 目录 ----
+mkdir -p data/logs data/reports
+touch data/audit.log 2>/dev/null || true
 
-if [[ ! -d "${ROOT}/frontend/dist" ]] && [[ -f "${ROOT}/frontend/package.json" ]]; then
-  if command -v npm >/dev/null 2>&1; then
-    log "未找到 frontend/dist，正在本机构建前端..."
-    (cd "${ROOT}/frontend" && npm install && npm run build) || log "前端构建失败，可稍后在 x86 机打包 dist 再拷入"
-  else
-    log "无 frontend/dist 且无 npm，请使用含 dist 的发布包或在 x86 机构建后拷贝"
-  fi
+# ---- 5. 前端 ----
+if [[ ! -f frontend/dist/index.html ]]; then
+  log "⚠️ 缺少 frontend/dist/ — 请从 x86 机拷贝或 npm run build"
 fi
 
-log "完成。下一步:"
-log "  1. 编辑 .env（LLM_API_KEY、SEC_API_HOST=0.0.0.0）"
+# ---- 完成 ----
+log "========================================="
+log "  初始化完成"
+log "  "
+log "  1. vi .env    (填 LLM_API_KEY)"
 log "  2. bash boot_start.sh"
 log "  3. 浏览器 http://$(hostname -I 2>/dev/null | awk '{print $1}'):8900/"
-log "详细说明: docs/DEPLOY_KYLIN_LOONGARCH.md"
+log "========================================="

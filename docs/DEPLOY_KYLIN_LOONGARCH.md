@@ -41,37 +41,19 @@ sudo dnf install -y \
   git curl
 ```
 
-### 第二步：安装 uv 包管理器
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-> 如果麒麟机无法访问外网，改用 pip：
-> ```bash
-> sudo dnf install -y python3-pip
-> python3 -m venv .venv
-> source .venv/bin/activate
-> pip install httpx openai python-dotenv fastapi uvicorn \
->   "python-multipart>=0.0.18" PyJWT "passlib>=1.7.4" \
->   websockets pyyaml slowapi tenacity psutil
-> pip install -e . --no-deps
-> ```
-> 然后跳到第四步。
-
-### 第三步：一键初始化
+### 第二步：一键初始化
 
 ```bash
 bash scripts/bootstrap-kylin-loongarch.sh
 ```
 
-这个脚本会自动完成：
-- 安装 Python 虚拟环境（`uv sync`）
-- 生成 `.env` 配置文件（自动关闭 LiteLLM 代理）
-- 检查前端 `dist` 是否存在
+这个脚本会自动：
+- 安装系统依赖（dnf）
+- 尝试安装 uv，**如果 loongarch64 无预编译包则自动降级到 pip**
+- 安装 Python 依赖（uv sync 或 pip install）
+- 生成 `.env`（自动关闭 LiteLLM 代理）
 
-### 第四步：配置 API Key
+### 第三步：配置 API Key
 
 ```bash
 vi .env
@@ -91,7 +73,7 @@ SEC_API_PORT=8900        # 服务端口
 SEC_API_HOST=0.0.0.0     # 监听地址（0.0.0.0 允许局域网访问）
 ```
 
-### 第五步：检查前端文件
+### 第四步：检查前端文件
 
 ```bash
 ls frontend/dist/index.html
@@ -108,7 +90,7 @@ cd frontend && npm install && npm run build && cd ..
 # 在开发机上：scp -r frontend/dist 用户名@麒麟机:~/security-agent/frontend/
 ```
 
-### 第六步：创建受限用户（可选，需 root 权限）
+### 第五步：创建受限用户（可选，需 root 权限）
 
 ```bash
 sudo bash scripts/setup_restricted_user.sh
@@ -116,7 +98,7 @@ sudo bash scripts/setup_restricted_user.sh
 
 > 非 root 启动也可以正常使用，只是安全沙箱的权限隔离会降级（自动回退到当前用户）。
 
-### 第七步：放行防火墙端口
+### 第六步：放行防火墙端口
 
 ```bash
 # 如果开启了防火墙
@@ -127,7 +109,7 @@ sudo firewall-cmd --reload 2>/dev/null
 getenforce 2>/dev/null
 ```
 
-### 第八步：启动服务
+### 第七步：启动服务
 
 ```bash
 bash boot_start.sh
@@ -143,7 +125,7 @@ bash boot_start.sh
 [boot_start]   Web 控制台: http://0.0.0.0:8900
 ```
 
-### 第九步：浏览器验证
+### 第八步：浏览器验证
 
 打开麒麟机浏览器，访问：
 
