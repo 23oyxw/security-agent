@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # LoongArch/Kylin 一键安装依赖（不用 uv，不用 pip install -e .）
-set -euo pipefail
+set -eu
 
 SEC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${SEC_ROOT}"

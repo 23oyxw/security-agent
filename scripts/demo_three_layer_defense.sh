@@ -3,7 +3,7 @@
 # 用法: bash scripts/demo_three_layer_defense.sh [API_BASE]
 # 默认 API_BASE=http://127.0.0.1:8900（与 boot_start.sh 一致）
 
-set -euo pipefail
+set -eu
 
 API_BASE="${1:-http://127.0.0.1:8900}"
 SEC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

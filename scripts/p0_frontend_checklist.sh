@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # P0 API 段自动化（浏览器段见 docs/P0_FRONTEND_WALKTHROUGH.md）
-set -euo pipefail
+set -eu
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOST="${SEC_API_HOST:-127.0.0.1}"
 PORT="${SEC_API_PORT:-8900}"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 发版前回归：核心单测 + API E2E（无需 pytest）
-set -euo pipefail
+set -eu
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 PY="${ROOT}/.venv/bin/python"

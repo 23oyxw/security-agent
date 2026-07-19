@@ -10,7 +10,7 @@
 #   bash scripts/mcp_launcher.sh stop all          # 停止所有服务
 #==============================================================================
 
-set -euo pipefail
+set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"

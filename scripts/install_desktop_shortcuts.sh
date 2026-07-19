@@ -3,7 +3,7 @@
 # 安装/更新桌面快捷方式 — 统一入口
 # 用法: bash scripts/install_desktop_shortcuts.sh
 #==============================================================================
-set -euo pipefail
+set -eu
 
 SEC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DESKTOP_DIR="${HOME}/桌面"

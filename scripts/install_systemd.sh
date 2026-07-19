@@ -4,7 +4,7 @@
 # 用法: sudo bash scripts/install_systemd.sh
 #===============================================================================
 
-set -euo pipefail
+set -eu
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SYSTEMD_DIR="/etc/systemd/system"

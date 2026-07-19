@@ -15,7 +15,7 @@
 #   bash scripts/litellm_docker.sh logs     # 查看日志
 #===============================================================================
 
-set -euo pipefail
+set -eu
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${ROOT}/configs/docker-compose.litellm.yml"

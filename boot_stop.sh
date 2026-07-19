@@ -3,7 +3,7 @@
 # 停止安全运维 Agent 所有服务（FastAPI + LiteLLM + Vue dev）
 #==============================================================================
 
-set -euo pipefail
+set -eu
 
 SEC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 API_PID_FILE="${SEC_ROOT}/data/.api.pid"

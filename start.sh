@@ -9,7 +9,7 @@
 #
 # 停止: bash stop.sh  或  bash boot_stop.sh
 #==============================================================================
-set -euo pipefail
+set -eu
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${ROOT}"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # LoongArch/Kylin 启动 B/S（FastAPI :8900，pip + PYTHONPATH，不依赖 uv）
-set -euo pipefail
+set -eu
 
 SEC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${SEC_ROOT}/.env"

@@ -3,7 +3,7 @@
 # 快捷打开 API 文档（Swagger UI + ReDoc）
 # 自动检测 API 是否运行，未运行则启动
 #==============================================================================
-set -euo pipefail
+set -eu
 
 ROOT="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
 PORT="${SEC_API_PORT:-8900}"

@@ -11,7 +11,7 @@
 #   bash scripts/litellm_manager.sh disable  # 禁用 LiteLLM（修改 .env）
 #===============================================================================
 
-set -euo pipefail
+set -eu
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_FILE="${ROOT}/configs/litellm_config.yaml"

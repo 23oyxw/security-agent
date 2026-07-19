@@ -11,7 +11,7 @@
 #   --dev        开发模式，启动 Vue dev server 代替构建静态文件
 #==============================================================================
 
-set -euo pipefail
+set -eu
 
 SEC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${SEC_ROOT}/.env"

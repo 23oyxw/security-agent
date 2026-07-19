@@ -14,7 +14,7 @@
 #   0 2 * * * cd /path/to/security-agent && bash scripts/sync_gitee_wiki.sh >> data/logs/wiki_sync.log 2>&1
 # ============================================================================
 
-set -euo pipefail
+set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

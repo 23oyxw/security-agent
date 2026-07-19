@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 重启 FastAPI（加载最新代码，监听 0.0.0.0:8900）
-set -euo pipefail
+set -eu
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 mkdir -p data/logs

@@ -2,7 +2,7 @@
 # 打包项目发给小组
 #   bash scripts/package-release.sh          # 精简包（无 .venv / .env）
 #   bash scripts/package-release.sh --full   # 完整内网包（含 .venv、.env，组长配置原样带走）
-set -euo pipefail
+set -eu
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
