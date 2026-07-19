@@ -1,14 +1,13 @@
-"""用户存储 — SQLite"""
+"""用户存储 — SQLite · 龙架构兼容（passlib pbkdf2，无需 bcrypt C 扩展）"""
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import time
 from pathlib import Path
 from typing import Optional, List
 
-import bcrypt
+from passlib.hash import pbkdf2_sha256
 
 from security_agent import config
 from security_agent.auth.models import User
@@ -65,7 +64,7 @@ class UserStore:
 
     def create_user(self, username: str, password: str, role: str = "viewer",
                     display_name: str = "", email: str = "") -> User:
-        hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        hashed = pbkdf2_sha256.hash(password)
         now = time.time()
         user = User(
             username=username,
@@ -90,7 +89,7 @@ class UserStore:
         if not user or user.disabled:
             return False
         try:
-            return bcrypt.checkpw(password.encode("utf-8"), user.hashed_password.encode("utf-8"))
+            return pbkdf2_sha256.verify(password, user.hashed_password)
         except Exception:
             return False
 
