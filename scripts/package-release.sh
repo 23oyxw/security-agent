@@ -21,10 +21,13 @@ ARCHIVE="${OUT_DIR}/${NAME}.tar.gz"
 mkdir -p "${OUT_DIR}" "${ROOT}/data/logs" "${ROOT}/data/reports"
 
 EXCLUDES=(
-  --exclude='dist'
+  --exclude='./dist'
   --exclude='__pycache__'
   --exclude='*.py[oc]'
   --exclude='.cursor'
+  --exclude='.pytest_cache'
+  --exclude='.idea'
+  --exclude='.streamlit'
   --exclude='data/.streamlit.pid'
   --exclude='data/.api.pid'
   --exclude='data/.litellm.pid'
