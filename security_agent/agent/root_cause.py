@@ -280,6 +280,53 @@ class RootCauseAnalyzer:
                     confidence=0.75,
                 ))
 
+    def correlate_findings(self, report: RootCauseReport) -> Dict[str, Any]:
+        """关联分析 — 将零散发现串成因果链."""
+        if not report.findings:
+            return {"chains": [], "primary_cause": None}
+
+        chains = []
+
+        # 因果规则
+        rules = [
+            ("memory→process", "memory", "process",
+             "内存压力导致 OOM Killer 触发，终止进程"),
+            ("disk→log", "disk", "log",
+             "磁盘满导致日志写入失败或服务异常"),
+            ("cpu→process", "cpu", "process",
+             "CPU 高负载由异常进程引起"),
+            ("load→cpu", "cpu", "cpu",
+             "系统高负载与 CPU 指标关联，可能存在资源争抢"),
+            ("memory→disk", "memory", "disk",
+             "内存不足触发 swap 使用，加剧磁盘 I/O 压力"),
+            ("network→process", "network", "process",
+             "异常网络连接可能关联到特定进程"),
+        ]
+
+        for chain_id, cat1, cat2, desc in rules:
+            f1 = [f for f in report.findings if f.category == cat1]
+            f2 = [f for f in report.findings if f.category == cat2]
+            if f1 and f2:
+                chains.append({
+                    "type": chain_id,
+                    "description": desc,
+                    "primary": f1[0].title,
+                    "secondary": f2[0].title,
+                    "confidence": min(f1[0].confidence, f2[0].confidence),
+                })
+
+        # 找首要根因（严重度最高 + 置信度最高）
+        primary = max(report.findings, key=lambda f: (
+            {"critical": 3, "warning": 2, "info": 1}.get(f.severity, 0),
+            f.confidence,
+        ))
+
+        return {
+            "chains": chains,
+            "primary_cause": primary.title,
+            "chain_count": len(chains),
+        }
+
 
 # 全局实例
 _analyzer: Optional[RootCauseAnalyzer] = None
