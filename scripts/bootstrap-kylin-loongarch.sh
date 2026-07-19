@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # 麒麟 V11 Swan25 + LoongArch 实验机首次初始化
 # 用法: bash scripts/bootstrap-kylin-loongarch.sh
 set -eu

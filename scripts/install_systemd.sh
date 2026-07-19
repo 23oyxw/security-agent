@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #===============================================================================
 # 安装 LiteLLM + Streamlit systemd 服务（企业级守护进程）
 # 用法: sudo bash scripts/install_systemd.sh

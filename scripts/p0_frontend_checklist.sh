@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # P0 API 段自动化（浏览器段见 docs/P0_FRONTEND_WALKTHROUGH.md）
 set -eu
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

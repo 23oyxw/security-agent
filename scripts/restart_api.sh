@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # 重启 FastAPI（加载最新代码，监听 0.0.0.0:8900）
 set -eu
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

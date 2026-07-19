@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # 发版前回归：核心单测 + API E2E（无需 pytest）
 set -eu
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

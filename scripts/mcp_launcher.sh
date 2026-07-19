@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #==============================================================================
 # MCP 服务统一管理脚本
 # 用法: bash scripts/mcp_launcher.sh [start|stop|status|restart] [service|all]

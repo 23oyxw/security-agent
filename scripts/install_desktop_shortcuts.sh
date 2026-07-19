@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #==============================================================================
 # 安装/更新桌面快捷方式 — 统一入口
 # 用法: bash scripts/install_desktop_shortcuts.sh

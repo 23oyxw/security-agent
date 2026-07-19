@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # 打包项目发给小组
 #   bash scripts/package-release.sh          # 精简包（无 .venv / .env）
 #   bash scripts/package-release.sh --full   # 完整内网包（含 .venv、.env，组长配置原样带走）

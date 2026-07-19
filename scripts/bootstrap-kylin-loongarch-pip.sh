@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # LoongArch/Kylin 一键安装依赖（不用 uv，不用 pip install -e .）
 set -eu
 

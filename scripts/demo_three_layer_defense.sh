@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # 三层防御 + 最小权限 + Trace 答辩演示（约 3 分钟）
 # 用法: bash scripts/demo_three_layer_defense.sh [API_BASE]
 # 默认 API_BASE=http://127.0.0.1:8900（与 boot_start.sh 一致）

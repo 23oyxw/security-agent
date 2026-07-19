@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # LoongArch/Kylin 启动 B/S（FastAPI :8900，pip + PYTHONPATH，不依赖 uv）
 set -eu
 
