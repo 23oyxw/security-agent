@@ -32,8 +32,8 @@ source .venv/bin/activate
 log "升级 pip 到最新版（完善 loongarch 架构识别）..."
 python3 -m pip install --upgrade pip --no-cache-dir 2>/dev/null || true
 
-log "配置清华 pip 镜像源..."
-pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple 2>/dev/null || true
+log "配置龙芯专属 pip 镜像源（loongarch64 原生适配）..."
+pip config set global.index-url https://lpypi.loongnix.cn/loongson/pypi/+simple 2>/dev/null || true
 
 log "安装纯 Python 依赖..."
 pip install --timeout 120 httpx openai python-dotenv fastapi uvicorn \
