@@ -25,7 +25,7 @@ data/patrol_reports/
 data/inspection/reports/
 data/monitor/inspection_ts.jsonl
 data/config_snapshots/
-data/.streamlit.pid
+data/.api.pid
 data/*.json
 data/*.count
 

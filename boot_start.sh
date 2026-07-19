@@ -7,8 +7,7 @@
 # 访问:     http://<主机>:8900/  （生产：已构建的 frontend/dist）
 #           bash boot_start.sh --dev → http://<主机>:5173/ （proxy → 8900）
 #
-# 用法: bash boot_start.sh [--streamlit] [--dev]
-#   --streamlit  同时启动旧版 Streamlit UI（默认不启动）
+# 用法: bash boot_start.sh [--dev]
 #   --dev        开发模式，启动 Vue dev server 代替构建静态文件
 #==============================================================================
 
@@ -21,19 +20,14 @@ LOG_DIR="${SEC_ROOT}/data/logs"
 API_PID_FILE="${SEC_ROOT}/data/.api.pid"
 API_PORT="${SEC_API_PORT:-8900}"
 API_HOST="${SEC_API_HOST:-0.0.0.0}"
-STREAMLIT_PID_FILE="${SEC_ROOT}/data/.streamlit.pid"
-STREAMLIT_PORT="${SEC_UI_PORT:-8501}"
-STREAMLIT_HOST="${SEC_UI_HOST:-127.0.0.1}"
 LITELLM_PID_FILE="${SEC_ROOT}/data/.litellm.pid"
 LITELLM_LOG="${LOG_DIR}/litellm.log"
 
 # 解析参数
-START_STREAMLIT=false
 DEV_MODE=false
 for arg in "$@"; do
   case "$arg" in
-    --streamlit) START_STREAMLIT=true ;;
-    --dev)       DEV_MODE=true ;;
+    --dev) DEV_MODE=true ;;
   esac
 done
 
@@ -224,25 +218,6 @@ else
 fi
 
 #------------------------------------------------------------------------------
-# 步骤 5 (可选): 启动 Streamlit 旧版 UI
-#------------------------------------------------------------------------------
-if [[ "${START_STREAMLIT}" == true ]] && [[ -f "${SEC_ROOT}/streamlit_app.py" ]]; then
-  if command -v ss &>/dev/null && ss -ltn 2>/dev/null | grep -q ":${STREAMLIT_PORT} "; then
-    log "Streamlit 端口 ${STREAMLIT_PORT} 已占用，跳过"
-  else
-    log "启动 Streamlit 控制台 (端口 ${STREAMLIT_PORT})..."
-    nohup "${UV_BIN}" run python -m streamlit run "${SEC_ROOT}/streamlit_app.py" \
-      --server.address="${STREAMLIT_HOST}" \
-      --server.port="${STREAMLIT_PORT}" \
-      --server.headless=true \
-      >>"${LOG_DIR}/streamlit.log" 2>&1 &
-    echo $! >"${STREAMLIT_PID_FILE}"
-    sleep 1
-    log "✅ Streamlit → http://${STREAMLIT_HOST}:${STREAMLIT_PORT}"
-  fi
-fi
-
-#------------------------------------------------------------------------------
 # 完成
 #------------------------------------------------------------------------------
 echo ""
@@ -251,8 +226,5 @@ log "  银河麒麟智能安全运维 Agent 已启动"
 log "========================================="
 log "  Web 控制台: http://${API_HOST}:${API_PORT}"
 log "  API 文档:   http://${API_HOST}:${API_PORT}/docs"
-if [[ "${START_STREAMLIT}" == true ]]; then
-  log "  Streamlit:  http://${STREAMLIT_HOST}:${STREAMLIT_PORT}"
-fi
 log "  停止服务:   bash boot_stop.sh"
 log "========================================="
