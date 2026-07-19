@@ -58,7 +58,7 @@ python scripts/benchmark.py
 
 | 功能 | 演示方式 | 文件 |
 |------|---------|------|
-| 7 层沙箱隔离 | `/safety` 执行写操作 → 自动 COW | `sandbox/` |
+| 4 层沙箱隔离 | `/safety` 执行写操作 → 自动 COW | `sandbox/` |
 | 5 层告警静噪 | `/alerts` 查看过滤/去重/节流/关联 | `notify/` |
 | 智能终端 | `/executor` 输入自然语言意图 → 命令建议 | `terminal/` |
 | 文档激活 | `/knowledge` TF-IDF 双索引检索 | `document/` |

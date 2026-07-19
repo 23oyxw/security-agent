@@ -55,7 +55,7 @@ data/              # 运行时数据
 | `inspection/` | 华测式巡检引擎 | — |
 | `notify/` | 可插拔告警 (5层静噪: filter→dedup→throttle→correlation→escalation) | — |
 | **v0.9.0 新增:** | | |
-| `sandbox/` | 7 层沙箱隔离 (setuid→rlimit→OverlayFS→mount_ns→net_ns→seccomp→cgroup) | v0.9.0 |
+| `sandbox/` | 4 层沙箱隔离 (setuid降权 → rlimit资源限制 → OverlayFS写时复制 → mount_ns文件隔离) | v0.9.0 |
 | `terminal/` | 5 阶段智能终端 (context→analyze→execute→verify→learn) + PrivilegeBroker | v0.9.0 |
 | `capability/` | 能力装箱 (ToolBox + FlowBox + PluginBox + CapabilityGuard) | v0.9.0 |
 | `document/` | 文档激活管线 (parser→chunker→embedder→indexer→pipeline) | v0.9.0 |

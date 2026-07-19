@@ -22,7 +22,7 @@
 
 ---
 
-## 一、全域沙箱：从 setuid 到 7 层隔离
+## 一、全域沙箱：从 setuid 到 4 层隔离（当前实现）
 
 ### 1.1 当前问题
 
@@ -32,16 +32,20 @@
 
 **这不是沙箱，这只是"换个低权限用户跑命令"。** 真正的沙箱需要：
 
-### 1.2 7 层隔离设计（由浅入深）
+### 1.2 当前 4 层隔离实现（setuid + rlimit + OverlayFS + mount_ns）
 
 ```
-Layer 0: setuid/setgid          ← 已有，保留
-Layer 1: rlimit 资源限制         ← 已有，保留
-Layer 2: chroot / pivot_root    ← 文件系统隔离（已有接口未实现）
-Layer 3: mount namespace        ← 私有 /tmp、/dev、/proc 挂载点
-Layer 4: network namespace      ← 禁止/限制外连
-Layer 5: seccomp-bpf            ← 系统调用白名单
-Layer 6: cgroup v2              ← CPU/内存/IO 精确控制 + 审计
+Layer 0: setuid/setgit          ← 降权执行，已有
+Layer 1: rlimit 资源限制         ← CPU/内存/进程数限制，已有
+Layer 2: OverlayFS 写时复制     ← 文件系统隔离，已有
+Layer 3: mount namespace        ← 私有 /tmp、/dev、/proc 挂载点，已有
+```
+
+**未来规划（当前未实现）**:
+```
+Layer 4: network namespace      ← 禁止/限制外连 (P1)
+Layer 5: seccomp-bpf            ← 系统调用白名单 (P1)
+Layer 6: cgroup v2              ← CPU/内存/IO 精确控制 + 审计 (P1)
 ```
 
 ```
@@ -53,10 +57,10 @@ Layer 6: cgroup v2              ← CPU/内存/IO 精确控制 + 审计
                        │
          ┌─────────────▼──────────────┐
          │  SandboxProfile.choose()   │  ← 根据 risk_level 自动选层
-         │  READONLY     → L0+L1     │
-         │  REVERSIBLE   → L0-L3     │
-         │  IRREVERSIBLE → L0-L6     │
-         │  CRITICAL     → DENY      │
+         │  READONLY     → L0+L1         │
+         │  REVERSIBLE   → L0-L2         │
+         │  IRREVERSIBLE → L0-L3 (当前)  │
+         │  CRITICAL     → DENY          │
          └─────────────┬──────────────┘
                        │
     ┌──────────────────▼───────────────────┐

@@ -28,7 +28,7 @@
 | 多层级安全防护 | ✅ 三层防御 30/35/35 | `safety_gate/three_layer_defense.py` (test: 6/6) |
 | 静态风险评估 | ✅ 四级风险矩阵 | `safety_gate/risk.py` |
 | 动态意图审计 | ✅ 意图识别 + 审计追踪 | `safety_gate/intent.py` |
-| 受限执行环境 | ✅ 7 层沙箱隔离 | `sandbox/` (OverlayFS+namespace) |
+| 受限执行环境 | ✅ 4 层沙箱隔离 | `sandbox/` (setuid+rlimit+OverlayFS+mount_ns) |
 | 用户确认流程 | ✅ S4 审批队列 | `confirm/confirmation.py` |
 | 自动回滚 | ✅ OverlayFS rollback | `sandbox/overlay.py` |
 | 命令注入防御 | ✅ | `safety_gate/injection_defense.py` |
@@ -60,7 +60,7 @@
 |------|------|------|
 | 模块化设计 | ✅ 34 模块, 260 py | 完整目录树 |
 | 性能优化 | ⚠️ 上下文治理+缓存 | `agent/react_context.py` |
-| 技术创新 | ✅ 7 层沙箱 + 装箱 + Fuzzer | `sandbox/` + `capability/` |
+| 技术创新 | ✅ 4 层沙箱 + 装箱 + Fuzzer | `sandbox/` + `capability/` |
 | 用户体验 | ✅ Vue3 13 页 + 双模式 + 无限画布 | `frontend/` |
 | 麒麟 LoongArch | ⚠️ 部署文档完整，待实机验证 | `docs/DEPLOY_KYLIN_LOONGARCH.md` |
 | 三方统一契约 | ✅ 前后端+文档统一 JSON | `triple_unify.json` |

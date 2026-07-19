@@ -190,7 +190,7 @@
 | trace_id 全链路归一 | ✅ |
 | 多角色协调文档 | ✅ MULTI_PERSONA_COORDINATION.md |
 | PersonaCoordPanel | ✅ AgentChat 侧栏 |
-| 全域沙箱 7 层隔离 | ✅ sandbox/ (v0.9) |
+| 全域沙箱 4 层隔离 | ✅ sandbox/ (v0.9) |
 | 告警 5 层降噪 | ✅ notify/ (v0.9) |
 | 终端 5 阶段智能闭环 | ✅ terminal/ (v0.9) |
 | 文档智能 Pipeline | ✅ document/ (v0.9) |
@@ -263,7 +263,7 @@ tests/                 23 files · 137+ test cases
 
 | 方向 | 当前级别 | v0.9 目标 | 状态 |
 |------|----------|-----------|------|
-| 全域沙箱 | 演示级（setuid+rlimit） | 7 层隔离（OverlayFS+namespace） | ✅ |
+| 全域沙箱 | 演示级（setuid+rlimit） | 4 层隔离（setuid+rlimit+OverlayFS+mount_ns） | ✅ |
 | 告警降噪 | 中等级（去重+衍生抑制） | 五层降噪（频率节流+浮屏控制） | ✅ |
 | 终端智能 | 基础级（无状态执行） | 五阶段闭环（上下文→预分析→验证→学习） | ✅ |
 | 文档智能 | 不存在 | Pipeline（解析→分块→索引→检索→自抽取） | ✅ |

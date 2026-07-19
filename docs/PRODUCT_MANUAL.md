@@ -65,7 +65,7 @@ START_WIN.bat
 ### 5.2 安全防护沙箱（L2）
 
 - **三层防御引擎**：静态规则（30%）+ 意图审计（35%）+ 受限执行（35%）
-- **7 层沙箱隔离**：setuid → rlimit → OverlayFS → mount_ns → net_ns → seccomp → cgroup
+- **4 层沙箱隔离**：setuid 降权 → rlimit 资源限制 → OverlayFS 写时复制 → mount_ns 文件隔离
 - **5 层告警静噪**：过滤 → 去重 → 节流 → 关联 → 智能升级
 - **人工审批闭环**：高危操作自动升级 → 管理员审批 → 执行
 

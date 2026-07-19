@@ -28,7 +28,7 @@
 | 1 | 多层级安全防护 | ✅ 三层防御 30/35/35 | `safety_gate/three_layer_defense.py` (test: 6/6) | — |
 | 2 | 静态风险评估 | ✅ 四级风险矩阵 | `safety_gate/risk.py` | — |
 | 3 | 动态意图审计 | ✅ 意图识别 + 审计 | `safety_gate/intent.py` | — |
-| 4 | 受限执行环境 | ✅ 7 层沙箱隔离 | `sandbox/` (OverlayFS+namespace+seccomp) | **麒麟实机环境未验证** |
+| 4 | 受限执行环境 | ✅ 4 层沙箱隔离 | `sandbox/` (setuid+rlimit+OverlayFS+mount_ns) | **麒麟实机环境未验证** |
 | 5 | 用户确认流程 | ✅ S4 审批队列 + 二次确认 | `confirm/confirmation.py` | — |
 | 6 | 自动回滚 | ✅ SnapshotManager + OverlayFS | `sandbox/overlay.py::rollback()` | — |
 | 7 | MAC/SELinux 检查 | ✅ 执行前钩子 | `safety_gate/mac_checker.py` | **KYSEC enforce 模式未验证** |
@@ -62,7 +62,7 @@
 |---|---------|------------|------|------|
 | 1 | 模块化设计 | ✅ 34 模块, 260 py | 完整目录树 | — |
 | 2 | 性能优化 | ⚠️ ReAct 上下文治理 + 缓存 | `agent/react_context.py` | **缺: 系统级性能基准报告** |
-| 3 | 技术创新 | ✅ 7 层沙箱 + 装箱体系 + Fuzzer | — | — |
+| 3 | 技术创新 | ✅ 4 层沙箱 + 装箱体系 + Fuzzer | — | — |
 | 4 | 用户体验 | ✅ Vue3 13 页 + 双模式 + 画布 | `frontend/` | — |
 | 5 | 麒麟 LoongArch 适配 | ⚠️ 有部署文档但无实机验证 | `docs/DEPLOY_KYLIN_LOONGARCH.md` | **缺: 麒麟实机验证报告** |
 | 6 | 三方统一契约 | ✅ 前后端+文档统一 JSON | `triple_unify.json` + `verify_triple_unify.py` | — |

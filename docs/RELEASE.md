@@ -28,7 +28,7 @@ http://127.0.0.1:8900  admin/admin123
 |------|--------|--------|
 | 模块数 | ~180 py | ~260 py |
 | 测试 | 0 | 94 (benchmark) |
-| 沙箱 | 无 | 7 层隔离 (OverlayFS+ns+seccomp+cgroup) |
+| 沙箱 | 无 | 4 层隔离 (setuid+rlimit+OverlayFS+mount_ns) |
 | 告警 | 原始通知 | 5 层静噪 (filter→dedup→throttle→correlation→escalation) |
 | 终端 | 直接执行 | 5 阶段智能流水线 (context→pre_analyze→execute→post_verify→learn) |
 | 文档激活 | 无 | TF-IDF 双索引 (BM25+余弦) |

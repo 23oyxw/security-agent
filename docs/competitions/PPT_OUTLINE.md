@@ -73,11 +73,10 @@ L3 受限执行环境 (35%): 沙箱 + 最小权限 + 备份回滚
 **演示**: `rm -rf /tmp/test` → 被拦截 (deny)
 **演示**: `ls -la /tmp` → 通过 (allow, 93.25)
 
-## P7 · 7 层沙箱（30s）
+## P7 · 4 层沙箱（30s）
 
 ```
 setuid  → rlimit → OverlayFS → mount_ns
-→ net_ns → seccomp → cgroup
 
 写操作自动进 COW 沙箱 → 可回滚
 12 探针 + 7 策略 Fuzzer → 边界韧性
@@ -127,7 +126,7 @@ setuid  → rlimit → OverlayFS → mount_ns
 
 | 创新 | 说明 |
 |------|------|
-| 7 层沙箱 | OverlayFS COW + seccomp + cgroup |
+| 4 层沙箱 | setuid降权 + rlimit资源限制 + OverlayFS COW + mount_ns文件隔离 |
 | 能力装箱 | ToolBox/FlowBox/PluginBox 统一 Guard |
 | 边界 Fuzzer | 7 种变异策略自动检测沙箱穿透 |
 | 三方统一契约 | 前端/后端/文档共享 JSON 真源 |

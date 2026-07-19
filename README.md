@@ -20,7 +20,7 @@ START_WIN.bat                       # Windows
 | 层 | 名称 | 关键实现 |
 |----|------|---------|
 | L1 | 多维感知 | 8 维仪表盘 + 边界对抗 (12 探针 + 7 策略 Fuzzer) + TF-IDF 知识检索 |
-| L2 | 安全防护 | 三层防御 30/35/35 + 7 层沙箱 (OverlayFS+ns+seccomp+cgroup) + 5 层告警静噪 |
+| L2 | 安全防护 | 三层防御 30/35/35 + 4 层沙箱 (setuid+rlimit+OverlayFS+mount_ns) + 5 层告警静噪 |
 | L3 | 工具执行 | 17 Skills (四簇) + 能力装箱 (ToolBox+FlowBox+PluginBox) + 智能终端 |
 | L4 | 审计追溯 | IncidentSpine 全链路 trace_id + append-only 卷宗 + Gitee Wiki 回流 |
 | L5 | 量化迭代 | 六维指标 + 散点/热力/分布 + 策略反写 L1 |
