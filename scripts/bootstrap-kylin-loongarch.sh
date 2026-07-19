@@ -6,6 +6,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
+# 修复 tar 解压后丢失的执行权限
+find . -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
+
 log() { echo "[kylin-bootstrap] $*"; }
 
 ARCH="$(uname -m)"
