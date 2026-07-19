@@ -1,4 +1,4 @@
-# 麒麟 V11 LoongArch 部署指南
+# 【提交编号 6】软件安装包及部署文档 — 麒麟 V11 LoongArch
 
 > 适用：麒麟高级服务器 V11 Swan25 · LoongArch (loongarch64)  
 > 读者：项目组成员、评审老师  
