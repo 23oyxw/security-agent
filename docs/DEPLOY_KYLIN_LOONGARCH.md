@@ -1,100 +1,186 @@
-# 麒麟高级服务器 V11 (Swan25) · LoongArch 部署指南
+# 麒麟 V11 LoongArch 部署指南
 
-> 实验机：**dnf** 包管理 · **龙架构** · 与 x86 开发机分开构建，勿拷贝 `.venv`。
+> 适用：麒麟高级服务器 V11 Swan25 · LoongArch (loongarch64)  
+> 读者：项目组成员、评审老师  
+> 版本：v0.9.0
 
-## 1. 架构差异（必读）
+---
 
-| 项目 | x86 开发机 | LoongArch 实验机 |
-|------|------------|------------------|
-| `.venv` | 可用 | ❌ **禁止拷贝**，必须本机 `uv sync` |
-| `frontend/dist` | 可选本机构建 | ✅ 静态资源可随 tar 包带走 |
-| LiteLLM Docker | 常见 | ⚠️ 镜像多为 amd64/arm64，**龙架构常无镜像** |
-| 推荐 LLM 模式 | 可选代理 | **直连 API**（`USE_LITELLM_PROXY=false`） |
+## 方式一：Git 拉取（推荐，网络畅通用这个）
 
-打包文件：`dist/security-agent-v0.9.0-*.tar.gz`（不含 `pgdata2`、不含 `.venv`）。
+```bash
+# 1. 安装 git
+sudo dnf install -y git
 
-## 2. 系统依赖（dnf）
+# 2. 克隆项目
+git clone https://gitee.com/swok/security-agent.git
+cd security-agent
+
+# 3. 继续「环境初始化」步骤
+```
+
+## 方式二：压缩包部署（离线/无 git）
+
+把 `dist/security-agent-v0.9.0-*.tar.gz` 拷贝到麒麟机，然后：
+
+```bash
+tar -xzf security-agent-v0.9.0-*.tar.gz
+cd security-agent-v0.9.0-*
+```
+
+---
+
+## 环境初始化
+
+### 第一步：安装系统依赖
 
 ```bash
 sudo dnf install -y \
   python3 python3-pip python3-devel \
   gcc gcc-c++ make \
-  git curl \
-  nodejs npm \
-  psutil  # 若 dnf 有 python3-psutil 可改为 python3-psutil
+  git curl
 ```
 
-可选（仅当你确认有 **loongarch** 镜像且 KYSEC 允许 Docker）：
+### 第二步：安装 uv 包管理器
 
 ```bash
-sudo dnf install -y docker docker-compose-plugin
-sudo systemctl enable --now docker
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-浏览器：使用系统自带 **Chromium / Firefox** 访问控制台，无需额外安装。
+> 如果麒麟机无法访问外网，改用 pip：
+> ```bash
+> sudo dnf install -y python3-pip
+> python3 -m venv .venv
+> source .venv/bin/activate
+> pip install httpx openai python-dotenv fastapi uvicorn \
+>   "python-multipart>=0.0.18" PyJWT "passlib>=1.7.4" \
+>   websockets pyyaml slowapi tenacity psutil
+> pip install -e . --no-deps
+> ```
+> 然后跳到第四步。
 
-## 3. 解压与初始化
+### 第三步：一键初始化
 
 ```bash
-tar -xzf security-agent-v0.9.0-*.tar.gz
-cd security-agent-v0.9.0-*
-
-# 一键脚本（推荐）
 bash scripts/bootstrap-kylin-loongarch.sh
-
-# 或手动：
-cp .env.example .env
-# 编辑 .env（见下文「实验机 .env 模板」）
-bash start.sh
-# 或麒麟桌面双击: 打开应用.sh
-# 停止: bash stop.sh
 ```
 
-## 4. 实验机 `.env` 模板（推荐）
+这个脚本会自动完成：
+- 安装 Python 虚拟环境（`uv sync`）
+- 生成 `.env` 配置文件（自动关闭 LiteLLM 代理）
+- 检查前端 `dist` 是否存在
+
+### 第四步：配置 API Key
+
+```bash
+vi .env
+```
+
+必须修改的 2 行：
 
 ```env
-# 龙架构实验机：直连模型，不依赖 LiteLLM 容器
+LLM_API_KEY=sk-你的DeepSeek或OpenAI密钥
 USE_LITELLM_PROXY=false
-LLM_API_KEY=你的密钥
-LLM_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1
-LLM_MODEL=mimo-v2.5
-
-SEC_API_PORT=8900
-SEC_API_HOST=0.0.0.0
 ```
 
-若现场必须用 LiteLLM，需确认 `docker pull` 在龙架构可用；否则保持 `false`，应用内 **Fallback** 仍可用。
+可选修改：
 
-## 5. 前端
+```env
+SEC_API_PORT=8900        # 服务端口
+SEC_API_HOST=0.0.0.0     # 监听地址（0.0.0.0 允许局域网访问）
+```
 
-- 包内已有 `frontend/dist` → 直接 `boot_start.sh` 即可。
-- 若无 `dist`：需本机 `nodejs` + `cd frontend && npm install && npm run build`（龙架构 npm 源较慢，建议在 x86 机先 build 再打包）。
-
-## 6. KYSEC 常见问题
-
-| 现象 | 处理 |
-|------|------|
-| `KYSEC: 权限不够` 执行脚本 | `chmod +x boot_start.sh scripts/*.sh`；或 `bash boot_start.sh` 显式调用 |
-| `uvloop` / libuv 编译失败 | 已改用 `uvicorn`（非 standard），重新 `uv sync` |
-| Docker 无权限 | `.env` 设 `USE_LITELLM_PROXY=false` |
-| `mac_checker` / kysec | 代码已挂钩；在实验机跑一次安全执行器验收 |
-
-## 7. 验收
+### 第五步：检查前端文件
 
 ```bash
-bash scripts/run_regression.sh
-PYTHONPATH=. .venv/bin/python scripts/e2e_api_smoke.py
-curl -s http://127.0.0.1:8900/api/health
+ls frontend/dist/index.html
 ```
 
-浏览器：`http://<实验机IP>:8900/`（防火墙放行 **8900**）。
+如果文件不存在（`No such file or directory`）：
 
-## 8. 赛题得分相关
+```bash
+# 方式A：本机构建（需 nodejs，较慢）
+sudo dnf install -y nodejs npm
+cd frontend && npm install && npm run build && cd ..
 
-- **国产化**：`config.platform_label()` 会识别麒麟。
-- **KYSEC**：`security_agent/safety_gate/mac_checker.py` + `terminal/executor.py` 执行前检查。
-- **B/S**：Vue 静态页 + FastAPI，适配麒麟浏览器。
+# 方式B：从 x86 开发机拷贝 dist 目录
+# 在开发机上：scp -r frontend/dist 用户名@麒麟机:~/security-agent/frontend/
+```
 
-## 相关文档
+### 第六步：创建受限用户（可选，需 root 权限）
 
-- [DEPLOY_OFFLINE.md](DEPLOY_OFFLINE.md) · [发给小组-使用说明.txt](../发给小组-使用说明.txt) · [LITELLM_GUIDE.md](LITELLM_GUIDE.md)
+```bash
+sudo bash scripts/setup_restricted_user.sh
+```
+
+> 非 root 启动也可以正常使用，只是安全沙箱的权限隔离会降级（自动回退到当前用户）。
+
+### 第七步：放行防火墙端口
+
+```bash
+# 如果开启了防火墙
+sudo firewall-cmd --add-port=8900/tcp --permanent 2>/dev/null
+sudo firewall-cmd --reload 2>/dev/null
+
+# KYSEC 如果拦截（检查命令）
+getenforce 2>/dev/null
+```
+
+### 第八步：启动服务
+
+```bash
+bash boot_start.sh
+```
+
+成功标志：
+
+```
+[boot_start] ✅ FastAPI 已启动 PID 12345 → http://0.0.0.0:8900
+[boot_start] 前端 dist 已是最新，跳过构建
+[boot_start] =========================================
+[boot_start]   银河麒麟智能安全运维 Agent 已启动
+[boot_start]   Web 控制台: http://0.0.0.0:8900
+```
+
+### 第九步：浏览器验证
+
+打开麒麟机浏览器，访问：
+
+```
+http://<麒麟机IP>:8900
+```
+
+登录：`admin` / `admin123`
+
+---
+
+## 常见错误处理
+
+| 报错 | 原因 | 解决 |
+|------|------|------|
+| `$'\r': 未找到命令` | Windows 换行符污染 | 用 git clone 拉取，或用 `sed -i 's/\r$//' scripts/*.sh` |
+| `set: 无效的选项 -` | shell 不兼容 pipefail | git clone 最新版，或 `sed -i 's/set -euo pipefail/set -eu/' *.sh scripts/*.sh` |
+| `uv: 未找到命令` | uv 未安装或不在 PATH | `export PATH="$HOME/.local/bin:$PATH"` 或重启终端 |
+| `ModuleNotFoundError: fastapi` | 虚拟环境未创建 | 先执行 `bash scripts/bootstrap-kylin-loongarch.sh` |
+| `端口 8900 被占用` | 旧进程未退出 | `bash boot_stop.sh` 后再启动 |
+| `KYSEC 拦截` | 麒麟安全策略 | `sudo setenforce 0`（临时），正式部署放行端口 |
+
+## 停止服务
+
+```bash
+bash boot_stop.sh
+```
+
+## 服务重启
+
+```bash
+bash boot_stop.sh
+bash boot_start.sh
+```
+
+## 详细参考
+
+- [麒麟依赖兼容性清单](deploy/KYLIN_DEPENDENCIES.md) — Python 包分级
+- [麒麟权限处理指南](deploy/KYLIN_PERMISSIONS.md) — KYSEC / root 权限
+- [麒麟实机验收清单](deploy/KYLIN_VERIFICATION.md) — 功能验证

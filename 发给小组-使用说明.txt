@@ -1,37 +1,59 @@
-安全运维 Agent — 离线 / 换机部署（精简包）
+安全运维 Agent — 麒麟 LoongArch 部署说明 v0.9.0
 
-一、本包不含什么（正常现象）
-  - data/litellm/pgdata*  → LiteLLM 的 Postgres，在目标机用 Docker 首次启动时自动创建
-  - .venv                 → 目标机用 uv sync 重建
-  - .env                  → 请从 .env.example 复制并填写 API Key
-  - data/logs、告警库等   → 运行后自动生成
+一、两种获取方式
 
-二、目标机环境
-  - 【实验机】麒麟高级服务器 V11 Swan25 + LoongArch + dnf
-    → 必读 docs/DEPLOY_KYLIN_LOONGARCH.md
-    → 解压后: bash scripts/bootstrap-kylin-loongarch.sh
-    → 勿拷贝 x86 的 .venv；LiteLLM 建议 USE_LITELLM_PROXY=false
-  - 其它 Linux：Python 3.10+、uv；可选 Docker；Node 仅当需本机构建前端
+  方式A（推荐，需联网）：
+    git clone https://gitee.com/swok/security-agent.git
+    cd security-agent
 
-三、安装步骤
-  1. tar -xzf security-agent-v*.tar.gz && cd security-agent-v*
-  2. cp .env.example .env   # 编辑 LLM_API_KEY、端口等
-  3. 一键启动（任选其一）:
-       bash start.sh              ← 推荐（首次会自动 bootstrap）
-       bash 打开应用.sh           ← 麒麟桌面可双击
-       bash boot_start.sh         ← 与 start.sh 相同底层
-  4. 浏览器 http://<目标机IP>:8900/  默认账号见 Login 页提示
-  5. 停止: bash stop.sh
+  方式B（离线）：
+    tar -xzf security-agent-v0.9.0-*.tar.gz
+    cd security-agent-v0.9.0-*
 
-四、LiteLLM（可选）
-  - .env 设置 USE_LITELLM_PROXY=true 且 LLM_BASE_URL=http://127.0.0.1:4000/v1
-  - boot_start 会 docker compose -f configs/docker-compose.litellm.yml up -d
-  - 数据库目录会在 data/litellm/pgdata2 重新初始化，无需从旧机拷贝
+二、安装步骤（全部在麒麟机上执行）
 
-五、打包命令（在开发机）
-  bash scripts/package-release.sh          # 推荐：精简包
-  bash scripts/package-release.sh --full   # 内网：含 .venv + .env（仍排除 pgdata）
+  1. 安装系统依赖：
+     sudo dnf install -y python3 python3-pip python3-devel gcc gcc-c++ make curl
 
-六、验收
-  bash scripts/run_regression.sh
-  PYTHONPATH=. .venv/bin/python scripts/e2e_api_smoke.py
+  2. 安装 uv：
+     curl -LsSf https://astral.sh/uv/install.sh | sh
+     export PATH="$HOME/.local/bin:$PATH"
+
+  3. 一键初始化：
+     bash scripts/bootstrap-kylin-loongarch.sh
+
+  4. 配置 API Key：
+     vi .env
+     改这行：LLM_API_KEY=sk-你的密钥
+
+  5. 启动：
+     bash boot_start.sh
+
+  6. 浏览器打开：
+     http://<麒麟机IP>:8900
+     账号：admin  密码：admin123
+
+三、常见报错处理
+
+  - "$'\r': 未找到命令"  →  git clone 拉取；或用 sed -i 's/\r$//' scripts/*.sh
+  - "uv: 未找到命令"     →  export PATH="$HOME/.local/bin:$PATH"
+  - "端口被占用"         →  bash boot_stop.sh
+  - 防火墙无法访问       →  sudo firewall-cmd --add-port=8900/tcp --permanent
+
+四、麒麟特有注意事项
+
+  - 禁止拷贝 x86 的 .venv 目录（架构不兼容）
+  - LiteLLM Docker 不可用（龙架构无镜像），.env 保持 USE_LITELLM_PROXY=false
+  - 前端 dist/ 已含在项目中，无需在麒麟上 npm build
+  - 非 root 用户可正常启动（安全沙箱权限隔离会降级，不影响功能）
+
+五、详细文档
+
+  完整部署指南：docs/DEPLOY_KYLIN_LOONGARCH.md
+  依赖兼容清单：docs/deploy/KYLIN_DEPENDENCIES.md
+  权限处理说明：docs/deploy/KYLIN_PERMISSIONS.md
+
+六、开发机打包
+
+  bash scripts/package-release.sh          # 精简包（不含 .venv/.env）
+  bash scripts/package-release.sh --full   # 完整包（含 .venv/.env）
